@@ -76,6 +76,21 @@
       .back { margin-bottom: 22px; }
       .student-greeting { padding: clamp(24px, 5vw, 56px); background: var(--surface); border-top: 4px solid var(--gold); box-shadow: var(--shadow); }
       .student-greeting h1 { max-width: 840px; }
+      .pathway { display: grid; gap: 18px; max-width: 980px; margin-top: 34px; }
+      .pathway-phase { background: var(--surface); border: 1px solid var(--line); border-top: 3px solid var(--green); }
+      .pathway-phase.locked { border-top-color: #aab7b0; }
+      .phase-heading { display: flex; justify-content: space-between; gap: 18px; padding: 20px 22px 14px; }
+      .phase-heading h2 { margin-bottom: 4px; font: 500 25px/1.2 Georgia, "Times New Roman", serif; }
+      .phase-status { flex: none; align-self: start; padding: 4px 9px; color: var(--green); background: var(--green-soft); font-size: 12px; font-weight: 700; }
+      .locked .phase-status { color: var(--muted); background: #edf0ee; }
+      .phase-description { margin: 0 22px 14px; color: var(--muted); }
+      .milestone-list { margin: 0; padding: 0; list-style: none; }
+      .milestone-item { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: start; gap: 12px; padding: 15px 22px; border-top: 1px solid var(--line); }
+      .milestone-item input { width: 19px; height: 19px; margin: 3px 0 0; accent-color: var(--green); }
+      .milestone-item h3 { margin: 0 0 4px; }
+      .milestone-item p { margin: 0; color: var(--muted); white-space: pre-wrap; }
+      .milestone-meta { color: var(--muted); font-size: 12px; text-align: right; }
+      .milestone-type { color: var(--coral); font-size: 11px; font-weight: 750; text-transform: uppercase; }
       .section-gap { margin-top: 38px; }
       @media (max-width: 700px) {
         .topbar { align-items: flex-start; padding: 14px 16px; }
@@ -88,6 +103,10 @@
         .list-row { align-items: flex-start; }
         .account { max-width: 48%; overflow-wrap: anywhere; }
         h1 { font-size: 34px; }
+        .phase-heading { padding: 16px; }
+        .phase-description { margin-inline: 16px; }
+        .milestone-item { padding: 13px 16px; grid-template-columns: 24px minmax(0, 1fr); }
+        .milestone-meta { grid-column: 2; text-align: left; }
       }
     </style>
   </head>
@@ -105,7 +124,8 @@
         originalKey: '',
         status: '',
         selectedMemberIds: [],
-        importRecords: null
+        importRecords: null,
+        phaseOptions: []
       };
 
       document.addEventListener('DOMContentLoaded', start);
@@ -175,10 +195,37 @@
         const cohort = state.selectedStudent ? state.selectedStudent.cohortId : '';
         callServer('getStudentView', email, cohort).then(function(student) {
           main.innerHTML = `${state.selectedStudent ? '<button type="button" class="link-button back" id="back-to-roster">← Back to cohort</button>' : ''}
-            <section class="student-greeting"><p class="eyebrow">Extended Essay</p><h1>Hello, ${escapeHtml(student.displayName)}</h1></section>`;
+            <section class="student-greeting"><p class="eyebrow">Extended Essay</p><h1>Hello, ${escapeHtml(student.displayName)}</h1></section>
+            ${renderPathway(student.pathway || [], student, email, cohort)}`;
           const back = document.getElementById('back-to-roster');
           if (back) back.addEventListener('click', function() { state.selectedStudent = null; renderStaffView(); });
+          main.querySelectorAll('[data-milestone-complete]').forEach(function(input) {
+            input.addEventListener('change', function() {
+              const requestedState = input.checked;
+              input.disabled = true;
+              callServer('setMilestoneCompletion', email, input.dataset.milestoneComplete, requestedState, cohort).then(renderStudentView).catch(function(error) {
+                input.checked = !requestedState;
+                input.disabled = false;
+                showError(error);
+              });
+            });
+          });
         }).catch(showError);
+      }
+
+      function renderPathway(phases, student, email, cohort) {
+        if (!phases.length) return '<section class="pathway"><div class="empty">Milestones and phases have not been configured yet.</div></section>';
+        return `<section class="pathway" aria-label="Milestone pathway">${phases.map(function(phase) {
+          const milestones = phase.milestones || [];
+          return `<article class="pathway-phase ${phase.unlocked ? '' : 'locked'}">
+            <header class="phase-heading"><div><p class="eyebrow">${escapeHtml(phase.phaseId)}</p><h2>${escapeHtml(phase.title)}</h2></div><span class="phase-status">${phase.unlocked ? 'Available' : 'Locked'}</span></header>
+            ${phase.description ? `<p class="phase-description">${escapeHtml(phase.description)}</p>` : ''}
+            ${!phase.unlocked && phase.prerequisitePhaseId ? `<p class="phase-description">Complete all milestones in ${escapeHtml(phase.prerequisitePhaseId)} to unlock this phase.</p>` : ''}
+            ${milestones.length ? `<ul class="milestone-list">${milestones.map(function(milestone) {
+              return `<li class="milestone-item"><input type="checkbox" data-milestone-complete="${escapeHtml(milestone.milestoneId)}" aria-label="Mark ${escapeHtml(milestone.title)} complete" ${milestone.completed ? 'checked' : ''} ${milestone.canComplete ? '' : 'disabled'}><div><h3>${escapeHtml(milestone.title)}</h3><p>${escapeHtml(milestone.description)}</p></div><div class="milestone-meta"><span class="milestone-type">${escapeHtml(milestone.type)}</span><br>${escapeHtml(milestone.owner)}${milestone.offsetDays !== '' ? ' · offset ' + escapeHtml(milestone.offsetDays) + 'd' : ''}</div></li>`;
+            }).join('')}</ul>` : '<p class="phase-description">No milestones in this phase.</p>'}
+          </article>`;
+        }).join('')}</section>`;
       }
 
       function renderStaffView() {
@@ -247,7 +294,7 @@
       }
 
       const adminSections = [
-        ['cohorts', 'Cohorts'], ['cohortMembers', 'Students in cohorts'], ['milestones', 'Milestones'],
+        ['cohorts', 'Cohorts'], ['cohortMembers', 'Students in cohorts'], ['phases', 'Phases'], ['milestones', 'Milestones'],
         ['studentUsers', 'Student users'], ['staffUsers', 'Staff users'], ['subjects', 'Subjects'],
         ['pages', 'Website pages'], ['resources', 'Resources']
       ];
@@ -306,7 +353,11 @@
         const records = data.records || [];
         const columns = entity === 'cohortMembers'
           ? ['Student ID', 'Display Name', 'StudentId', 'Surname', 'First Name']
-          : headers.slice(0, 5);
+          : entity === 'milestones'
+            ? ['milestoneId', 'milestoneTitle', 'type', 'phase', 'mOwner']
+            : entity === 'phases'
+              ? ['phaseId', 'phaseTitle', 'sequence', 'prerequisitePhaseId', 'active']
+              : headers.slice(0, 5);
         if (entity === 'cohortMembers') state.selectedMemberIds = [];
         const isCohortMembers = entity === 'cohortMembers';
         target.innerHTML = `<div class="toolbar"><button type="button" class="button" id="new-record">Add ${escapeHtml(sectionLabel(entity).replace(/s$/, ''))}</button>${isCohortMembers ? '<button type="button" class="button secondary" id="open-roster-import">Import CSV / paste</button><button type="button" class="button secondary" id="create-selected-users" disabled>Add selected as users</button><label><input type="checkbox" id="select-all-members"> Select all</label><span id="selected-count" class="muted">0 selected</span>' : ''}<span class="muted">${records.length} record${records.length === 1 ? '' : 's'}</span></div>
@@ -461,9 +512,16 @@
         });
       }
 
-      function openEditor(record, preserve) {
+      function openEditor(record, preserve, phaseOptionsLoaded) {
         const data = state.adminData || { headers: [] };
         const entity = state.adminEntity;
+        if ((entity === 'milestones' || entity === 'phases') && !phaseOptionsLoaded) {
+          callServer('getAdminRecords', 'phases').then(function(result) {
+            state.phaseOptions = result.records || [];
+            openEditor(record, preserve, true);
+          }).catch(showError);
+          return;
+        }
         const headers = (data.headers || []).filter(function(header, index, all) { return header && all.indexOf(header) === index; });
         state.editingRecord = record ? { record: record } : (preserve ? state.editingRecord : null);
         const editing = !!record || !!(preserve && state.originalKey);
@@ -486,14 +544,24 @@
       function fieldMarkup(header, value, entity, editing) {
         const required = requiredFields(entity).indexOf(header) >= 0 ? 'required' : '';
         const disabled = editing && header === keyField(entity) ? 'disabled' : '';
-        const booleanField = /^is[A-Z]|^(Active|Published)$/i.test(header);
+        const booleanField = /^is[A-Z]/.test(header) || /^(active|Published)$/i.test(header);
         const wide = /Description|Body|Subjects|Prerequisite/i.test(header) ? 'wide' : '';
         if (booleanField) {
-          return `<div class="field check"><label><input type="checkbox" data-field="${escapeHtml(header)}" ${toBoolean(value) ? 'checked' : ''} ${disabled}> ${escapeHtml(header)}</label></div>`;
+          const checked = toBoolean(value) || (!editing && header === 'active');
+          return `<div class="field check"><label><input type="checkbox" data-field="${escapeHtml(header)}" ${checked ? 'checked' : ''} ${disabled}> ${escapeHtml(header)}</label></div>`;
+        }
+        if (header === 'type' || header === 'mOwner') {
+          const options = header === 'type' ? ['form', 'upload', 'doc', 'approval', 'meeting'] : ['student', 'supervisor', 'lead', 'coordinator'];
+          return `<div class="field"><label>${escapeHtml(header)} *</label><select data-field="${escapeHtml(header)}" ${required} ${disabled}><option value="">Choose ${escapeHtml(header)}</option>${options.map(function(option) { return `<option value="${option}" ${String(value || '').toLowerCase() === option ? 'selected' : ''}>${option}</option>`; }).join('')}</select></div>`;
+        }
+        if (header === 'phase' || header === 'prerequisitePhaseId') {
+          const current = String(value || '');
+          const options = state.phaseOptions || [];
+          return `<div class="field"><label>${escapeHtml(header)}${required ? ' *' : ''}</label><select data-field="${escapeHtml(header)}" ${required} ${disabled}><option value="">${header === 'phase' ? 'Choose phase' : 'No prerequisite'}</option>${options.map(function(phase) { return `<option value="${escapeHtml(phase.phaseId)}" ${current === phase.phaseId ? 'selected' : ''}>${escapeHtml(phase.phaseId)} · ${escapeHtml(phase.phaseTitle)}</option>`; }).join('')}</select></div>`;
         }
         const date = /Deadline|Date of Birth/i.test(header);
         const long = /Description|Body|Subjects|Prerequisite/i.test(header);
-        const type = date ? 'date' : (/Email/i.test(header) ? 'email' : 'text');
+        const type = date ? 'date' : (/Email/i.test(header) ? 'email' : (/^(offsetDays|sequence)$/i.test(header) ? 'number' : 'text'));
         const formatted = date ? escapeHtml(String(value || '').slice(0, 10)) : escapeHtml(formatValue(value));
         const control = long
           ? `<textarea data-field="${escapeHtml(header)}" ${required} ${disabled}>${formatted}</textarea>`
@@ -582,7 +650,7 @@
       }
 
       function keyField(entity) {
-        return ({ cohorts: 'Cohort', cohortMembers: 'StudentId', milestones: 'Milestone ID', studentUsers: 'StudentId', staffUsers: 'EMAIL', subjects: 'Subject ID', pages: 'Page ID', resources: 'Resource ID' })[entity];
+        return ({ cohorts: 'Cohort', cohortMembers: 'StudentId', milestones: 'milestoneId', phases: 'phaseId', studentUsers: 'StudentId', staffUsers: 'EMAIL', subjects: 'Subject ID', pages: 'Page ID', resources: 'Resource ID' })[entity];
       }
 
       function keyValue(entity, record) {
@@ -592,7 +660,8 @@
       function requiredFields(entity) {
         return ({
           cohorts: ['Cohort'], cohortMembers: ['StudentId', 'Student ID'],
-          milestones: ['Name'], studentUsers: ['StudentId', 'Student ID', 'DisplayName'],
+          milestones: ['milestoneId', 'type', 'milestoneTitle', 'phase', 'mOwner'],
+          phases: ['phaseId', 'phaseTitle', 'sequence'], studentUsers: ['StudentId', 'Student ID', 'DisplayName'],
           staffUsers: ['EMAIL', 'DisplayName'], subjects: ['Name'], pages: ['Title', 'Slug'], resources: ['Title']
         })[entity] || [];
       }

@@ -7,14 +7,20 @@ var APP_TABLES = {
   },
   milestones: {
     sheet: 'MILESTONES',
-    key: 'Milestone ID',
-    headers: ['Milestone ID', 'Name', 'Description', 'Cohort', 'Sequence', 'Deadline', 'Prerequisite', 'Active'],
-    required: ['Name']
+    key: 'milestoneId',
+    headers: ['milestoneId', 'type', 'milestoneTitle', 'offsetDays', 'milestoneDescription', 'phase', 'mOwner'],
+    required: ['milestoneId', 'type', 'milestoneTitle', 'phase', 'mOwner']
+  },
+  phases: {
+    sheet: 'PHASES',
+    key: 'phaseId',
+    headers: ['phaseId', 'phaseTitle', 'phaseDescription', 'sequence', 'prerequisitePhaseId', 'active'],
+    required: ['phaseId', 'phaseTitle', 'sequence']
   },
   studentUsers: {
     sheet: 'USERS-STUDENTS',
     key: 'StudentId',
-    headers: ['StudentId', 'Student ID', 'DisplayName', 'Cohort', 'advisorId', 'subject', 'studentEmail', 'parentEmail', 'currentMilestone', 'EEFolder', 'EEDoc', 'RPPFDoc', 'EEPoster'],
+    headers: ['StudentId', 'Student ID', 'DisplayName', 'Cohort', 'studentEmail', 'parentEmail'],
     required: ['StudentId', 'Student ID', 'DisplayName']
   },
   staffUsers: {
@@ -43,9 +49,17 @@ var APP_TABLES = {
   }
 };
 
+var MILESTONE_PROGRESS = {
+  sheet: 'MILESTONE_PROGRESS',
+  headers: ['StudentId', 'milestoneId', 'completed', 'completedAt', 'completedBy']
+};
+var MILESTONE_TYPES = ['form', 'upload', 'doc', 'approval', 'meeting'];
+var MILESTONE_OWNERS = ['student', 'supervisor', 'lead', 'coordinator'];
+
 var COHORT_MEMBER_HEADERS = [
   'StudentId', 'Student ID', 'Display Name', 'Reg', 'Surname', 'First Name', 'Preferred Name',
-  'Chinese Name', 'Family Email', 'Date of Birth', 'House', 'Gender'
+  'Chinese Name', 'Family Email', 'Date of Birth', 'House', 'Gender', 'supervisorId', 'subject',
+  'latestMilestone', 'EEFolder', 'EEDoc', 'RPPFDoc', 'EEPoster'
 ];
 
 function getAppBootstrap() {
@@ -132,7 +146,72 @@ function getStudentView(studentEmail, cohortId) {
     displayName = student ? student.displayName : '';
   }
   if (!displayName) displayName = targetEmail;
-  return { displayName: displayName };
+  var studentCohort = user.role === 'student' && record ? text_(record.Cohort) : text_(cohortId);
+  return {
+    displayName: displayName,
+    cohort: studentCohort,
+    pathway: getStudentPathway_(targetEmail, studentCohort, user)
+  };
+}
+
+function setMilestoneCompletion(studentEmail, milestoneId, completed, cohortId) {
+  var user = requireUser_('SET_MILESTONE_COMPLETION');
+  var targetEmail = user.role === 'student' ? user.email : normalizeEmail_(studentEmail);
+  var record = findStudentUserByEmail_(getSpreadsheet_().getSheetByName('USERS-STUDENTS'), targetEmail);
+  var targetCohort = user.role === 'student' && record ? text_(record.Cohort) : text_(cohortId);
+  if (!targetEmail || !targetCohort) throw new Error('A student and cohort are required.');
+
+  if (user.role === 'staff') {
+    if (!user.permissions.isSupervisor && !user.permissions.isLead && !user.permissions.isCoordinator) {
+      denyAccess_(user, 'SET_MILESTONE_COMPLETION', 'This staff role cannot complete milestones.');
+    }
+    if (!getCohortStudents(targetCohort).some(function(student) { return student.email === targetEmail; })) {
+      denyAccess_(user, 'SET_MILESTONE_COMPLETION', 'Student is not in the selected cohort.');
+    }
+  } else if (user.role !== 'student' || targetEmail !== user.email) {
+    denyAccess_(user, 'SET_MILESTONE_COMPLETION', 'Student access required.');
+  }
+
+  var milestoneSheet = getSpreadsheet_().getSheetByName(APP_TABLES.milestones.sheet);
+  var milestone = findRecordByValue_(milestoneSheet, 'milestoneId', milestoneId);
+  if (!milestone) throw new Error('Milestone not found.');
+  if (!canCompleteMilestone_(user, targetEmail, text_(milestone.mOwner).toLowerCase())) {
+    denyAccess_(user, 'SET_MILESTONE_COMPLETION', 'Only the milestone owner can change its completion status.');
+  }
+
+  var pathway = getStudentPathway_(targetEmail, targetCohort, user);
+  var phaseState = pathway.filter(function(phase) { return phase.phaseId === text_(milestone.phase); })[0];
+  if (!phaseState || !phaseState.unlocked) throw new Error('This phase is locked until its prerequisite phase is complete.');
+  if (!toBoolean_(completed) && hasCompletedDescendant_(pathway, text_(milestone.phase))) {
+    throw new Error('Complete milestones in later phases must be cleared first.');
+  }
+
+  return runAuditedMutation_(user, toBoolean_(completed) ? 'COMPLETE_MILESTONE' : 'REOPEN_MILESTONE', {
+    studentId: targetEmail,
+    milestoneId: text_(milestoneId),
+    cohort: targetCohort
+  }, function() {
+    var progressSheet = getOrCreateProgressSheet_();
+    var headers = getHeaders_(progressSheet);
+    var rowNumber = findProgressRow_(progressSheet, targetEmail, text_(milestoneId));
+    if (toBoolean_(completed)) {
+      var values = {
+        StudentId: targetEmail,
+        milestoneId: text_(milestoneId),
+        completed: true,
+        completedAt: new Date(),
+        completedBy: user.email
+      };
+      var row = headers.map(function(header) { return values[header] === undefined ? '' : values[header]; });
+      if (rowNumber > 0) progressSheet.getRange(rowNumber, 1, 1, headers.length).setValues([row]);
+      else progressSheet.getRange(progressSheet.getLastRow() + 1, 1, 1, headers.length).setValues([row]);
+    } else if (rowNumber > 0) {
+      var completedIndex = findSingleHeaderIndex_(headers, ['completed']);
+      if (completedIndex < 0) throw new Error('MILESTONE_PROGRESS has an invalid schema.');
+      progressSheet.getRange(rowNumber, completedIndex + 1).setValue(false);
+    }
+    return { completed: toBoolean_(completed) };
+  });
 }
 
 function getContentHub() {
@@ -154,6 +233,17 @@ function getAdminRecords(entity) {
     })
   };
   var sheet = getSpreadsheet_().getSheetByName(config.sheet);
+  if (entity === 'studentUsers') {
+    var userRecords = sheet ? readRecords_(sheet) : [];
+    return {
+      headers: config.headers,
+      records: userRecords.map(function(record) {
+        var projected = {};
+        config.headers.forEach(function(header) { projected[header] = record[header] === undefined ? '' : record[header]; });
+        return projected;
+      })
+    };
+  }
   return {
     headers: sheet ? getHeaders_(sheet) : config.headers,
     records: sheet ? readRecords_(sheet) : []
@@ -196,6 +286,25 @@ function saveAdminRecord(entity, record, originalKey) {
     validateEmail_(values.StudentId, 'StudentId');
     if (!/^\d{8}$/.test(text_(values['Student ID']))) throw new Error('Student ID must be an 8-digit number.');
     values.studentEmail = normalizeEmail_(values.StudentId);
+  }
+  if (entity === 'milestones') {
+    if (MILESTONE_TYPES.indexOf(text_(values.type).toLowerCase()) < 0) throw new Error('Choose a supported milestone type.');
+    if (MILESTONE_OWNERS.indexOf(text_(values.mOwner).toLowerCase()) < 0) throw new Error('Owner must be student, supervisor, lead, or coordinator.');
+    values.type = text_(values.type).toLowerCase();
+    values.mOwner = text_(values.mOwner).toLowerCase();
+    if (values.offsetDays !== '' && values.offsetDays !== undefined && !isFinite(Number(values.offsetDays))) {
+      throw new Error('offsetDays must be a number.');
+    }
+    var milestonePhase = findRecordByValue_(getSpreadsheet_().getSheetByName('PHASES'), 'phaseId', values.phase);
+    if (!milestonePhase || !toBoolean_(milestonePhase.active)) throw new Error('Choose an active phase before saving this milestone.');
+  }
+  if (entity === 'phases') {
+    values.phaseId = text_(values.phaseId).toLowerCase();
+    values.sequence = Number(values.sequence);
+    values.active = values.active === undefined || values.active === '' ? true : toBoolean_(values.active);
+    if (!/^[a-z][a-z0-9_-]*$/.test(values.phaseId)) throw new Error('phaseId must start with a letter and contain only letters, numbers, hyphens, or underscores.');
+    if (!isFinite(values.sequence)) throw new Error('sequence must be a number.');
+    validatePhasePrerequisites_(values, originalKey);
   }
   if (entity === 'staffUsers') {
     validateEmail_(values.EMAIL, 'Staff email');
@@ -270,6 +379,17 @@ function deleteAdminRecord(entity, keyValue) {
     if (!sheet) throw new Error('No records exist in ' + config.sheet + '.');
     var targetRow = findRowNumber_(sheet, config.key, keyValue);
     if (targetRow < 0) throw new Error('Record not found.');
+    if (entity === 'phases') {
+      var milestoneSheet = getSpreadsheet_().getSheetByName(APP_TABLES.milestones.sheet);
+      if (milestoneSheet && readRecords_(milestoneSheet).some(function(milestone) { return text_(milestone.phase) === text_(keyValue); })) {
+        throw new Error('Move or delete this phase’s milestones before deleting the phase.');
+      }
+      var phaseRecords = readRecords_(sheet);
+      if (phaseRecords.some(function(phase) { return text_(phase.phaseId) !== text_(keyValue) && text_(phase.prerequisitePhaseId) === text_(keyValue); })) {
+        throw new Error('Update dependent phases before deleting this phase.');
+      }
+    }
+    if (entity === 'milestones') deleteMilestoneProgress_(keyValue);
     if (entity === 'staffUsers') {
       var deletedStaff = findRecordByValue_(sheet, 'EMAIL', keyValue);
       if (deletedStaff && staffHasAdminAccess_(deletedStaff)) assertAnotherAdminExists_(sheet, keyValue);
