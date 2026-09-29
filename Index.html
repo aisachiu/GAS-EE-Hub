@@ -2,141 +2,643 @@
 <html>
   <head>
     <base target="_top">
+    <meta charset="utf-8">
     <style>
       :root {
-        --primary: #1a73e8;
-        --bg: #f5f5f5;
-        --card-bg: #ffffff;
-        --text: #333333;
+        --ink: #17312d;
+        --muted: #647570;
+        --paper: #f3f6f4;
+        --surface: #ffffff;
+        --line: #d9e2dc;
+        --green: #14745f;
+        --green-soft: #e4f1eb;
+        --coral: #bd533e;
+        --gold: #efc35b;
+        --shadow: 0 12px 32px rgba(22, 48, 43, .08);
       }
-      body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        margin: 0;
-        padding: 40px;
-        background-color: var(--bg);
-        color: var(--text);
-        display: flex;
-        justify-content: center;
-      }
-      .card {
-        background-color: var(--card-bg);
-        border-radius: 12px;
-        padding: 30px 40px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-        max-width: 600px;
-        width: 100%;
-      }
-      h1 {
-        margin-top: 0;
-        color: var(--primary);
-        font-size: 24px;
-        border-bottom: 2px solid #e8eaed;
-        padding-bottom: 10px;
-      }
-      .role-container {
-        margin-top: 20px;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-      }
-      .role-badge {
-        display: inline-block;
-        padding: 6px 14px;
-        background-color: #e8f0fe;
-        color: var(--primary);
-        border-radius: 16px;
-        font-size: 13px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-      }
-      .data-grid {
-        margin-top: 30px;
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 12px;
-      }
-      .data-row {
-        display: flex;
-        justify-content: space-between;
-        padding: 10px;
-        background: #f8f9fa;
-        border-radius: 6px;
-      }
-      .data-label {
-        font-weight: bold;
-        color: #5f6368;
-        font-size: 14px;
-      }
-      .data-value {
-        font-size: 14px;
-        color: #202124;
-      }
-      .loading {
-        font-size: 16px;
-        color: #666;
-        text-align: center;
-        padding: 40px 0;
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.5 "Aptos", "Segoe UI", sans-serif; }
+      button, input, select, textarea { font: inherit; }
+      button { cursor: pointer; }
+      .topbar { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 16px clamp(18px, 4vw, 56px); background: var(--ink); color: white; }
+      .brand { display: flex; align-items: center; gap: 12px; font-weight: 750; }
+      .brand-mark { width: 30px; height: 30px; display: grid; place-items: center; color: var(--ink); background: var(--gold); font: 700 16px Georgia, serif; }
+      .account { color: #d6e4dd; text-align: right; font-size: 13px; }
+      .shell { max-width: 1440px; margin: 0 auto; padding: 26px clamp(16px, 4vw, 56px) 56px; }
+      .nav { display: flex; align-items: center; gap: 8px; padding-bottom: 20px; border-bottom: 1px solid var(--line); }
+      .nav button, .subnav button { border: 0; border-radius: 4px; padding: 9px 14px; color: var(--muted); background: transparent; }
+      .nav button[aria-current="page"], .subnav button[aria-current="page"] { color: var(--green); background: var(--green-soft); font-weight: 700; }
+      main { padding-top: 30px; }
+      h1, h2, h3, p { margin-top: 0; }
+      h1 { margin-bottom: 8px; font: 500 42px/1.1 Georgia, "Times New Roman", serif; letter-spacing: 0; }
+      h2 { font-size: 22px; line-height: 1.2; }
+      h3 { font-size: 17px; margin-bottom: 4px; }
+      .eyebrow { color: var(--coral); font-size: 11px; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
+      .lede, .muted { color: var(--muted); }
+      .page-head { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
+      .list { display: grid; gap: 10px; max-width: 860px; }
+      .list-row, .resource-row { display: flex; justify-content: space-between; align-items: center; gap: 18px; padding: 17px 20px; background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--green); }
+      .list-row button { color: inherit; text-align: left; border: 0; background: none; padding: 0; }
+      .list-row strong { display: block; font-size: 16px; }
+      .list-row small { color: var(--muted); }
+      .resource-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+      .resource { min-width: 0; padding: 20px; background: var(--surface); border: 1px solid var(--line); border-top: 3px solid var(--gold); }
+      .resource p { white-space: pre-wrap; color: var(--muted); }
+      .resource a { color: var(--green); font-weight: 700; overflow-wrap: anywhere; }
+      .subnav { display: flex; flex-wrap: wrap; gap: 6px; margin: 16px 0 22px; }
+      .toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 18px 0; }
+      .toolbar select, .field input, .field select, .field textarea { width: 100%; min-width: 0; padding: 10px 11px; color: var(--ink); background: white; border: 1px solid #b9c8c0; border-radius: 3px; }
+      .toolbar select { width: auto; min-width: 190px; }
+      .button { min-height: 40px; padding: 9px 14px; border: 1px solid var(--green); border-radius: 3px; color: white; background: var(--green); font-weight: 700; }
+      .button.secondary { color: var(--green); background: white; }
+      .button.danger { border-color: var(--coral); color: white; background: var(--coral); }
+      .button:disabled { opacity: .55; cursor: wait; }
+      .table-wrap { overflow: auto; background: var(--surface); border: 1px solid var(--line); }
+      table { width: 100%; border-collapse: collapse; font-size: 14px; }
+      th, td { max-width: 300px; padding: 12px 14px; text-align: left; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+      th { position: sticky; top: 0; color: var(--muted); background: #edf2ef; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
+      tr:last-child td { border-bottom: 0; }
+      .actions { display: flex; gap: 8px; white-space: nowrap; }
+      .link-button { border: 0; padding: 4px; color: var(--green); background: transparent; font-weight: 700; }
+      .link-button:disabled { color: #84918c; cursor: not-allowed; }
+      .editor { margin-top: 22px; padding: 22px; background: #e9efeb; border-top: 3px solid var(--green); }
+      .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+      .field { min-width: 0; display: grid; gap: 5px; }
+      .field label { color: var(--muted); font-size: 12px; font-weight: 700; }
+      .field.wide { grid-column: 1 / -1; }
+      .field textarea { min-height: 100px; resize: vertical; }
+      .field.check { align-content: start; }
+      .field.check input { width: 18px; height: 18px; accent-color: var(--green); }
+      .notice { margin: 14px 0; padding: 12px 14px; border-left: 3px solid var(--gold); background: #fff7de; color: #604c16; }
+      .error { border-left-color: var(--coral); background: #fff0ec; color: #7c2b1b; }
+      .empty { padding: 30px; text-align: center; color: var(--muted); background: var(--surface); border: 1px dashed #b9c8c0; }
+      .status { min-height: 24px; color: var(--coral); }
+      .back { margin-bottom: 22px; }
+      .student-greeting { padding: clamp(24px, 5vw, 56px); background: var(--surface); border-top: 4px solid var(--gold); box-shadow: var(--shadow); }
+      .student-greeting h1 { max-width: 840px; }
+      .section-gap { margin-top: 38px; }
+      @media (max-width: 700px) {
+        .topbar { align-items: flex-start; padding: 14px 16px; }
+        .shell { padding: 16px 14px 36px; }
+        .nav { overflow-x: auto; }
+        .nav button { white-space: nowrap; }
+        .page-head { align-items: flex-start; flex-direction: column; }
+        .form-grid { grid-template-columns: 1fr; }
+        .field.wide { grid-column: auto; }
+        .list-row { align-items: flex-start; }
+        .account { max-width: 48%; overflow-wrap: anywhere; }
+        h1 { font-size: 34px; }
       }
     </style>
   </head>
   <body>
-    <div id="app" class="card">
-      <div class="loading">Authenticating with VSA Database...</div>
-    </div>
+    <div id="app"><div class="shell"><p class="muted">Connecting to VSA EE Hub...</p></div></div>
     <script>
-      window.addEventListener('DOMContentLoaded', () => {
-        google.script.run
-          .withSuccessHandler(renderUser)
-          .withFailureHandler(renderError)
-          .getUserDetails();
-      });
+      const state = {
+        user: null,
+        view: 'home',
+        cohortId: '',
+        selectedStudent: null,
+        adminEntity: 'cohorts',
+        adminData: null,
+        editingRecord: null,
+        originalKey: '',
+        status: '',
+        selectedMemberIds: [],
+        importRecords: null
+      };
 
-      function renderUser(user) {
-        const app = document.getElementById('app');
-        if (!user) {
-          app.innerHTML = '<h1>Access Denied</h1><p>Your Google account was not found in the database.</p>';
+      document.addEventListener('DOMContentLoaded', start);
+
+      function start() {
+        callServer('getAppBootstrap').then(function(result) {
+          if (!result || !result.user) {
+            showFatal('Access unavailable', 'Your signed-in account is not registered in the EE workbook.');
+            return;
+          }
+          state.user = result.user;
+          state.view = state.user.role === 'student' ? 'student' : 'staff';
+          renderShell();
+        }).catch(function(error) {
+          showFatal('Unable to start', error.message || 'The application could not reach the EE workbook.');
+        });
+      }
+
+      function callServer(method) {
+        const args = Array.prototype.slice.call(arguments, 1);
+        return new Promise(function(resolve, reject) {
+          if (!window.google || !google.script || !google.script.run) {
+            reject(new Error('Open this app from its Google Apps Script deployment.'));
+            return;
+          }
+          const runner = google.script.run.withSuccessHandler(resolve).withFailureHandler(function(error) {
+            reject(new Error(error && error.message ? error.message : String(error)));
+          });
+          runner[method].apply(runner, args);
+        });
+      }
+
+      function renderShell() {
+        const tabs = state.user.role === 'student'
+          ? [['student', 'My EE'], ['resources', 'Resources']]
+          : [['staff', 'Cohorts'], ['resources', 'Resources']];
+        if (state.user.permissions && state.user.permissions.canAdmin) tabs.push(['admin', 'Admin']);
+        document.getElementById('app').innerHTML = `
+          <header class="topbar">
+            <div class="brand"><span class="brand-mark">EE</span><span>VSA EE HUB</span></div>
+            <div class="account">${escapeHtml(state.user.displayName)}<br>${escapeHtml(state.user.email)}</div>
+          </header>
+          <div class="shell">
+            <nav class="nav" aria-label="Main navigation">${tabs.map(function(tab) {
+              return `<button type="button" data-view="${tab[0]}" aria-current="${state.view === tab[0] ? 'page' : 'false'}">${tab[1]}</button>`;
+            }).join('')}</nav>
+            <main id="main" aria-live="polite"></main>
+          </div>`;
+        document.querySelectorAll('[data-view]').forEach(function(button) {
+          button.addEventListener('click', function() {
+            state.view = button.dataset.view;
+            state.selectedStudent = null;
+            state.status = '';
+            renderShell();
+          });
+        });
+        if (state.view === 'student') renderStudentView();
+        else if (state.view === 'staff') renderStaffView();
+        else if (state.view === 'resources') renderResources();
+        else renderAdmin();
+      }
+
+      function renderStudentView() {
+        const main = document.getElementById('main');
+        main.innerHTML = '<p class="muted">Loading student view...</p>';
+        const email = state.selectedStudent ? state.selectedStudent.email : '';
+        const cohort = state.selectedStudent ? state.selectedStudent.cohortId : '';
+        callServer('getStudentView', email, cohort).then(function(student) {
+          main.innerHTML = `${state.selectedStudent ? '<button type="button" class="link-button back" id="back-to-roster">← Back to cohort</button>' : ''}
+            <section class="student-greeting"><p class="eyebrow">Extended Essay</p><h1>Hello, ${escapeHtml(student.displayName)}</h1></section>`;
+          const back = document.getElementById('back-to-roster');
+          if (back) back.addEventListener('click', function() { state.selectedStudent = null; renderStaffView(); });
+        }).catch(showError);
+      }
+
+      function renderStaffView() {
+        const main = document.getElementById('main');
+        if (state.selectedStudent) {
+          renderStudentView();
+          return;
+        }
+        if (state.cohortId) {
+          main.innerHTML = `<button type="button" class="link-button back" id="back-to-cohorts">← All cohorts</button>
+            <div class="page-head"><div><p class="eyebrow">Staff workspace</p><h1>Cohort ${escapeHtml(state.cohortId)}</h1><p class="lede">Select a student to open their view.</p></div></div>
+            <div id="staff-list" class="list"><p class="muted">Loading students...</p></div>`;
+          document.getElementById('back-to-cohorts').addEventListener('click', function() { state.cohortId = ''; renderStaffView(); });
+          callServer('getCohortStudents', state.cohortId).then(function(students) {
+            const list = document.getElementById('staff-list');
+            if (!students.length) { list.innerHTML = '<div class="empty">No student records are listed in this cohort.</div>'; return; }
+            list.innerHTML = students.map(function(student, index) {
+              return `<div class="list-row"><button type="button" data-student-index="${index}"><strong>${escapeHtml(student.displayName)}</strong><small>${escapeHtml(student.email)}${student.studentId ? ' · ' + escapeHtml(student.studentId) : ''}</small></button>${student.hasStudentIdConflict ? '<span class="notice">Student ID columns differ</span>' : ''}</div>`;
+            }).join('');
+            list.querySelectorAll('[data-student-index]').forEach(function(button) {
+              button.addEventListener('click', function() {
+                const student = students[Number(button.dataset.studentIndex)];
+                state.selectedStudent = { email: student.email, cohortId: state.cohortId };
+                renderStaffView();
+              });
+            });
+          }).catch(showError);
           return;
         }
 
-        const displayName = user['Display Name'] || user['Student Name'] || user['EMAIL'] || 'User';
-
-        let badgesHtml = '';
-        if (user.primaryRole === 'staff' && user.permissions) {
-          if (user.permissions.isAdmin) badgesHtml += '<span class="role-badge">Admin</span>';
-          if (user.permissions.isCoordinator) badgesHtml -= '<span class="role-badge" style="background:#fce8e6; color:#d93025">Coordinator</span>';
-          if (user.permissions.isLead) badgesHtml += '<span class="role-badge" style="background:#fef7e0; color:#ea8600">EE Lead</span>';
-          if (user.permissions.isSupervisor) badgesHtml += '<span class="role-badge" style="background:#e6f4ea; color:#137333">Supervisor</span>';
-          if (user.permissions.isStaff && !badgesHtml) badgesHtml += '<span class="role-badge">Staff Viewer</span>';
-        } else {
-          badgesHtml = '<span class="role-badge" style="background:#f3e8fd; color:#9334e6">Student</span>';
-        }
-
-        let dataRows = '<div class="data-row"><span class="data-label">Email</span><span class="data-value">' + escapeHtml(user['EMAIL']) + '</span></div>';
-
-        if (user.primaryRole === 'statf') {
-          dataRows += '<div class="data-row"><span class="data-label">Subject Dept</span><span class="data-value">' + escapeHtml(user['Subject Dept'] || 'N/A') + '</span></div>';
-          dataRows += '<div class="data-row"><span class="data-label">Caseload Cap</span><span class="data-value">' + escapeHtml(user['Cap'] || 'Default') + '</span></div>';
-        } else if (user.primaryRole === 'student') {
-          dataRows += '<div class="data-row"><span class="data-label">Student ID</span><span class="data-value">' + escapeHtml(user['Student ID'] || 'N/A') + '</span></div>';
-          dataRows += '<div class="data-row"><span class="data-label">Cohort</span><span class="data-value">' + escapeHtml(user['Cohort'] || 'N/A') + '</span></div>';
-        }
-
-        app.innerHTML = '<h1>Welcome, ' + escapeHtml(displayName) + '</h1><div class="role-container">' + badgesHtml + '</div><div class="data-grid">' + dataRows + '</div>';
+        main.innerHTML = `<div class="page-head"><div><p class="eyebrow">Staff workspace</p><h1>Cohorts</h1><p class="lede">Choose a cohort to view its student list.</p></div></div><div id="staff-list" class="list"><p class="muted">Loading cohorts...</p></div>`;
+        callServer('getCohorts').then(function(cohorts) {
+          const list = document.getElementById('staff-list');
+          if (!cohorts.length) { list.innerHTML = '<div class="empty">No active cohort sheets were found.</div>'; return; }
+          list.innerHTML = cohorts.map(function(cohort, index) {
+            return `<div class="list-row"><button type="button" data-cohort-index="${index}"><strong>${escapeHtml(cohort.name)}</strong><small>${escapeHtml(cohort.sheetName)}</small></button><span aria-hidden="true">›</span></div>`;
+          }).join('');
+          list.querySelectorAll('[data-cohort-index]').forEach(function(button) {
+            button.addEventListener('click', function() {
+              state.cohortId = cohorts[Number(button.dataset.cohortIndex)].id;
+              renderStaffView();
+            });
+          });
+        }).catch(showError);
       }
 
-      function renderError(err) {
-        document.getElementById('app').innerHTML = '<h1>System Error</h1><p style="color: #d93025;">' + escapeHtml(err.message) + '</p>';
+      function renderResources() {
+        const main = document.getElementById('main');
+        main.innerHTML = '<p class="muted">Loading resources...</p>';
+        callServer('getContentHub').then(function(content) {
+          const pages = content.pages || [];
+          const resources = content.resources || [];
+          main.innerHTML = `<div class="page-head"><div><p class="eyebrow">Extended Essay</p><h1>Resources</h1><p class="lede">Guidance and reference material for your EE.</p></div></div>
+            ${pages.length ? `<section><h2>Guides</h2><div class="resource-grid">${pages.map(renderPage).join('')}</div></section>` : ''}
+            <section class="${pages.length ? 'section-gap' : ''}"><h2>Reference library</h2>${resources.length ? `<div class="resource-grid">${resources.map(renderResource).join('')}</div>` : '<div class="empty">Resources will appear here when published.</div>'}</section>`;
+        }).catch(showError);
       }
 
-      function escapeHtml(text) {
-        if (text === null || text === undefined) return '';
-        return String(text)
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-          .replace(/"/g, '&quot;')
-          .replace(/'/g, '&#039;');
+      function renderPage(page) {
+        return `<article class="resource"><p class="eyebrow">${escapeHtml(page.Audience || 'All')}</p><h3>${escapeHtml(page.Title)}</h3><p>${escapeHtml(page.Body || '')}</p></article>`;
+      }
+
+      function renderResource(resource) {
+        const url = safeUrl(resource.URL);
+        return `<article class="resource"><p class="eyebrow">${escapeHtml(resource.Category || 'Resource')}</p><h3>${escapeHtml(resource.Title)}</h3><p>${escapeHtml(resource.Description || '')}</p>${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">Open resource ↗</a>` : ''}</article>`;
+      }
+
+      const adminSections = [
+        ['cohorts', 'Cohorts'], ['cohortMembers', 'Students in cohorts'], ['milestones', 'Milestones'],
+        ['studentUsers', 'Student users'], ['staffUsers', 'Staff users'], ['subjects', 'Subjects'],
+        ['pages', 'Website pages'], ['resources', 'Resources']
+      ];
+
+      function renderAdmin() {
+        const main = document.getElementById('main');
+        main.innerHTML = `<div class="page-head"><div><p class="eyebrow">Administration</p><h1>Admin</h1><p class="lede">Manage the records that power the EE Hub.</p></div></div>
+          <nav class="subnav" aria-label="Admin sections">${adminSections.map(function(section) {
+            return `<button type="button" data-admin-entity="${section[0]}" aria-current="${state.adminEntity === section[0] ? 'page' : 'false'}">${section[1]}</button>`;
+          }).join('')}</nav><div id="admin-content"><p class="muted">Loading...</p></div>`;
+        main.querySelectorAll('[data-admin-entity]').forEach(function(button) {
+          button.addEventListener('click', function() {
+            state.adminEntity = button.dataset.adminEntity;
+            state.editingRecord = null;
+            state.status = '';
+            renderAdmin();
+          });
+        });
+        loadAdminSection();
+      }
+
+      function loadAdminSection() {
+        const target = document.getElementById('admin-content');
+        if (!target) return;
+        if (state.adminEntity === 'cohortMembers') {
+          callServer('getCohorts').then(function(cohorts) {
+            const current = cohorts.some(function(cohort) { return cohort.id === state.cohortId; }) ? state.cohortId : (cohorts[0] ? cohorts[0].id : '');
+            state.cohortId = current;
+            if (!current) {
+              target.innerHTML = '<div class="empty">Create an active cohort before adding students.</div>';
+              return;
+            }
+            target.innerHTML = `<div class="toolbar"><label for="admin-cohort">Cohort</label><select id="admin-cohort">${cohorts.map(function(cohort) {
+              return `<option value="${escapeHtml(cohort.id)}" ${cohort.id === current ? 'selected' : ''}>${escapeHtml(cohort.name)}</option>`;
+            }).join('')}</select></div><div id="admin-records"><p class="muted">Loading students...</p></div>`;
+            document.getElementById('admin-cohort').addEventListener('change', function(event) {
+              state.cohortId = event.target.value;
+              state.editingRecord = null;
+              state.selectedMemberIds = [];
+              state.importRecords = null;
+              loadAdminSection();
+            });
+            callServer('getCohortMembersForAdmin', current).then(renderAdminData).catch(showError);
+          }).catch(showError);
+          return;
+        }
+        callServer('getAdminRecords', state.adminEntity).then(renderAdminData).catch(showError);
+      }
+
+      function renderAdminData(data) {
+        state.adminData = data;
+        const target = document.getElementById('admin-records') || document.getElementById('admin-content');
+        if (!target) return;
+        const entity = state.adminEntity;
+        const headers = (data.headers || []).filter(function(header, index, all) { return header && all.indexOf(header) === index; });
+        const records = data.records || [];
+        const columns = entity === 'cohortMembers'
+          ? ['Student ID', 'Display Name', 'StudentId', 'Surname', 'First Name']
+          : headers.slice(0, 5);
+        if (entity === 'cohortMembers') state.selectedMemberIds = [];
+        const isCohortMembers = entity === 'cohortMembers';
+        target.innerHTML = `<div class="toolbar"><button type="button" class="button" id="new-record">Add ${escapeHtml(sectionLabel(entity).replace(/s$/, ''))}</button>${isCohortMembers ? '<button type="button" class="button secondary" id="open-roster-import">Import CSV / paste</button><button type="button" class="button secondary" id="create-selected-users" disabled>Add selected as users</button><label><input type="checkbox" id="select-all-members"> Select all</label><span id="selected-count" class="muted">0 selected</span>' : ''}<span class="muted">${records.length} record${records.length === 1 ? '' : 's'}</span></div>
+          ${state.status ? `<p class="status">${escapeHtml(state.status)}</p>` : ''}
+          ${records.length ? `<div class="table-wrap"><table><thead><tr>${isCohortMembers ? '<th><span class="sr-only">Select</span></th>' : ''}${columns.map(function(header) { return `<th>${escapeHtml(header)}</th>`; }).join('')}<th>Actions</th></tr></thead><tbody>${records.map(function(record, index) {
+            return `<tr>${isCohortMembers ? `<td><input type="checkbox" data-select-member value="${escapeHtml(record.StudentId)}" ${record.hasStudentIdConflict ? 'disabled title="Resolve Student ID conflicts first"' : ''}></td>` : ''}${columns.map(function(header) { return `<td>${escapeHtml(formatValue(record[header]))}</td>`; }).join('')}<td><div class="actions"><button type="button" class="link-button" data-edit="${index}" ${record.hasStudentIdConflict ? 'disabled title="Reconcile duplicate Student ID values first"' : ''}>Edit</button><button type="button" class="link-button" data-delete="${index}">Delete</button></div>${record.hasStudentIdConflict ? '<div class="notice">Duplicate Student ID values disagree.</div>' : ''}</td></tr>`;
+          }).join('')}</tbody></table></div>` : '<div class="empty">No records yet.</div>'}
+          <div id="roster-import-panel"></div><div id="record-editor"></div>`;
+        document.getElementById('new-record').addEventListener('click', function() { openEditor(null); });
+        if (isCohortMembers) {
+          document.getElementById('open-roster-import').addEventListener('click', openRosterImport);
+          document.getElementById('create-selected-users').addEventListener('click', createSelectedUsers);
+          document.getElementById('select-all-members').addEventListener('change', function(event) {
+            state.selectedMemberIds = event.target.checked ? records.filter(function(record) { return !record.hasStudentIdConflict; }).map(function(record) { return record.StudentId; }) : [];
+            target.querySelectorAll('[data-select-member]').forEach(function(input) { input.checked = state.selectedMemberIds.indexOf(input.value) >= 0; });
+            updateSelectedCount();
+          });
+          target.querySelectorAll('[data-select-member]').forEach(function(input) {
+            input.addEventListener('change', function() {
+              state.selectedMemberIds = Array.from(target.querySelectorAll('[data-select-member]:checked')).map(function(item) { return item.value; });
+              updateSelectedCount();
+            });
+          });
+        }
+        target.querySelectorAll('[data-edit]').forEach(function(button) {
+          button.addEventListener('click', function() { openEditor(records[Number(button.dataset.edit)]); });
+        });
+        target.querySelectorAll('[data-delete]').forEach(function(button) {
+          button.addEventListener('click', function() { removeRecord(records[Number(button.dataset.delete)]); });
+        });
+        if (state.editingRecord) openEditor(state.editingRecord.record, true);
+      }
+
+      function updateSelectedCount() {
+        const count = document.getElementById('selected-count');
+        const action = document.getElementById('create-selected-users');
+        const selectAll = document.getElementById('select-all-members');
+        const selectable = Array.from(document.querySelectorAll('[data-select-member]:not(:disabled)'));
+        if (count) count.textContent = state.selectedMemberIds.length + ' selected';
+        if (action) action.disabled = state.selectedMemberIds.length === 0;
+        if (selectAll) selectAll.checked = selectable.length > 0 && selectable.every(function(input) { return input.checked; });
+      }
+
+      function openRosterImport() {
+        const panel = document.getElementById('roster-import-panel');
+        state.importRecords = null;
+        panel.innerHTML = `<section class="editor"><h2>Import cohort students</h2>
+          <div class="toolbar"><label class="button secondary" for="roster-file">Choose CSV</label><input id="roster-file" type="file" accept=".csv,text/csv" hidden></div>
+          <div class="field"><label for="roster-source">Roster data</label><textarea id="roster-source" placeholder="StudentId, Student ID, Display Name, Family Email"></textarea></div>
+          <div class="toolbar"><button type="button" class="button secondary" id="preview-roster">Preview</button><button type="button" class="button secondary" id="cancel-roster-import">Cancel</button></div>
+          <div id="roster-preview"></div></section>`;
+        const source = document.getElementById('roster-source');
+        document.getElementById('roster-file').addEventListener('change', function(event) {
+          const file = event.target.files[0];
+          if (file) file.text().then(function(text) { source.value = text; state.importRecords = null; });
+        });
+        document.getElementById('preview-roster').addEventListener('click', previewRosterImport);
+        document.getElementById('cancel-roster-import').addEventListener('click', function() {
+          panel.innerHTML = '';
+          state.importRecords = null;
+        });
+      }
+
+      function parseRosterText(sourceText) {
+        const firstLine = String(sourceText).split(/\r?\n/, 1)[0] || '';
+        const delimiter = firstLine.indexOf('\t') >= 0 ? '\t' : ',';
+        const rows = [];
+        let row = [];
+        let field = '';
+        let quoted = false;
+        const source = String(sourceText).replace(/^\uFEFF/, '');
+        for (let index = 0; index < source.length; index++) {
+          const character = source[index];
+          if (character === '"') {
+            if (quoted && source[index + 1] === '"') { field += '"'; index++; }
+            else quoted = !quoted;
+          } else if (!quoted && character === delimiter) {
+            row.push(field);
+            field = '';
+          } else if (!quoted && (character === '\n' || character === '\r')) {
+            if (character === '\r' && source[index + 1] === '\n') index++;
+            row.push(field);
+            if (row.some(function(value) { return value.trim() !== ''; })) rows.push(row);
+            row = [];
+            field = '';
+          } else {
+            field += character;
+          }
+        }
+        if (quoted) throw new Error('A quoted field is not closed.');
+        row.push(field);
+        if (row.some(function(value) { return value.trim() !== ''; })) rows.push(row);
+        if (rows.length < 2) throw new Error('Include a header row and at least one student.');
+
+        const headers = rows.shift().map(function(value) { return value.trim(); });
+        if (headers.some(function(header) { return !header; })) throw new Error('Every column needs a header.');
+        if (new Set(headers).size !== headers.length) throw new Error('Duplicate column headers are ambiguous.');
+        const nameHeader = headers.indexOf('Display Name') >= 0 ? 'Display Name' : 'DisplayName';
+        ['StudentId', 'Student ID', nameHeader].forEach(function(header) {
+          if (headers.indexOf(header) < 0) throw new Error('Missing required column: ' + header);
+        });
+        return rows.map(function(values, index) {
+          if (values.length > headers.length) throw new Error('Row ' + (index + 2) + ' has more values than headers.');
+          const record = {};
+          headers.forEach(function(header, column) { record[header] = (values[column] || '').trim(); });
+          return record;
+        });
+      }
+
+      function previewRosterImport() {
+        const preview = document.getElementById('roster-preview');
+        try {
+          state.importRecords = parseRosterText(document.getElementById('roster-source').value);
+          const sample = state.importRecords.slice(0, 8);
+          preview.innerHTML = `<p class="muted">${state.importRecords.length} rows ready to import to cohort ${escapeHtml(state.cohortId)}.</p>
+            <div class="table-wrap"><table><thead><tr><th>StudentId</th><th>Student ID</th><th>Display Name</th></tr></thead><tbody>${sample.map(function(record) {
+              return `<tr><td>${escapeHtml(record.StudentId)}</td><td>${escapeHtml(record['Student ID'])}</td><td>${escapeHtml(record['Display Name'] || record.DisplayName)}</td></tr>`;
+            }).join('')}</tbody></table></div>
+            <div class="toolbar"><button type="button" class="button" id="confirm-roster-import">Import ${state.importRecords.length} students</button></div>`;
+          document.getElementById('confirm-roster-import').addEventListener('click', confirmRosterImport);
+        } catch (error) {
+          state.importRecords = null;
+          preview.innerHTML = `<p class="notice error">${escapeHtml(error.message)}</p>`;
+        }
+      }
+
+      function confirmRosterImport(event) {
+        const button = event.currentTarget;
+        button.disabled = true;
+        callServer('importCohortMembers', state.cohortId, state.importRecords).then(function(result) {
+          state.status = 'Imported ' + result.imported + ' students.';
+          state.importRecords = null;
+          document.getElementById('roster-import-panel').innerHTML = '';
+          loadAdminSection();
+        }).catch(function(error) {
+          button.disabled = false;
+          showError(error);
+        });
+      }
+
+      function createSelectedUsers() {
+        const button = document.getElementById('create-selected-users');
+        if (!state.selectedMemberIds.length || !window.confirm('Add the selected students as user accounts? Existing accounts will be skipped.')) return;
+        button.disabled = true;
+        callServer('createStudentUsersFromCohort', state.cohortId, state.selectedMemberIds).then(function(result) {
+          state.status = result.created + ' user accounts added; ' + result.alreadyExists + ' already existed.';
+          state.selectedMemberIds = [];
+          loadAdminSection();
+        }).catch(function(error) {
+          button.disabled = false;
+          showError(error);
+        });
+      }
+
+      function openEditor(record, preserve) {
+        const data = state.adminData || { headers: [] };
+        const entity = state.adminEntity;
+        const headers = (data.headers || []).filter(function(header, index, all) { return header && all.indexOf(header) === index; });
+        state.editingRecord = record ? { record: record } : (preserve ? state.editingRecord : null);
+        const editing = !!record || !!(preserve && state.originalKey);
+        state.originalKey = editing ? keyValue(entity, record || state.editingRecord.record) : '';
+        const editor = document.getElementById('record-editor');
+        editor.innerHTML = `<section class="editor"><h2>${editing ? 'Edit record' : 'Add record'}</h2>
+          ${entity === 'studentUsers' && !editing ? '<div id="cohort-import"></div>' : ''}
+          <form id="record-form"><div class="form-grid">${headers.map(function(header) { return fieldMarkup(header, record ? record[header] : '', entity, editing); }).join('')}</div>
+            <div class="toolbar"><button class="button" type="submit">Save</button><button class="button secondary" type="button" id="cancel-edit">Cancel</button></div></form></section>`;
+        const form = document.getElementById('record-form');
+        form.addEventListener('submit', saveForm);
+        document.getElementById('cancel-edit').addEventListener('click', function() {
+          state.editingRecord = null;
+          state.originalKey = '';
+          document.getElementById('record-editor').innerHTML = '';
+        });
+        if (entity === 'studentUsers' && !editing) renderCohortImport();
+      }
+
+      function fieldMarkup(header, value, entity, editing) {
+        const required = requiredFields(entity).indexOf(header) >= 0 ? 'required' : '';
+        const disabled = editing && header === keyField(entity) ? 'disabled' : '';
+        const booleanField = /^is[A-Z]|^(Active|Published)$/i.test(header);
+        const wide = /Description|Body|Subjects|Prerequisite/i.test(header) ? 'wide' : '';
+        if (booleanField) {
+          return `<div class="field check"><label><input type="checkbox" data-field="${escapeHtml(header)}" ${toBoolean(value) ? 'checked' : ''} ${disabled}> ${escapeHtml(header)}</label></div>`;
+        }
+        const date = /Deadline|Date of Birth/i.test(header);
+        const long = /Description|Body|Subjects|Prerequisite/i.test(header);
+        const type = date ? 'date' : (/Email/i.test(header) ? 'email' : 'text');
+        const formatted = date ? escapeHtml(String(value || '').slice(0, 10)) : escapeHtml(formatValue(value));
+        const control = long
+          ? `<textarea data-field="${escapeHtml(header)}" ${required} ${disabled}>${formatted}</textarea>`
+          : `<input type="${type}" data-field="${escapeHtml(header)}" value="${formatted}" ${required} ${disabled}>`;
+        return `<div class="field ${wide}"><label>${escapeHtml(header)}${required ? ' *' : ''}</label>${control}</div>`;
+      }
+
+      function renderCohortImport() {
+        const target = document.getElementById('cohort-import');
+        target.innerHTML = '<div class="toolbar"><button type="button" class="button secondary" id="show-cohort-import">Fill from cohort roster</button></div>';
+        document.getElementById('show-cohort-import').addEventListener('click', function() {
+          callServer('getCohorts').then(function(cohorts) {
+            if (!cohorts.length) { target.innerHTML = '<p class="notice">No cohorts are available.</p>'; return; }
+            target.innerHTML = `<div class="toolbar"><label for="import-cohort">Cohort</label><select id="import-cohort">${cohorts.map(function(cohort) {
+              return `<option value="${escapeHtml(cohort.id)}">${escapeHtml(cohort.name)}</option>`;
+            }).join('')}<option value=""></option></select><label for="import-student">Student</label><select id="import-student"><option value="">Choose a student</option></select></div>`;
+            const cohortSelect = document.getElementById('import-cohort');
+            const studentSelect = document.getElementById('import-student');
+            function loadMembers() {
+              if (!cohortSelect.value) return;
+              callServer('getCohortMembersForAdmin', cohortSelect.value).then(function(result) {
+                studentSelect.innerHTML = '<option value="">Choose a student</option>' + (result.records || []).map(function(member, index) {
+                  return `<option value="${index}" ${member.hasStudentIdConflict ? 'disabled' : ''}>${escapeHtml(member['Display Name'] || member.StudentId)} · ${escapeHtml(member.StudentId)}${member.hasStudentIdConflict ? ' · ID conflict' : ''}</option>`;
+                }).join('');
+                studentSelect.onchange = function() {
+                  const member = result.records[Number(studentSelect.value)];
+                  if (!member) return;
+                  setField('Student ID', member['Student ID']);
+                  setField('DisplayName', member['Display Name']);
+                  setField('Cohort', cohortSelect.value);
+                  setField('StudentId', member.StudentId);
+                  setField('studentEmail', member.StudentId);
+                  setField('parentEmail', member['Family Email']);
+                };
+              }).catch(showError);
+            }
+            cohortSelect.addEventListener('change', loadMembers);
+            loadMembers();
+          }).catch(showError);
+        });
+      }
+
+      function setField(name, value) {
+        const input = document.querySelector(`[data-field="${cssEscape(name)}"]`);
+        if (input && !input.disabled) input.value = value || '';
+      }
+
+      function saveForm(event) {
+        event.preventDefault();
+        const entity = state.adminEntity;
+        const form = event.currentTarget;
+        const record = {};
+        form.querySelectorAll('[data-field]').forEach(function(input) {
+          if (input.type === 'checkbox') record[input.dataset.field] = input.checked;
+          else record[input.dataset.field] = input.value;
+        });
+        const submit = form.querySelector('[type="submit"]');
+        submit.disabled = true;
+        const request = entity === 'cohortMembers'
+          ? callServer('saveCohortMember', state.cohortId, record, state.originalKey || '')
+          : callServer('saveAdminRecord', entity, record, state.originalKey || '');
+        request.then(function(result) {
+          state.status = result && result.auditWarning ? 'Saved, but the completion audit entry could not be written. Check AUDIT_LOGS.' : 'Saved.';
+          state.editingRecord = null;
+          state.originalKey = '';
+          loadAdminSection();
+        }).catch(function(error) {
+          submit.disabled = false;
+          showError(error);
+        });
+      }
+
+      function removeRecord(record) {
+        const entity = state.adminEntity;
+        const key = keyValue(entity, record);
+        const noun = entity === 'cohorts' ? 'archive this cohort' : 'delete this record';
+        if (!window.confirm(`Are you sure you want to ${noun}?`)) return;
+        const request = entity === 'cohortMembers'
+          ? callServer('deleteCohortMember', state.cohortId, key)
+          : callServer('deleteAdminRecord', entity, key);
+        request.then(function(result) {
+          state.status = result && result.auditWarning ? 'Change saved, but the completion audit entry could not be written.' : 'Change saved.';
+          state.editingRecord = null;
+          loadAdminSection();
+        }).catch(showError);
+      }
+
+      function keyField(entity) {
+        return ({ cohorts: 'Cohort', cohortMembers: 'StudentId', milestones: 'Milestone ID', studentUsers: 'StudentId', staffUsers: 'EMAIL', subjects: 'Subject ID', pages: 'Page ID', resources: 'Resource ID' })[entity];
+      }
+
+      function keyValue(entity, record) {
+        return record ? record[keyField(entity)] || '' : '';
+      }
+
+      function requiredFields(entity) {
+        return ({
+          cohorts: ['Cohort'], cohortMembers: ['StudentId', 'Student ID'],
+          milestones: ['Name'], studentUsers: ['StudentId', 'Student ID', 'DisplayName'],
+          staffUsers: ['EMAIL', 'DisplayName'], subjects: ['Name'], pages: ['Title', 'Slug'], resources: ['Title']
+        })[entity] || [];
+      }
+
+      function sectionLabel(entity) {
+        const item = adminSections.filter(function(section) { return section[0] === entity; })[0];
+        return item ? item[1] : entity;
+      }
+
+      function formatValue(value) {
+        if (value === null || value === undefined) return '';
+        if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+        return String(value);
+      }
+
+      function toBoolean(value) {
+        return value === true || value === 1 || ['true', '1', 'yes'].indexOf(String(value || '').toLowerCase()) >= 0;
+      }
+
+      function safeUrl(value) {
+        try {
+          const parsed = new URL(String(value || ''));
+          return parsed.protocol === 'https:' ? parsed.href : '';
+        } catch (error) { return ''; }
+      }
+
+      function cssEscape(value) {
+        return String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+      }
+
+      function escapeHtml(value) {
+        return String(value === null || value === undefined ? '' : value)
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+      }
+
+      function showError(error) {
+        const message = error && error.message ? error.message : String(error);
+        const main = document.getElementById('main');
+        const admin = document.getElementById('admin-content');
+        const target = admin || main;
+        if (target) target.innerHTML = `<p class="notice error">${escapeHtml(message)}</p>`;
+      }
+
+      function showFatal(title, message) {
+        document.getElementById('app').innerHTML = `<div class="shell"><p class="eyebrow">VSA EE Hub</p><h1>${escapeHtml(title)}</h1><p class="notice error">${escapeHtml(message)}</p></div>`;
       }
     </script>
   </body>
