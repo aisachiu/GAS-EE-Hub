@@ -7,8 +7,8 @@ var APP_TABLES = {
       { name: 'Status', type: 'select', options: ['Active', 'Inactive'] }
     ]
   },
-  milestones: {
-    sheet: 'MILESTONES',
+  milestoneTemplates: {
+    sheet: 'MILESTONE_TEMPLATES',
     fields: [
       { name: 'milestoneId', type: 'text', required: true, key: true },
       { name: 'type', type: 'select', required: true, options: ['form', 'upload', 'doc', 'approval', 'meeting'] },
@@ -97,6 +97,7 @@ var APP_TABLES = {
       { name: 'Student ID', type: 'text', required: true, validator: 'studentId' },
       { name: 'Student Email', type: 'email', required: true, validator: 'email' },
       { name: 'Year Group', type: 'number', required: true, validator: 'yearGroup' },
+      { name: 'Anchor_Date', type: 'date', table: false },
       { name: 'Display Name', type: 'text', required: true },
       { name: 'HRM', type: 'text', table: false },
       { name: 'Surname', type: 'text' },
@@ -116,15 +117,20 @@ var APP_TABLES = {
       { name: 'EEPoster', type: 'text', table: false }
     ]
   },
-  milestoneProgress: {
-    sheet: 'MILESTONE_PROGRESS',
+  studentActionItems: {
+    sheet: 'STUDENT_ACTION_ITEMS',
     internal: true,
     fields: [
+      { name: 'TaskId', type: 'text', required: true, key: true },
       { name: 'StudentId', type: 'email', required: true, validator: 'email' },
-      { name: 'milestoneId', type: 'text', required: true },
-      { name: 'completed', type: 'checkbox', required: true },
-      { name: 'completedAt', type: 'datetime', required: true },
-      { name: 'completedBy', type: 'email', required: true, validator: 'email' }
+      { name: 'CreatorType', type: 'select', required: true, options: ['System', 'Supervisor', 'Student'] },
+      { name: 'TemplateId', type: 'text' },
+      { name: 'PhaseId', type: 'text' },
+      { name: 'Title', type: 'text', required: true },
+      { name: 'Description', type: 'textarea', table: false },
+      { name: 'DueDate', type: 'date' },
+      { name: 'Status', type: 'select', required: true, options: ['Pending', 'In Progress', 'Completed'] },
+      { name: 'LastUpdated', type: 'datetime', required: true }
     ]
   },
   auditLogs: {
@@ -269,10 +275,7 @@ function validateRecordFields_(entity, values, originalKey) {
 }
 
 var AUDIT_LOG_HEADERS = getTableHeaders_('auditLogs');
-var MILESTONE_PROGRESS = {
-  sheet: APP_TABLES.milestoneProgress.sheet,
-  headers: getTableHeaders_('milestoneProgress')
-};
+var ACTION_ITEM_STATUSES = ['Pending', 'In Progress', 'Completed'];
 
 function getAppBootstrap() {
   try {
@@ -363,68 +366,8 @@ function getStudentView(studentEmail, cohortId) {
   return {
     displayName: displayName,
     cohort: studentCohort,
-    pathway: getStudentPathway_(targetEmail, studentCohort, user)
+    actionItems: getStudentActionItems_(targetEmail, user)
   };
-}
-
-function setMilestoneCompletion(studentEmail, milestoneId, completed, cohortId) {
-  var user = requireUser_('SET_MILESTONE_COMPLETION');
-  var targetEmail = user.role === 'student' ? user.email : normalizeEmail_(studentEmail);
-  var record = findStudentUserByEmail_(getSpreadsheet_().getSheetByName('USERS-STUDENTS'), targetEmail);
-  var targetCohort = user.role === 'student' && record ? text_(record.Cohort) : text_(cohortId);
-  if (!targetEmail || !targetCohort) throw new Error('A student and cohort are required.');
-
-  if (user.role === 'staff') {
-    if (!user.permissions.isSupervisor && !user.permissions.isLead && !user.permissions.isCoordinator) {
-      denyAccess_(user, 'SET_MILESTONE_COMPLETION', 'This staff role cannot complete milestones.');
-    }
-    if (!getCohortStudents(targetCohort).some(function(student) { return student.email === targetEmail; })) {
-      denyAccess_(user, 'SET_MILESTONE_COMPLETION', 'Student is not in the selected cohort.');
-    }
-  } else if (user.role !== 'student' || targetEmail !== user.email) {
-    denyAccess_(user, 'SET_MILESTONE_COMPLETION', 'Student access required.');
-  }
-
-  var milestoneSheet = getSpreadsheet_().getSheetByName(APP_TABLES.milestones.sheet);
-  var milestone = findRecordByValue_(milestoneSheet, 'milestoneId', milestoneId);
-  if (!milestone) throw new Error('Milestone not found.');
-  if (!canCompleteMilestone_(user, targetEmail, text_(milestone.mOwner).toLowerCase())) {
-    denyAccess_(user, 'SET_MILESTONE_COMPLETION', 'Only the milestone owner can change its completion status.');
-  }
-
-  var pathway = getStudentPathway_(targetEmail, targetCohort, user);
-  var phaseState = pathway.filter(function(phase) { return phase.phaseId === text_(milestone.phase); })[0];
-  if (!phaseState || !phaseState.unlocked) throw new Error('This phase is locked until its prerequisite phase is complete.');
-  if (!toBoolean_(completed) && hasCompletedDescendant_(pathway, text_(milestone.phase))) {
-    throw new Error('Complete milestones in later phases must be cleared first.');
-  }
-
-  return runAuditedMutation_(user, toBoolean_(completed) ? 'COMPLETE_MILESTONE' : 'REOPEN_MILESTONE', {
-    studentId: targetEmail,
-    milestoneId: text_(milestoneId),
-    cohort: targetCohort
-  }, function() {
-    var progressSheet = getOrCreateProgressSheet_();
-    var headers = getHeaders_(progressSheet);
-    var rowNumber = findProgressRow_(progressSheet, targetEmail, text_(milestoneId));
-    if (toBoolean_(completed)) {
-      var values = {
-        StudentId: targetEmail,
-        milestoneId: text_(milestoneId),
-        completed: true,
-        completedAt: new Date(),
-        completedBy: user.email
-      };
-      var row = headers.map(function(header) { return values[header] === undefined ? '' : values[header]; });
-      if (rowNumber > 0) progressSheet.getRange(rowNumber, 1, 1, headers.length).setValues([row]);
-      else progressSheet.getRange(progressSheet.getLastRow() + 1, 1, 1, headers.length).setValues([row]);
-    } else if (rowNumber > 0) {
-      var completedIndex = findSingleHeaderIndex_(headers, ['completed']);
-      if (completedIndex < 0) throw new Error('MILESTONE_PROGRESS has an invalid schema.');
-      progressSheet.getRange(rowNumber, completedIndex + 1).setValue(false);
-    }
-    return { completed: toBoolean_(completed) };
-  });
 }
 
 function getContentHub() {
@@ -501,7 +444,7 @@ function saveAdminRecord(entity, record, originalKey) {
   if (entity === 'studentUsers') {
     values.studentEmail = normalizeEmail_(values.StudentId);
   }
-  if (entity === 'milestones') {
+  if (entity === 'milestoneTemplates') {
     values.type = text_(values.type).toLowerCase();
     values.mOwner = text_(values.mOwner).toLowerCase();
     var milestonePhase = findRecordByValue_(getSpreadsheet_().getSheetByName('PHASES'), 'phaseId', values.phase);
@@ -593,7 +536,7 @@ function deleteAdminRecord(entity, keyValue) {
     var targetRow = findRowNumber_(sheet, getTableKey_(entity), keyValue);
     if (targetRow < 0) throw new Error('Record not found.');
     if (entity === 'phases') {
-      var milestoneSheet = getSpreadsheet_().getSheetByName(APP_TABLES.milestones.sheet);
+      var milestoneSheet = getSpreadsheet_().getSheetByName(APP_TABLES.milestoneTemplates.sheet);
       if (milestoneSheet && readRecords_(milestoneSheet).some(function(milestone) { return text_(milestone.phase) === text_(keyValue); })) {
         throw new Error('Move or delete this phase’s milestones before deleting the phase.');
       }
@@ -602,7 +545,12 @@ function deleteAdminRecord(entity, keyValue) {
         throw new Error('Update dependent phases before deleting this phase.');
       }
     }
-    if (entity === 'milestones') deleteMilestoneProgress_(keyValue);
+    if (entity === 'milestoneTemplates') {
+      var actionSheet = getSpreadsheet_().getSheetByName(APP_TABLES.studentActionItems.sheet);
+      if (actionSheet && actionSheet.getLastRow() > 1 && readRecords_(actionSheet).some(function(item) {
+        return text_(item.CreatorType) === 'System' && text_(item.TemplateId) === text_(keyValue);
+      })) throw new Error('This template has assigned action items and cannot be deleted.');
+    }
     if (entity === 'staffUsers') {
       var deletedStaff = findRecordByValue_(sheet, 'EMAIL', keyValue);
       if (deletedStaff && staffHasAdminAccess_(deletedStaff)) assertAnotherAdminExists_(sheet, keyValue);

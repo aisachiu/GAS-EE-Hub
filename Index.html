@@ -76,6 +76,45 @@
       .back { margin-bottom: 22px; }
       .student-greeting { padding: clamp(24px, 5vw, 56px); background: var(--surface); border-top: 4px solid var(--gold); box-shadow: var(--shadow); }
       .student-greeting h1 { max-width: 840px; }
+      .journey-layout { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 24px; margin-top: 28px; align-items: start; }
+      .journey-controls { padding: 18px; background: #e9efeb; border-top: 3px solid var(--green); }
+      .journey-controls.collapsed { display: none; }
+      .quick-todo { display: flex; gap: 6px; margin: 12px 0 20px; }
+      .quick-todo input { min-width: 0; width: 100%; padding: 9px; border: 1px solid #b9c8c0; border-radius: 3px; }
+      .filter-group { display: grid; gap: 8px; padding: 14px 0; border-top: 1px solid #cbd8d0; }
+      .filter-group label { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
+      .filter-group input { accent-color: var(--green); }
+      .timeline { display: grid; gap: 12px; min-width: 0; }
+      .task-card { position: relative; display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 14px; padding: 17px 18px; background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--green); }
+      .task-card.system-task { border-left-color: var(--coral); }
+      .task-card.student-task { border-left-color: var(--gold); }
+      .task-card.completed { opacity: .72; }
+      .task-card[draggable="true"] { cursor: grab; }
+      .task-card.dragging { opacity: .4; }
+      .task-card input[type="checkbox"] { width: 19px; height: 19px; margin: 3px 0 0; accent-color: var(--green); }
+      .task-card h3 { margin: 0 0 5px; }
+      .task-card p { margin: 0; color: var(--muted); white-space: pre-wrap; }
+      .task-card select, .task-card input[type="date"] { padding: 5px 7px; border: 1px solid var(--line); color: var(--ink); background: white; }
+      .task-meta { display: grid; justify-items: end; gap: 7px; color: var(--muted); font-size: 12px; }
+      .task-kind { color: var(--coral); font-size: 10px; font-weight: 750; text-transform: uppercase; }
+      .task-card.student-task .task-kind { color: #8a6713; }
+      .todo-editor { display: grid; gap: 7px; margin-top: 9px; }
+      .todo-editor input, .todo-editor textarea { width: 100%; padding: 7px; border: 1px solid var(--line); }
+      .timeline-toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+      .timeline-toolbar select { padding: 8px 10px; border: 1px solid var(--line); background: white; }
+      .drop-hint { display: none; color: var(--green); font-size: 11px; }
+      .task-card.drag-over .drop-hint { display: block; }
+      .template-board { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 16px; align-items: start; }
+      .template-phase { min-width: 0; padding: 18px; background: var(--surface); border: 1px solid var(--line); border-top: 3px solid var(--green); }
+      .template-phase header p { margin-bottom: 14px; }
+      .template-phase.drag-over { border-color: var(--coral); background: #fff8f5; }
+      .template-list { display: grid; gap: 8px; }
+      .template-card { display: grid; gap: 6px; min-width: 0; padding: 12px; background: #f7faf8; border: 1px solid var(--line); cursor: grab; overflow-wrap: anywhere; }
+      .template-card small { color: var(--muted); }
+      .template-card:active { cursor: grabbing; }
+      #assignment-roster input[type="date"] { min-width: 140px; padding: 7px; border: 1px solid var(--line); background: white; }
+      #assignment-roster td:first-child { width: 56px; }
+      #assignment-roster input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--green); }
       .pathway { display: grid; gap: 18px; max-width: 980px; margin-top: 34px; }
       .pathway-phase { background: var(--surface); border: 1px solid var(--line); border-top: 3px solid var(--green); }
       .pathway-phase.locked { border-top-color: #aab7b0; }
@@ -103,10 +142,16 @@
         .list-row { align-items: flex-start; }
         .account { max-width: 48%; overflow-wrap: anywhere; }
         h1 { font-size: 34px; }
+        .template-phase { padding: 14px; }
+        #assignment-roster td, #assignment-roster th { padding: 9px 8px; }
+        #assignment-roster input[type="date"] { min-width: 128px; }
         .phase-heading { padding: 16px; }
         .phase-description { margin-inline: 16px; }
         .milestone-item { padding: 13px 16px; grid-template-columns: 24px minmax(0, 1fr); }
         .milestone-meta { grid-column: 2; text-align: left; }
+        .journey-layout { grid-template-columns: 1fr; }
+        .task-card { grid-template-columns: 24px minmax(0, 1fr); padding: 14px; }
+        .task-meta { grid-column: 2; justify-items: start; grid-template-columns: repeat(2, max-content); align-items: center; }
       }
     </style>
   </head>
@@ -124,7 +169,10 @@
         originalKey: '',
         status: '',
         selectedMemberIds: [],
-        importRecords: null
+        assignmentStudentIds: [],
+        importRecords: null,
+        journeyFilters: { phaseId: 'all', showSystem: true, showStudent: true },
+        journeyControlsOpen: true
       };
 
       document.addEventListener('DOMContentLoaded', start);
@@ -195,36 +243,108 @@
         callServer('getStudentView', email, cohort).then(function(student) {
           main.innerHTML = `${state.selectedStudent ? '<button type="button" class="link-button back" id="back-to-roster">← Back to cohort</button>' : ''}
             <section class="student-greeting"><p class="eyebrow">Extended Essay</p><h1>Hello, ${escapeHtml(student.displayName)}</h1></section>
-            ${renderPathway(student.pathway || [], student, email, cohort)}`;
+            ${renderActionTimeline(student.actionItems || [], email, cohort)}`;
           const back = document.getElementById('back-to-roster');
           if (back) back.addEventListener('click', function() { state.selectedStudent = null; renderStaffView(); });
-          main.querySelectorAll('[data-milestone-complete]').forEach(function(input) {
-            input.addEventListener('change', function() {
-              const requestedState = input.checked;
-              input.disabled = true;
-              callServer('setMilestoneCompletion', email, input.dataset.milestoneComplete, requestedState, cohort).then(renderStudentView).catch(function(error) {
-                input.checked = !requestedState;
-                input.disabled = false;
-                showError(error);
-              });
-            });
-          });
+          bindActionTimeline(main, email, cohort);
         }).catch(showError);
       }
 
-      function renderPathway(phases, student, email, cohort) {
-        if (!phases.length) return '<section class="pathway"><div class="empty">Milestones and phases have not been configured yet.</div></section>';
-        return `<section class="pathway" aria-label="Milestone pathway">${phases.map(function(phase) {
-          const milestones = phase.milestones || [];
-          return `<article class="pathway-phase ${phase.unlocked ? '' : 'locked'}">
-            <header class="phase-heading"><div><p class="eyebrow">${escapeHtml(phase.phaseId)}</p><h2>${escapeHtml(phase.title)}</h2></div><span class="phase-status">${phase.unlocked ? 'Available' : 'Locked'}</span></header>
-            ${phase.description ? `<p class="phase-description">${escapeHtml(phase.description)}</p>` : ''}
-            ${!phase.unlocked && phase.prerequisitePhaseId ? `<p class="phase-description">Complete all milestones in ${escapeHtml(phase.prerequisitePhaseId)} to unlock this phase.</p>` : ''}
-            ${milestones.length ? `<ul class="milestone-list">${milestones.map(function(milestone) {
-              return `<li class="milestone-item"><input type="checkbox" data-milestone-complete="${escapeHtml(milestone.milestoneId)}" aria-label="Mark ${escapeHtml(milestone.title)} complete" ${milestone.completed ? 'checked' : ''} ${milestone.canComplete ? '' : 'disabled'}><div><h3>${escapeHtml(milestone.title)}</h3><p>${escapeHtml(milestone.description)}</p></div><div class="milestone-meta"><span class="milestone-type">${escapeHtml(milestone.type)}</span><br>${escapeHtml(milestone.owner)}${milestone.offsetDays !== '' ? ' · offset ' + escapeHtml(milestone.offsetDays) + 'd' : ''}</div></li>`;
-            }).join('')}</ul>` : '<p class="phase-description">No milestones in this phase.</p>'}
-          </article>`;
-        }).join('')}</section>`;
+      function renderActionTimeline(items) {
+        const phases = Array.from(new Set(items.map(function(item) { return item.PhaseId; }).filter(Boolean))).sort();
+        const isOwnStudentView = state.user.role === 'student' && !state.selectedStudent;
+        return `<div class="timeline-toolbar"><button type="button" class="button secondary" id="toggle-journey-controls">${state.journeyControlsOpen ? 'Hide controls' : 'Show controls'}</button><span class="muted">${items.length} action items</span></div>
+          <div class="journey-layout">
+            <aside class="journey-controls ${state.journeyControlsOpen ? '' : 'collapsed'}" id="journey-controls">
+              ${isOwnStudentView ? '<form class="quick-todo" id="quick-todo"><input id="quick-todo-title" maxlength="240" placeholder="Add a new To-Do..." aria-label="New To-Do"><button class="button" type="submit" title="Add To-Do">+</button></form>' : ''}
+              <div class="filter-group"><strong>Phase</strong><label><input type="radio" name="phase-filter" value="all" ${state.journeyFilters.phaseId === 'all' ? 'checked' : ''}> All phases</label>${phases.map(function(phaseId) {
+                return `<label><input type="radio" name="phase-filter" value="${escapeHtml(phaseId)}" ${state.journeyFilters.phaseId === phaseId ? 'checked' : ''}> ${escapeHtml(phaseId)}</label>`;
+              }).join('')}</div>
+              <div class="filter-group"><strong>Tasks</strong><label><input type="checkbox" data-creator-filter="System" ${state.journeyFilters.showSystem ? 'checked' : ''}> Official milestones</label><label><input type="checkbox" data-creator-filter="Student" ${state.journeyFilters.showStudent ? 'checked' : ''}> My To-Dos</label></div>
+            </aside>
+            <section class="timeline" id="action-timeline" aria-label="Extended Essay timeline">${items.length ? items.map(renderActionItem).join('') : '<div class="empty">No action items yet. Official milestones appear after your cohort is assigned.</div>'}</section>
+          </div>`;
+      }
+
+      function renderActionItem(item) {
+        const systemTask = item.CreatorType === 'System';
+        const dateValue = item.DueDate ? String(item.DueDate).slice(0, 10) : '';
+        return `<article class="task-card ${systemTask ? 'system-task' : 'student-task'} ${item.Status === 'Completed' ? 'completed' : ''}" data-task-id="${escapeHtml(item.TaskId)}" data-phase-id="${escapeHtml(item.PhaseId || '')}" data-creator-type="${escapeHtml(item.CreatorType)}" draggable="${item.canEdit ? 'true' : 'false'}">
+          <div><select data-task-status="${escapeHtml(item.TaskId)}" aria-label="Task status" ${item.canUpdate ? '' : 'disabled'}>${['Pending', 'In Progress', 'Completed'].map(function(status) {
+            return `<option value="${status}" ${item.Status === status ? 'selected' : ''}>${status}</option>`;
+          }).join('')}</select></div>
+          <div class="task-content"><span class="task-kind">${systemTask ? 'Official milestone' : 'My To-Do'}</span>
+            ${item.canEdit ? `<div class="todo-editor"><input data-todo-title="${escapeHtml(item.TaskId)}" value="${escapeHtml(item.Title)}" maxlength="240" aria-label="To-Do title"><textarea data-todo-description="${escapeHtml(item.TaskId)}" aria-label="To-Do description">${escapeHtml(item.Description || '')}</textarea><button type="button" class="link-button" data-save-todo="${escapeHtml(item.TaskId)}">Save</button></div>` : `<h3>${escapeHtml(item.Title)}</h3><p>${escapeHtml(item.Description || '')}</p>`}
+            ${item.canEdit ? '<span class="drop-hint">Drop to place this To-Do beside this date</span>' : ''}
+          </div>
+          <div class="task-meta"><strong>${escapeHtml(item.PhaseId || 'To-Do')}</strong>${dateValue ? `<time datetime="${escapeHtml(dateValue)}">${escapeHtml(dateValue)}</time>` : '<span>No due date</span>'}${item.canEdit ? `<input type="date" data-task-date="${escapeHtml(item.TaskId)}" value="${escapeHtml(dateValue)}" aria-label="To-Do due date">` : ''}</div>
+        </article>`;
+      }
+
+      function bindActionTimeline(main, email, cohort) {
+        const toggle = document.getElementById('toggle-journey-controls');
+        toggle.addEventListener('click', function() {
+          state.journeyControlsOpen = !state.journeyControlsOpen;
+          renderStudentView();
+        });
+        const quickTodo = document.getElementById('quick-todo');
+        if (quickTodo) quickTodo.addEventListener('submit', function(event) {
+          event.preventDefault();
+          const input = document.getElementById('quick-todo-title');
+          callServer('addStudentTodo', input.value).then(renderStudentView).catch(showError);
+        });
+        main.querySelectorAll('[name="phase-filter"]').forEach(function(input) {
+          input.addEventListener('change', function() { state.journeyFilters.phaseId = input.value; applyJourneyFilters(); });
+        });
+        main.querySelectorAll('[data-creator-filter]').forEach(function(input) {
+          input.addEventListener('change', function() {
+            if (input.dataset.creatorFilter === 'System') state.journeyFilters.showSystem = input.checked;
+            else state.journeyFilters.showStudent = input.checked;
+            applyJourneyFilters();
+          });
+        });
+        main.querySelectorAll('[data-task-status]').forEach(function(input) {
+          input.addEventListener('change', function() {
+            input.disabled = true;
+            callServer('setActionItemStatus', input.dataset.taskStatus, input.value, email, cohort).then(renderStudentView).catch(showError);
+          });
+        });
+        main.querySelectorAll('[data-task-date]').forEach(function(input) {
+          input.addEventListener('change', function() { callServer('setActionItemDueDate', input.dataset.taskDate, input.value).then(renderStudentView).catch(showError); });
+        });
+        main.querySelectorAll('[data-save-todo]').forEach(function(button) {
+          button.addEventListener('click', function() {
+            const card = button.closest('[data-task-id]');
+            const title = card.querySelector('[data-todo-title]').value;
+            const description = card.querySelector('[data-todo-description]').value;
+            callServer('updateStudentTodo', button.dataset.saveTodo, title, description).then(renderStudentView).catch(showError);
+          });
+        });
+        main.querySelectorAll('[data-task-id][draggable="true"]').forEach(function(card) {
+          card.addEventListener('dragstart', function(event) { event.dataTransfer.setData('text/plain', card.dataset.taskId); card.classList.add('dragging'); });
+          card.addEventListener('dragend', function() { card.classList.remove('dragging'); main.querySelectorAll('.drag-over').forEach(function(item) { item.classList.remove('drag-over'); }); });
+        });
+        main.querySelectorAll('[data-task-id]').forEach(function(card) {
+          card.addEventListener('dragover', function(event) { event.preventDefault(); card.classList.add('drag-over'); });
+          card.addEventListener('dragleave', function() { card.classList.remove('drag-over'); });
+          card.addEventListener('drop', function(event) {
+            event.preventDefault();
+            card.classList.remove('drag-over');
+            const taskId = event.dataTransfer.getData('text/plain');
+            if (!taskId || taskId === card.dataset.taskId) return;
+            const position = event.clientY < card.getBoundingClientRect().top + card.getBoundingClientRect().height / 2 ? 'before' : 'after';
+            callServer('repositionStudentTodo', taskId, card.dataset.taskId, position).then(renderStudentView).catch(showError);
+          });
+        });
+        applyJourneyFilters();
+      }
+
+      function applyJourneyFilters() {
+        document.querySelectorAll('#action-timeline [data-task-id]').forEach(function(card) {
+          const creatorVisible = card.dataset.creatorType === 'System' ? state.journeyFilters.showSystem : state.journeyFilters.showStudent;
+          const phaseVisible = state.journeyFilters.phaseId === 'all' || card.dataset.phaseId === state.journeyFilters.phaseId;
+          card.classList.toggle('hidden', !creatorVisible || !phaseVisible);
+        });
       }
 
       function renderStaffView() {
@@ -293,7 +413,8 @@
       }
 
       const adminSections = [
-        ['cohorts', 'Cohorts'], ['cohortMembers', 'Students in cohorts'], ['phases', 'Phases'], ['milestones', 'Milestones'],
+        ['cohorts', 'Cohorts'], ['cohortMembers', 'Students in cohorts'], ['phases', 'Phases'], ['milestoneTemplates', 'Milestone templates'],
+        ['templateDesigner', 'Template designer'], ['assignments', 'Assignments'],
         ['studentUsers', 'Student users'], ['staffUsers', 'Staff users'], ['subjects', 'Subjects'],
         ['pages', 'Website pages'], ['resources', 'Resources']
       ];
@@ -318,6 +439,14 @@
       function loadAdminSection() {
         const target = document.getElementById('admin-content');
         if (!target) return;
+        if (state.adminEntity === 'templateDesigner') {
+          renderTemplateDesigner(target);
+          return;
+        }
+        if (state.adminEntity === 'assignments') {
+          renderAssignmentManager(target);
+          return;
+        }
         if (state.adminEntity === 'cohortMembers') {
           callServer('getCohorts').then(function(cohorts) {
             const current = cohorts.some(function(cohort) { return cohort.id === state.cohortId; }) ? state.cohortId : (cohorts[0] ? cohorts[0].id : '');
@@ -341,6 +470,126 @@
           return;
         }
         callServer('getAdminRecords', state.adminEntity).then(renderAdminData).catch(showError);
+      }
+
+      function renderTemplateDesigner(target) {
+        target.innerHTML = '<p class="muted">Loading phases and templates...</p>';
+        Promise.all([callServer('getAdminRecords', 'phases'), callServer('getAdminRecords', 'milestoneTemplates')]).then(function(results) {
+          const phases = results[0].records || [];
+          const templates = results[1].records || [];
+          target.innerHTML = `<div class="toolbar"><button type="button" class="button secondary" id="manage-phases">Manage phases</button><button type="button" class="button secondary" id="manage-templates">Manage templates</button></div>
+            ${phases.length ? `<div class="template-board">${phases.slice().sort(function(left, right) { return Number(left.sequence) - Number(right.sequence); }).map(function(phase) {
+              const phaseTemplates = templates.filter(function(template) { return template.phase === phase.phaseId; });
+              return `<section class="template-phase" data-phase-drop="${escapeHtml(phase.phaseId)}"><header><span class="eyebrow">Phase ${escapeHtml(phase.phaseId)}</span><h2>${escapeHtml(phase.phaseTitle)}</h2><p class="muted">${escapeHtml(phase.phaseDescription || '')}</p></header><div class="template-list">${phaseTemplates.map(function(template) {
+                return `<article class="template-card" draggable="true" data-template-drag="${escapeHtml(template.milestoneId)}" data-template-phase="${escapeHtml(phase.phaseId)}"><span class="task-kind">${escapeHtml(template.type)}</span><strong>${escapeHtml(template.milestoneTitle)}</strong><small>${escapeHtml(template.mOwner)} · offset ${escapeHtml(template.offsetDays)}d</small><span class="drop-hint">Drop to reorder</span></article>`;
+              }).join('') || '<p class="muted">No templates in this phase.</p>'}</div></section>`;
+            }).join('')}</div>` : '<div class="empty">Add phases before arranging templates.</div>'}`;
+          document.getElementById('manage-phases').addEventListener('click', function() { switchAdminSection('phases'); });
+          document.getElementById('manage-templates').addEventListener('click', function() { switchAdminSection('milestoneTemplates'); });
+          bindTemplateDragging(target);
+        }).catch(showError);
+      }
+
+      function bindTemplateDragging(target) {
+        target.querySelectorAll('[data-template-drag]').forEach(function(card) {
+          card.addEventListener('dragstart', function(event) {
+            event.dataTransfer.setData('text/plain', card.dataset.templateDrag);
+            event.dataTransfer.effectAllowed = 'move';
+          });
+        });
+        target.querySelectorAll('[data-phase-drop]').forEach(function(phase) {
+          phase.addEventListener('dragover', function(event) { event.preventDefault(); phase.classList.add('drag-over'); });
+          phase.addEventListener('dragleave', function(event) { if (!phase.contains(event.relatedTarget)) phase.classList.remove('drag-over'); });
+          phase.addEventListener('drop', function(event) {
+            event.preventDefault();
+            phase.classList.remove('drag-over');
+            const templateId = event.dataTransfer.getData('text/plain');
+            const targetCard = event.target.closest('[data-template-drag]');
+            const beforeTemplateId = targetCard && targetCard.dataset.templateDrag !== templateId ? targetCard.dataset.templateDrag : '';
+            callServer('reorderMilestoneTemplate', templateId, phase.dataset.phaseDrop, beforeTemplateId).then(function() {
+              state.status = 'Template order saved.';
+              loadAdminSection();
+            }).catch(showError);
+          });
+        });
+      }
+
+      function switchAdminSection(entity) {
+        state.adminEntity = entity;
+        state.editingRecord = null;
+        state.status = '';
+        renderAdmin();
+      }
+
+      function renderAssignmentManager(target) {
+        target.innerHTML = '<p class="muted">Loading cohorts...</p>';
+        callServer('getCohorts').then(function(cohorts) {
+          if (!cohorts.length) { target.innerHTML = '<div class="empty">Create a cohort before assigning milestone templates.</div>'; return; }
+          const current = cohorts.some(function(cohort) { return cohort.id === state.cohortId; }) ? state.cohortId : cohorts[0].id;
+          state.cohortId = current;
+          target.innerHTML = `<div class="toolbar"><label for="assignment-cohort">Cohort</label><select id="assignment-cohort">${cohorts.map(function(cohort) {
+            return `<option value="${escapeHtml(cohort.id)}" ${cohort.id === current ? 'selected' : ''}>${escapeHtml(cohort.name)}</option>`;
+          }).join('')}</select><label for="baseline-anchor">Baseline anchor date</label><input id="baseline-anchor" type="date"><button type="button" class="button" id="assign-milestones">Assign selected</button><label><input type="checkbox" id="select-all-assignment"> Select all</label><span id="assignment-count" class="muted">0 selected</span></div>
+            ${state.status ? `<p class="status">${escapeHtml(state.status)}</p>` : ''}<div id="assignment-roster"><p class="muted">Loading students...</p></div>`;
+          document.getElementById('assignment-cohort').addEventListener('change', function(event) {
+            state.cohortId = event.target.value;
+            state.assignmentStudentIds = [];
+            renderAssignmentManager(target);
+          });
+          document.getElementById('assign-milestones').addEventListener('click', assignSelectedStudents);
+          loadAssignmentRoster(current);
+        }).catch(showError);
+      }
+
+      function loadAssignmentRoster(cohortId) {
+        callServer('getCohortMembersForAdmin', cohortId).then(function(result) {
+          const target = document.getElementById('assignment-roster');
+          if (!target) return;
+          const records = result.records || [];
+          target.innerHTML = records.length ? `<div class="table-wrap"><table><thead><tr><th>Select</th><th>Student</th><th>Year Group</th><th>Anchor Date</th><th>Action</th></tr></thead><tbody>${records.map(function(record, index) {
+            return `<tr><td><input type="checkbox" data-assignment-student="${index}" value="${escapeHtml(record.StudentId)}"></td><td>${escapeHtml(record['Display Name'])}<br><small>${escapeHtml(record.StudentId)}</small></td><td>${escapeHtml(record['Year Group'])}</td><td><input type="date" data-anchor-student="${index}" value="${escapeHtml(String(record.Anchor_Date || '').slice(0, 10))}"></td><td><button type="button" class="link-button" data-sync-student="${index}">Save &amp; sync</button></td></tr>`;
+          }).join('')}</tbody></table></div>` : '<div class="empty">No students are listed in this cohort.</div>';
+          target.querySelectorAll('[data-assignment-student]').forEach(function(input) {
+            input.addEventListener('change', function() {
+              state.assignmentStudentIds = Array.from(target.querySelectorAll('[data-assignment-student]:checked')).map(function(item) { return item.value; });
+              const count = document.getElementById('assignment-count');
+              if (count) count.textContent = state.assignmentStudentIds.length + ' selected';
+            });
+          });
+          const selectAll = document.getElementById('select-all-assignment');
+          if (selectAll) selectAll.addEventListener('change', function() {
+            target.querySelectorAll('[data-assignment-student]').forEach(function(input) { input.checked = selectAll.checked; });
+            state.assignmentStudentIds = selectAll.checked ? records.map(function(record) { return record.StudentId; }) : [];
+            const count = document.getElementById('assignment-count');
+            if (count) count.textContent = state.assignmentStudentIds.length + ' selected';
+          });
+          target.querySelectorAll('[data-sync-student]').forEach(function(button) {
+            button.addEventListener('click', function() {
+              const index = Number(button.dataset.syncStudent);
+              const dateInput = target.querySelector('[data-anchor-student="' + index + '"]');
+              button.disabled = true;
+              callServer('setStudentAnchorDate', cohortId, records[index].StudentId, dateInput.value).then(function() {
+                return callServer('syncStudentActionItemDates', records[index].StudentId, cohortId);
+              }).then(function(result) {
+                state.status = 'Updated ' + result.updated + ' system due dates.';
+                renderAssignmentManager(document.getElementById('admin-content'));
+              }).catch(function(error) { button.disabled = false; showError(error); });
+            });
+          });
+        }).catch(showError);
+      }
+
+      function assignSelectedStudents() {
+        const date = document.getElementById('baseline-anchor').value;
+        if (!state.assignmentStudentIds.length) { showError(new Error('Select one or more students.')); return; }
+        if (!date) { showError(new Error('Choose a baseline anchor date.')); return; }
+        const button = document.getElementById('assign-milestones');
+        button.disabled = true;
+        callServer('assignMilestonesToStudents', state.cohortId, state.assignmentStudentIds, date).then(function(result) {
+          state.status = result.createdTasks + ' system action items created for ' + result.assignedStudents + ' students.';
+          state.assignmentStudentIds = [];
+          renderAssignmentManager(document.getElementById('admin-content'));
+        }).catch(function(error) { button.disabled = false; showError(error); });
       }
 
       function renderAdminData(data) {
