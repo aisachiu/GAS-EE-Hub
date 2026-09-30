@@ -1,0 +1,5 @@
+{
+  "name": "VSA EE Hub",
+  "install": "bash .cursor/local-gas/install.sh",
+  "start": "bash .cursor/local-gas/ensure-server.sh"
+}
