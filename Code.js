@@ -6,8 +6,9 @@ function doGet() {
 
 function onOpen() {
   SpreadsheetApp.getUi()
-    .createMenu('EE Sytem')
+    .createMenu('EE System')
     .addItem('Sheets Field Check', 'showSheetFieldCheck')
+    .addItem('Create Missing Sheets', 'createMissingSheets')
     .addToUi();
 }
 
@@ -23,4 +24,57 @@ function showSheetFieldCheck() {
     item.issues.forEach(function(issue) { lines.push('  - ' + issue); });
   });
   SpreadsheetApp.getUi().alert('Sheets Field Check', lines.join('\n'), SpreadsheetApp.getUi().ButtonSet.OK);
+}
+
+function createMissingSheets() {
+  var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  var ui = SpreadsheetApp.getUi();
+  var created = [];
+  var declined = [];
+  var issues = [];
+
+  Object.keys(APP_TABLES).forEach(function(entity) {
+    var config = APP_TABLES[entity];
+    if (config.sheetPattern) return;
+    createSheetAfterConfirmation_(spreadsheet, ui, config.sheet, getTableHeaders_(entity), created, declined);
+  });
+
+  var cohortRegistry = spreadsheet.getSheetByName(APP_TABLES.cohorts.sheet);
+  if (cohortRegistry && cohortRegistry.getLastRow() > 1) {
+    try {
+      assertSheetSchema_(cohortRegistry, 'cohorts');
+      readRecords_(cohortRegistry).forEach(function(record) {
+        var cohortId = text_(record.Cohort);
+        if (!cohortId) return;
+        var sheetName = cohortSheetName_(cohortId);
+        createSheetAfterConfirmation_(spreadsheet, ui, sheetName, getTableHeaders_('cohortMembers'), created, declined);
+      });
+    } catch (error) {
+      issues.push(String(error.message || error));
+    }
+  }
+
+  var summary = [
+    'Created: ' + (created.length ? created.join(', ') : 'none'),
+    'Skipped by user: ' + (declined.length ? declined.join(', ') : 'none')
+  ];
+  if (issues.length) summary.push('Issues: ' + issues.join(' | '));
+  ui.alert('Create Missing Sheets', summary.join('\n'), ui.ButtonSet.OK);
+}
+
+function createSheetAfterConfirmation_(spreadsheet, ui, sheetName, headers, created, declined) {
+  if (spreadsheet.getSheetByName(sheetName)) return;
+  var choice = ui.alert(
+    'Create missing sheet?',
+    'Create "' + sheetName + '" with these headers?\n\n' + headers.join(', '),
+    ui.ButtonSet.YES_NO
+  );
+  if (choice !== ui.Button.YES) {
+    declined.push(sheetName);
+    return;
+  }
+  var sheet = spreadsheet.insertSheet(sheetName);
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  sheet.setFrozenRows(1);
+  created.push(sheetName);
 }

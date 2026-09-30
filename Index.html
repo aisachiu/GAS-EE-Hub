@@ -576,11 +576,10 @@
                 studentSelect.onchange = function() {
                   const member = result.records[Number(studentSelect.value)];
                   if (!member) return;
-                  setField('Student ID', member['Student ID']);
                   setField('DisplayName', member['Display Name']);
                   setField('Cohort', cohortSelect.value);
                   setField('StudentId', member.StudentId);
-                  setField('studentEmail', member.StudentId);
+                  setField('studentEmail', member['Student Email']);
                   setField('parentEmail', member['Family Email']);
                 };
               }).catch(showError);

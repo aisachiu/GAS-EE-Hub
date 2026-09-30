@@ -34,7 +34,6 @@ var APP_TABLES = {
     sheet: 'USERS-STUDENTS',
     fields: [
       { name: 'StudentId', type: 'email', required: true, key: true, validator: 'email' },
-      { name: 'Student ID', type: 'text', required: true, validator: 'studentId' },
       { name: 'DisplayName', type: 'text', required: true },
       { name: 'Cohort', type: 'text' },
       { name: 'studentEmail', type: 'email', editable: false, serverDerived: true, table: false },
@@ -96,8 +95,10 @@ var APP_TABLES = {
     fields: [
       { name: 'StudentId', type: 'email', required: true, key: true, validator: 'email' },
       { name: 'Student ID', type: 'text', required: true, validator: 'studentId' },
+      { name: 'Student Email', type: 'email', required: true, validator: 'email' },
+      { name: 'Year Group', type: 'number', required: true, validator: 'yearGroup' },
       { name: 'Display Name', type: 'text', required: true },
-      { name: 'Reg', type: 'text', table: false },
+      { name: 'HRM', type: 'text', table: false },
       { name: 'Surname', type: 'text' },
       { name: 'First Name', type: 'text' },
       { name: 'Preferred Name', type: 'text', table: false },
@@ -260,6 +261,7 @@ function validateRecordFields_(entity, values, originalKey) {
     }
     if (field.validator === 'email') validateEmail_(value, field.name);
     if (field.validator === 'studentId' && !/^\d{8}$/.test(text_(value))) throw new Error(field.name + ' must be an 8-digit number.');
+    if (field.validator === 'yearGroup' && (!Number.isInteger(Number(value)) || Number(value) <= 0)) throw new Error(field.name + ' must be a positive whole number.');
     if (field.validator === 'phaseId' && !/^[a-z][a-z0-9_-]*$/i.test(text_(value))) {
       throw new Error(field.name + ' must start with a letter and contain only letters, numbers, hyphens, or underscores.');
     }
@@ -491,6 +493,8 @@ function saveAdminRecord(entity, record, originalKey) {
   if (config.internal) throw new Error('Internal sheets cannot be managed through Admin.');
   if (entity === 'cohorts') return saveCohort_(user, record || {}, originalKey);
   if (entity === 'cohortMembers') throw new Error('Use the cohort student editor.');
+  var existingSheet = getSpreadsheet_().getSheetByName(config.sheet);
+  if (existingSheet) assertSheetSchema_(existingSheet, entity);
 
   var values = record || {};
   validateRecordFields_(entity, values, originalKey);
@@ -610,8 +614,13 @@ function deleteAdminRecord(entity, keyValue) {
 
 function saveCohortMember(cohortId, record, originalStudentId) {
   var user = requireAdmin_('SAVE_COHORT_MEMBER');
+  var cohortSheet = getCohortSheet_(cohortId);
+  assertSheetSchema_(cohortSheet, 'cohortMembers');
   var values = record || {};
   validateRecordFields_('cohortMembers', values, originalStudentId);
+  values.StudentId = normalizeEmail_(values.StudentId);
+  values['Student Email'] = normalizeEmail_(values['Student Email']);
+  values['Year Group'] = Number(values['Year Group']);
 
   return runAuditedMutation_(user, originalStudentId ? 'UPDATE_COHORT_MEMBER' : 'CREATE_COHORT_MEMBER', {
     cohort: text_(cohortId),
@@ -623,7 +632,7 @@ function saveCohortMember(cohortId, record, originalStudentId) {
     var studentIdIndexes = findHeaderIndexes_(headers, 'StudentId');
     if (studentIdIndexes.length !== 1) throw new Error('The cohort sheet must have exactly one StudentId column.');
     var idIndexes = findHeaderIndexes_(headers, 'Student ID');
-    if (idIndexes.length === 0) throw new Error('The cohort sheet needs a Student ID column.');
+    if (idIndexes.length !== 1) throw new Error('The cohort sheet must have exactly one Student ID column.');
 
     var currentStudentId = normalizeEmail_(originalStudentId || values.StudentId);
     var rowNumber = findRowNumber_(sheet, 'StudentId', currentStudentId);
@@ -631,19 +640,12 @@ function saveCohortMember(cohortId, record, originalStudentId) {
     if (!originalStudentId && rowNumber > 0) throw new Error('This student is already in the cohort.');
 
     var row = rowNumber > 0 ? sheet.getRange(rowNumber, 1, 1, headers.length).getValues()[0] : headers.map(function() { return ''; });
-    if (rowNumber > 0) {
-      var existingIds = idIndexes.map(function(index) { return text_(row[index]); }).filter(Boolean);
-      var hasConflict = existingIds.some(function(value) { return value !== existingIds[0]; });
-      if (hasConflict && text_(values['Student ID']) === existingIds[0]) {
-        throw new Error('This roster row has conflicting Student ID values. Reconcile the duplicate columns before editing it.');
-      }
-    }
     headers.forEach(function(header, index) {
       if (Object.prototype.hasOwnProperty.call(values, header) && header !== 'Student ID' && header !== 'StudentId') {
         row[index] = safeCell_(values[header]);
       }
     });
-    idIndexes.forEach(function(index) { row[index] = safeCell_(values['Student ID']); });
+    row[idIndexes[0]] = safeCell_(values['Student ID']);
     row[studentIdIndexes[0]] = normalizeEmail_(values.StudentId);
 
     if (rowNumber > 0) sheet.getRange(rowNumber, 1, 1, headers.length).setValues([row]);
@@ -666,9 +668,9 @@ function importCohortMembers(cohortId, records) {
     assertSheetSchema_(sheet, 'cohortMembers');
     var studentIdIndexes = findHeaderIndexes_(headers, 'StudentId');
     var institutionalIdIndexes = findHeaderIndexes_(headers, 'Student ID');
-    var displayIndex = findSingleHeaderIndex_(headers, ['Display Name', 'DisplayName']);
-    if (studentIdIndexes.length !== 1 || institutionalIdIndexes.length === 0 || displayIndex < 0) {
-      throw new Error('The cohort sheet needs one StudentId, a Student ID, and a display-name column.');
+    var studentEmailIndexes = findHeaderIndexes_(headers, 'Student Email');
+    if (studentIdIndexes.length !== 1 || institutionalIdIndexes.length !== 1 || studentEmailIndexes.length !== 1) {
+      throw new Error('The cohort sheet needs exactly one StudentId, Student ID, and Student Email column.');
     }
 
     var existing = {};
@@ -685,18 +687,16 @@ function importCohortMembers(cohortId, records) {
       var values = record || {};
       var studentId = normalizeEmail_(values.StudentId);
       validateRecordFields_('cohortMembers', values);
-      var institutionalId = text_(values['Student ID']);
-      var displayName = text_(values['Display Name']);
+      values.StudentId = studentId;
+      values['Student Email'] = normalizeEmail_(values['Student Email']);
+      values['Year Group'] = Number(values['Year Group']);
       if (seen[studentId]) throw new Error('StudentId appears more than once in the import: ' + studentId);
       if (existing[studentId]) throw new Error('StudentId is already in this cohort: ' + studentId);
       seen[studentId] = true;
 
       var row = headers.map(function() { return ''; });
       headers.forEach(function(header, column) {
-        if (header === 'StudentId') row[column] = studentId;
-        else if (header === 'Student ID') row[column] = institutionalId;
-        else if (header === 'Display Name' || header === 'DisplayName') row[column] = displayName;
-        else if (Object.prototype.hasOwnProperty.call(values, header)) row[column] = safeCell_(values[header]);
+        if (Object.prototype.hasOwnProperty.call(values, header)) row[column] = safeCell_(values[header]);
       });
       return row;
     });
@@ -739,8 +739,6 @@ function createStudentUsersFromCohort(cohortId, selectedStudentIds) {
       var member = membersById[studentId];
       if (!member) throw new Error('Student is not in this cohort: ' + studentId);
       if (member.hasStudentIdConflict) throw new Error('Resolve the duplicate Student ID values before creating a user for ' + studentId + '.');
-      var institutionalId = text_(member['Student ID']);
-      if (!/^\d{8}$/.test(institutionalId)) throw new Error('Student ID must be an 8-digit number for ' + studentId + '.');
       var displayName = text_(member['Display Name'] || member.DisplayName || member['Preferred Name'] || studentId);
       if (findStudentUserByEmail_(userSheet, studentId)) {
         alreadyExists++;
@@ -749,7 +747,6 @@ function createStudentUsersFromCohort(cohortId, selectedStudentIds) {
 
       var values = {
         StudentId: studentId,
-        'Student ID': institutionalId,
         DisplayName: displayName,
         Cohort: text_(cohortId),
         studentEmail: studentId,
@@ -889,6 +886,8 @@ function getCohortSheet_(cohortId) {
 
 function saveCohort_(user, values, originalKey) {
   var cohortId = text_(values.Cohort);
+  var existingRegistry = getSpreadsheet_().getSheetByName(APP_TABLES.cohorts.sheet);
+  if (existingRegistry) assertSheetSchema_(existingRegistry, 'cohorts');
   validateRecordFields_('cohorts', values, originalKey);
   if (!/^\d{4}$/.test(cohortId)) throw new Error('Cohort must be a four-digit year.');
   var sheetName = cohortSheetName_(cohortId);
