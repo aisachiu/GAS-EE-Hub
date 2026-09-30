@@ -1,6 +1,6 @@
 var AuditLog = {
-  SHEET_NAME: 'AUDIT_LOGS',
-  HEADERS: ['Timestamp', 'User', 'Action', 'Payload'],
+  getSheetName: function() { return APP_TABLES.auditLogs.sheet; },
+  getHeaders: function() { return getTableHeaders_('auditLogs'); },
 
   record: function(action, payload, actorEmail, options) {
     var lock = null;
@@ -13,17 +13,20 @@ var AuditLog = {
 
       var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
       if (!spreadsheet) throw new Error('The active spreadsheet is unavailable for audit logging.');
-      var sheet = spreadsheet.getSheetByName(this.SHEET_NAME);
+      var sheetName = this.getSheetName();
+      var expectedHeaders = this.getHeaders();
+      var sheet = spreadsheet.getSheetByName(sheetName);
       if (!sheet) {
-        sheet = spreadsheet.insertSheet(this.SHEET_NAME);
-        sheet.getRange(1, 1, 1, this.HEADERS.length).setValues([this.HEADERS]);
+        sheet = spreadsheet.insertSheet(sheetName);
+        sheet.getRange(1, 1, 1, expectedHeaders.length).setValues([expectedHeaders]);
         sheet.setFrozenRows(1);
       }
 
+      assertSheetSchema_(sheet, 'auditLogs');
       var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(function(value) {
         return String(value === null || value === undefined ? '' : value).trim();
       });
-      var indexes = this.HEADERS.map(function(header) { return headers.indexOf(header); });
+      var indexes = expectedHeaders.map(function(header) { return headers.indexOf(header); });
       if (indexes.some(function(index) { return index < 0; })) {
         throw new Error('AUDIT_LOGS must contain Timestamp, User, Action, and Payload columns.');
       }

@@ -124,8 +124,7 @@
         originalKey: '',
         status: '',
         selectedMemberIds: [],
-        importRecords: null,
-        phaseOptions: []
+        importRecords: null
       };
 
       document.addEventListener('DOMContentLoaded', start);
@@ -349,21 +348,15 @@
         const target = document.getElementById('admin-records') || document.getElementById('admin-content');
         if (!target) return;
         const entity = state.adminEntity;
-        const headers = (data.headers || []).filter(function(header, index, all) { return header && all.indexOf(header) === index; });
+        const schemaFields = data.schema && data.schema.fields ? data.schema.fields : (data.headers || []).map(function(name) { return { name: name }; });
         const records = data.records || [];
-        const columns = entity === 'cohortMembers'
-          ? ['Student ID', 'Display Name', 'StudentId', 'Surname', 'First Name']
-          : entity === 'milestones'
-            ? ['milestoneId', 'milestoneTitle', 'type', 'phase', 'mOwner']
-            : entity === 'phases'
-              ? ['phaseId', 'phaseTitle', 'sequence', 'prerequisitePhaseId', 'active']
-              : headers.slice(0, 5);
+        const columns = schemaFields.filter(function(field) { return field.table !== false; });
         if (entity === 'cohortMembers') state.selectedMemberIds = [];
         const isCohortMembers = entity === 'cohortMembers';
         target.innerHTML = `<div class="toolbar"><button type="button" class="button" id="new-record">Add ${escapeHtml(sectionLabel(entity).replace(/s$/, ''))}</button>${isCohortMembers ? '<button type="button" class="button secondary" id="open-roster-import">Import CSV / paste</button><button type="button" class="button secondary" id="create-selected-users" disabled>Add selected as users</button><label><input type="checkbox" id="select-all-members"> Select all</label><span id="selected-count" class="muted">0 selected</span>' : ''}<span class="muted">${records.length} record${records.length === 1 ? '' : 's'}</span></div>
           ${state.status ? `<p class="status">${escapeHtml(state.status)}</p>` : ''}
-          ${records.length ? `<div class="table-wrap"><table><thead><tr>${isCohortMembers ? '<th><span class="sr-only">Select</span></th>' : ''}${columns.map(function(header) { return `<th>${escapeHtml(header)}</th>`; }).join('')}<th>Actions</th></tr></thead><tbody>${records.map(function(record, index) {
-            return `<tr>${isCohortMembers ? `<td><input type="checkbox" data-select-member value="${escapeHtml(record.StudentId)}" ${record.hasStudentIdConflict ? 'disabled title="Resolve Student ID conflicts first"' : ''}></td>` : ''}${columns.map(function(header) { return `<td>${escapeHtml(formatValue(record[header]))}</td>`; }).join('')}<td><div class="actions"><button type="button" class="link-button" data-edit="${index}" ${record.hasStudentIdConflict ? 'disabled title="Reconcile duplicate Student ID values first"' : ''}>Edit</button><button type="button" class="link-button" data-delete="${index}">Delete</button></div>${record.hasStudentIdConflict ? '<div class="notice">Duplicate Student ID values disagree.</div>' : ''}</td></tr>`;
+          ${records.length ? `<div class="table-wrap"><table><thead><tr>${isCohortMembers ? '<th><span class="sr-only">Select</span></th>' : ''}${columns.map(function(field) { return `<th>${escapeHtml(field.label || field.name)}</th>`; }).join('')}<th>Actions</th></tr></thead><tbody>${records.map(function(record, index) {
+            return `<tr>${isCohortMembers ? `<td><input type="checkbox" data-select-member value="${escapeHtml(record.StudentId)}" ${record.hasStudentIdConflict ? 'disabled title="Resolve Student ID conflicts first"' : ''}></td>` : ''}${columns.map(function(field) { return `<td>${escapeHtml(formatValue(record[field.name]))}</td>`; }).join('')}<td><div class="actions"><button type="button" class="link-button" data-edit="${index}" ${record.hasStudentIdConflict ? 'disabled title="Reconcile duplicate Student ID values first"' : ''}>Edit</button><button type="button" class="link-button" data-delete="${index}">Delete</button></div>${record.hasStudentIdConflict ? '<div class="notice">Duplicate Student ID values disagree.</div>' : ''}</td></tr>`;
           }).join('')}</tbody></table></div>` : '<div class="empty">No records yet.</div>'}
           <div id="roster-import-panel"></div><div id="record-editor"></div>`;
         document.getElementById('new-record').addEventListener('click', function() { openEditor(null); });
@@ -404,9 +397,10 @@
       function openRosterImport() {
         const panel = document.getElementById('roster-import-panel');
         state.importRecords = null;
+        const requiredHeaders = (state.adminData.schema.fields || []).filter(function(field) { return field.required; }).map(function(field) { return field.name; });
         panel.innerHTML = `<section class="editor"><h2>Import cohort students</h2>
           <div class="toolbar"><label class="button secondary" for="roster-file">Choose CSV</label><input id="roster-file" type="file" accept=".csv,text/csv" hidden></div>
-          <div class="field"><label for="roster-source">Roster data</label><textarea id="roster-source" placeholder="StudentId, Student ID, Display Name, Family Email"></textarea></div>
+          <div class="field"><label for="roster-source">Roster data</label><textarea id="roster-source" placeholder="${escapeHtml(requiredHeaders.join(', '))}"></textarea></div>
           <div class="toolbar"><button type="button" class="button secondary" id="preview-roster">Preview</button><button type="button" class="button secondary" id="cancel-roster-import">Cancel</button></div>
           <div id="roster-preview"></div></section>`;
         const source = document.getElementById('roster-source');
@@ -421,7 +415,7 @@
         });
       }
 
-      function parseRosterText(sourceText) {
+      function parseRosterText(sourceText, requiredHeaders) {
         const firstLine = String(sourceText).split(/\r?\n/, 1)[0] || '';
         const delimiter = firstLine.indexOf('\t') >= 0 ? '\t' : ',';
         const rows = [];
@@ -455,8 +449,7 @@
         const headers = rows.shift().map(function(value) { return value.trim(); });
         if (headers.some(function(header) { return !header; })) throw new Error('Every column needs a header.');
         if (new Set(headers).size !== headers.length) throw new Error('Duplicate column headers are ambiguous.');
-        const nameHeader = headers.indexOf('Display Name') >= 0 ? 'Display Name' : 'DisplayName';
-        ['StudentId', 'Student ID', nameHeader].forEach(function(header) {
+        (requiredHeaders || []).forEach(function(header) {
           if (headers.indexOf(header) < 0) throw new Error('Missing required column: ' + header);
         });
         return rows.map(function(values, index) {
@@ -470,11 +463,13 @@
       function previewRosterImport() {
         const preview = document.getElementById('roster-preview');
         try {
-          state.importRecords = parseRosterText(document.getElementById('roster-source').value);
+          const requiredHeaders = (state.adminData.schema.fields || []).filter(function(field) { return field.required; }).map(function(field) { return field.name; });
+          state.importRecords = parseRosterText(document.getElementById('roster-source').value, requiredHeaders);
           const sample = state.importRecords.slice(0, 8);
+          const previewFields = (state.adminData.schema.fields || []).filter(function(field) { return field.required; }).slice(0, 3);
           preview.innerHTML = `<p class="muted">${state.importRecords.length} rows ready to import to cohort ${escapeHtml(state.cohortId)}.</p>
-            <div class="table-wrap"><table><thead><tr><th>StudentId</th><th>Student ID</th><th>Display Name</th></tr></thead><tbody>${sample.map(function(record) {
-              return `<tr><td>${escapeHtml(record.StudentId)}</td><td>${escapeHtml(record['Student ID'])}</td><td>${escapeHtml(record['Display Name'] || record.DisplayName)}</td></tr>`;
+            <div class="table-wrap"><table><thead><tr>${previewFields.map(function(field) { return `<th>${escapeHtml(field.label || field.name)}</th>`; }).join('')}</tr></thead><tbody>${sample.map(function(record) {
+              return `<tr>${previewFields.map(function(field) { return `<td>${escapeHtml(record[field.name])}</td>`; }).join('')}</tr>`;
             }).join('')}</tbody></table></div>
             <div class="toolbar"><button type="button" class="button" id="confirm-roster-import">Import ${state.importRecords.length} students</button></div>`;
           document.getElementById('confirm-roster-import').addEventListener('click', confirmRosterImport);
@@ -515,21 +510,14 @@
       function openEditor(record, preserve, phaseOptionsLoaded) {
         const data = state.adminData || { headers: [] };
         const entity = state.adminEntity;
-        if ((entity === 'milestones' || entity === 'phases') && !phaseOptionsLoaded) {
-          callServer('getAdminRecords', 'phases').then(function(result) {
-            state.phaseOptions = result.records || [];
-            openEditor(record, preserve, true);
-          }).catch(showError);
-          return;
-        }
-        const headers = (data.headers || []).filter(function(header, index, all) { return header && all.indexOf(header) === index; });
+        const fields = data.schema && data.schema.fields ? data.schema.fields : (data.headers || []).map(function(name) { return { name: name }; });
         state.editingRecord = record ? { record: record } : (preserve ? state.editingRecord : null);
         const editing = !!record || !!(preserve && state.originalKey);
         state.originalKey = editing ? keyValue(entity, record || state.editingRecord.record) : '';
         const editor = document.getElementById('record-editor');
         editor.innerHTML = `<section class="editor"><h2>${editing ? 'Edit record' : 'Add record'}</h2>
           ${entity === 'studentUsers' && !editing ? '<div id="cohort-import"></div>' : ''}
-          <form id="record-form"><div class="form-grid">${headers.map(function(header) { return fieldMarkup(header, record ? record[header] : '', entity, editing); }).join('')}</div>
+          <form id="record-form"><div class="form-grid">${fields.map(function(field) { return fieldMarkup(field, record ? record[field.name] : '', editing); }).join('')}</div>
             <div class="toolbar"><button class="button" type="submit">Save</button><button class="button secondary" type="button" id="cancel-edit">Cancel</button></div></form></section>`;
         const form = document.getElementById('record-form');
         form.addEventListener('submit', saveForm);
@@ -541,32 +529,31 @@
         if (entity === 'studentUsers' && !editing) renderCohortImport();
       }
 
-      function fieldMarkup(header, value, entity, editing) {
-        const required = requiredFields(entity).indexOf(header) >= 0 ? 'required' : '';
-        const disabled = editing && header === keyField(entity) ? 'disabled' : '';
-        const booleanField = /^is[A-Z]/.test(header) || /^(active|Published)$/i.test(header);
-        const wide = /Description|Body|Subjects|Prerequisite/i.test(header) ? 'wide' : '';
-        if (booleanField) {
-          const checked = toBoolean(value) || (!editing && header === 'active');
-          return `<div class="field check"><label><input type="checkbox" data-field="${escapeHtml(header)}" ${checked ? 'checked' : ''} ${disabled}> ${escapeHtml(header)}</label></div>`;
+      function fieldMarkup(field, value, editing) {
+        const name = field.name;
+        const required = field.required ? 'required' : '';
+        const disabled = (editing && field.key) || field.editable === false ? 'disabled' : '';
+        const label = field.label || name;
+        const wide = field.type === 'textarea' ? 'wide' : '';
+        const currentValue = value === undefined || value === null ? (field.defaultValue === undefined ? '' : field.defaultValue) : value;
+        if (field.type === 'checkbox') {
+          const checked = toBoolean(currentValue);
+          return `<div class="field check"><label><input type="checkbox" data-field="${escapeHtml(name)}" ${checked ? 'checked' : ''} ${disabled}> ${escapeHtml(label)}</label></div>`;
         }
-        if (header === 'type' || header === 'mOwner') {
-          const options = header === 'type' ? ['form', 'upload', 'doc', 'approval', 'meeting'] : ['student', 'supervisor', 'lead', 'coordinator'];
-          return `<div class="field"><label>${escapeHtml(header)} *</label><select data-field="${escapeHtml(header)}" ${required} ${disabled}><option value="">Choose ${escapeHtml(header)}</option>${options.map(function(option) { return `<option value="${option}" ${String(value || '').toLowerCase() === option ? 'selected' : ''}>${option}</option>`; }).join('')}</select></div>`;
+        if (field.type === 'select') {
+          const options = field.options || [];
+          const blankOption = field.allowBlank ? `<option value="">No prerequisite</option>` : `<option value="">Choose ${escapeHtml(label)}</option>`;
+          return `<div class="field"><label>${escapeHtml(label)}${required ? ' *' : ''}</label><select data-field="${escapeHtml(name)}" ${required} ${disabled}>${blankOption}${options.map(function(option) {
+            const item = typeof option === 'string' ? { value: option, label: option } : option;
+            return `<option value="${escapeHtml(item.value)}" ${String(currentValue) === String(item.value) ? 'selected' : ''}>${escapeHtml(item.label)}</option>`;
+          }).join('')}</select></div>`;
         }
-        if (header === 'phase' || header === 'prerequisitePhaseId') {
-          const current = String(value || '');
-          const options = state.phaseOptions || [];
-          return `<div class="field"><label>${escapeHtml(header)}${required ? ' *' : ''}</label><select data-field="${escapeHtml(header)}" ${required} ${disabled}><option value="">${header === 'phase' ? 'Choose phase' : 'No prerequisite'}</option>${options.map(function(phase) { return `<option value="${escapeHtml(phase.phaseId)}" ${current === phase.phaseId ? 'selected' : ''}>${escapeHtml(phase.phaseId)} · ${escapeHtml(phase.phaseTitle)}</option>`; }).join('')}</select></div>`;
-        }
-        const date = /Deadline|Date of Birth/i.test(header);
-        const long = /Description|Body|Subjects|Prerequisite/i.test(header);
-        const type = date ? 'date' : (/Email/i.test(header) ? 'email' : (/^(offsetDays|sequence)$/i.test(header) ? 'number' : 'text'));
-        const formatted = date ? escapeHtml(String(value || '').slice(0, 10)) : escapeHtml(formatValue(value));
-        const control = long
-          ? `<textarea data-field="${escapeHtml(header)}" ${required} ${disabled}>${formatted}</textarea>`
-          : `<input type="${type}" data-field="${escapeHtml(header)}" value="${formatted}" ${required} ${disabled}>`;
-        return `<div class="field ${wide}"><label>${escapeHtml(header)}${required ? ' *' : ''}</label>${control}</div>`;
+        const inputType = ['text', 'email', 'url', 'number', 'date'].indexOf(field.type) >= 0 ? field.type : 'text';
+        const formatted = escapeHtml(formatValue(currentValue));
+        const control = field.type === 'textarea'
+          ? `<textarea data-field="${escapeHtml(name)}" ${required} ${disabled}>${formatted}</textarea>`
+          : `<input type="${inputType}" data-field="${escapeHtml(name)}" value="${formatted}" ${required} ${disabled}>`;
+        return `<div class="field ${wide}"><label>${escapeHtml(label)}${required ? ' *' : ''}</label>${control}</div>`;
       }
 
       function renderCohortImport() {
@@ -649,21 +636,10 @@
         }).catch(showError);
       }
 
-      function keyField(entity) {
-        return ({ cohorts: 'Cohort', cohortMembers: 'StudentId', milestones: 'milestoneId', phases: 'phaseId', studentUsers: 'StudentId', staffUsers: 'EMAIL', subjects: 'Subject ID', pages: 'Page ID', resources: 'Resource ID' })[entity];
-      }
-
       function keyValue(entity, record) {
-        return record ? record[keyField(entity)] || '' : '';
-      }
-
-      function requiredFields(entity) {
-        return ({
-          cohorts: ['Cohort'], cohortMembers: ['StudentId', 'Student ID'],
-          milestones: ['milestoneId', 'type', 'milestoneTitle', 'phase', 'mOwner'],
-          phases: ['phaseId', 'phaseTitle', 'sequence'], studentUsers: ['StudentId', 'Student ID', 'DisplayName'],
-          staffUsers: ['EMAIL', 'DisplayName'], subjects: ['Name'], pages: ['Title', 'Slug'], resources: ['Title']
-        })[entity] || [];
+        if (!record || !state.adminData || !state.adminData.schema) return '';
+        var key = state.adminData.schema.fields.filter(function(field) { return field.key; })[0];
+        return key ? record[key.name] || '' : '';
       }
 
       function sectionLabel(entity) {

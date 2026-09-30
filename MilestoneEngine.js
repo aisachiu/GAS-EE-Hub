@@ -2,7 +2,7 @@ function getStudentPathway_(studentEmail, cohortId, user) {
   var spreadsheet = getSpreadsheet_();
   var milestoneSheet = spreadsheet.getSheetByName(APP_TABLES.milestones.sheet);
   var phaseSheet = spreadsheet.getSheetByName(APP_TABLES.phases.sheet);
-  var progressSheet = spreadsheet.getSheetByName(MILESTONE_PROGRESS.sheet);
+  var progressSheet = spreadsheet.getSheetByName(APP_TABLES.milestoneProgress.sheet);
   var milestones = milestoneSheet ? readRecords_(milestoneSheet) : [];
   var phases = phaseSheet ? readRecords_(phaseSheet).filter(function(phase) {
     return phase.active === '' || phase.active === null || phase.active === undefined || toBoolean_(phase.active);
@@ -10,6 +10,7 @@ function getStudentPathway_(studentEmail, cohortId, user) {
   var progress = {};
 
   if (progressSheet && progressSheet.getLastRow() > 1) {
+    assertSheetSchema_(progressSheet, 'milestoneProgress');
     readRecords_(progressSheet).forEach(function(record) {
       if (normalizeEmail_(record.StudentId) === normalizeEmail_(studentEmail) && toBoolean_(record.completed)) {
         progress[text_(record.milestoneId)] = true;
@@ -109,7 +110,8 @@ function canCompleteMilestone_(user, studentEmail, owner) {
   if (owner === 'student') return user.role === 'student' && user.email === normalizeEmail_(studentEmail);
   if (user.role !== 'staff') return false;
   var permissionName = 'is' + owner.charAt(0).toUpperCase() + owner.slice(1);
-  return MILESTONE_OWNERS.indexOf(owner) >= 0 && !!user.permissions[permissionName];
+  var ownerField = getFieldConfig_('milestones', 'mOwner');
+  return !!ownerField && ownerField.options.indexOf(owner) >= 0 && !!user.permissions[permissionName];
 }
 
 function hasCompletedDescendant_(pathway, phaseId) {
@@ -129,16 +131,21 @@ function hasCompletedDescendant_(pathway, phaseId) {
 }
 
 function getOrCreateProgressSheet_() {
-  var sheet = getSpreadsheet_().getSheetByName(MILESTONE_PROGRESS.sheet);
-  if (sheet) return sheet;
-  sheet = getSpreadsheet_().insertSheet(MILESTONE_PROGRESS.sheet);
-  sheet.getRange(1, 1, 1, MILESTONE_PROGRESS.headers.length).setValues([MILESTONE_PROGRESS.headers]);
+  var sheet = getSpreadsheet_().getSheetByName(APP_TABLES.milestoneProgress.sheet);
+  if (sheet) {
+    assertSheetSchema_(sheet, 'milestoneProgress');
+    return sheet;
+  }
+  var headers = getTableHeaders_('milestoneProgress');
+  sheet = getSpreadsheet_().insertSheet(APP_TABLES.milestoneProgress.sheet);
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
   sheet.setFrozenRows(1);
   return sheet;
 }
 
 function findProgressRow_(sheet, studentEmail, milestoneId) {
   if (!sheet || sheet.getLastRow() < 2) return -1;
+  assertSheetSchema_(sheet, 'milestoneProgress');
   var headers = getHeaders_(sheet);
   var studentIndex = findSingleHeaderIndex_(headers, ['StudentId']);
   var milestoneIndex = findSingleHeaderIndex_(headers, ['milestoneId']);
@@ -151,8 +158,9 @@ function findProgressRow_(sheet, studentEmail, milestoneId) {
 }
 
 function deleteMilestoneProgress_(milestoneId) {
-  var sheet = getSpreadsheet_().getSheetByName(MILESTONE_PROGRESS.sheet);
+  var sheet = getSpreadsheet_().getSheetByName(APP_TABLES.milestoneProgress.sheet);
   if (!sheet || sheet.getLastRow() < 2) return;
+  assertSheetSchema_(sheet, 'milestoneProgress');
   var headers = getHeaders_(sheet);
   var index = findSingleHeaderIndex_(headers, ['milestoneId']);
   if (index < 0) throw new Error('MILESTONE_PROGRESS has an invalid schema.');

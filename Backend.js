@@ -1,66 +1,276 @@
 var APP_TABLES = {
   cohorts: {
     sheet: 'COHORTS',
-    key: 'Cohort',
-    headers: ['Cohort', 'SheetName', 'Status'],
-    required: ['Cohort']
+    fields: [
+      { name: 'Cohort', type: 'text', required: true, key: true },
+      { name: 'SheetName', type: 'text', editable: false },
+      { name: 'Status', type: 'select', options: ['Active', 'Inactive'] }
+    ]
   },
   milestones: {
     sheet: 'MILESTONES',
-    key: 'milestoneId',
-    headers: ['milestoneId', 'type', 'milestoneTitle', 'offsetDays', 'milestoneDescription', 'phase', 'mOwner'],
-    required: ['milestoneId', 'type', 'milestoneTitle', 'phase', 'mOwner']
+    fields: [
+      { name: 'milestoneId', type: 'text', required: true, key: true },
+      { name: 'type', type: 'select', required: true, options: ['form', 'upload', 'doc', 'approval', 'meeting'] },
+      { name: 'milestoneTitle', type: 'text', required: true },
+      { name: 'offsetDays', type: 'number' },
+      { name: 'milestoneDescription', type: 'textarea', table: false },
+      { name: 'phase', type: 'select', required: true, optionsFrom: 'phases', optionValue: 'phaseId', optionLabel: 'phaseTitle' },
+      { name: 'mOwner', type: 'select', required: true, options: ['student', 'supervisor', 'lead', 'coordinator'], errorMessage: 'Owner must be student, supervisor, lead, or coordinator.' }
+    ]
   },
   phases: {
     sheet: 'PHASES',
-    key: 'phaseId',
-    headers: ['phaseId', 'phaseTitle', 'phaseDescription', 'sequence', 'prerequisitePhaseId', 'active'],
-    required: ['phaseId', 'phaseTitle', 'sequence']
+    fields: [
+      { name: 'phaseId', type: 'text', required: true, key: true, validator: 'phaseId' },
+      { name: 'phaseTitle', type: 'text', required: true },
+      { name: 'phaseDescription', type: 'textarea', table: false },
+      { name: 'sequence', type: 'number', required: true },
+      { name: 'prerequisitePhaseId', type: 'select', optionsFrom: 'phases', optionValue: 'phaseId', optionLabel: 'phaseTitle', allowBlank: true },
+      { name: 'active', type: 'checkbox', defaultValue: true }
+    ]
   },
   studentUsers: {
     sheet: 'USERS-STUDENTS',
-    key: 'StudentId',
-    headers: ['StudentId', 'Student ID', 'DisplayName', 'Cohort', 'studentEmail', 'parentEmail'],
-    required: ['StudentId', 'Student ID', 'DisplayName']
+    fields: [
+      { name: 'StudentId', type: 'email', required: true, key: true, validator: 'email' },
+      { name: 'Student ID', type: 'text', required: true, validator: 'studentId' },
+      { name: 'DisplayName', type: 'text', required: true },
+      { name: 'Cohort', type: 'text' },
+      { name: 'studentEmail', type: 'email', editable: false, serverDerived: true, table: false },
+      { name: 'parentEmail', type: 'email' }
+    ]
   },
   staffUsers: {
     sheet: 'USERS-STAFF',
-    key: 'EMAIL',
-    headers: ['EMAIL', 'DisplayName', 'Primary Department', 'StaffCode', 'isStaff', 'isSupervisor', 'isLead', 'isCoordinator', 'isAdmin', 'EEQuota', 'EESubjects'],
-    required: ['EMAIL', 'DisplayName']
+    fields: [
+      { name: 'EMAIL', type: 'email', required: true, key: true, validator: 'email' },
+      { name: 'DisplayName', type: 'text', required: true },
+      { name: 'Primary Department', type: 'text' },
+      { name: 'StaffCode', type: 'text' },
+      { name: 'isStaff', type: 'checkbox', defaultValue: true },
+      { name: 'isSupervisor', type: 'checkbox' },
+      { name: 'isLead', type: 'checkbox' },
+      { name: 'isCoordinator', type: 'checkbox' },
+      { name: 'isAdmin', type: 'checkbox' },
+      { name: 'EEQuota', type: 'number' },
+      { name: 'EESubjects', type: 'text' }
+    ]
   },
   subjects: {
     sheet: 'SUBJECTS',
-    key: 'Subject ID',
-    headers: ['Subject ID', 'Name', 'Department', 'Active'],
-    required: ['Name']
+    fields: [
+      { name: 'Subject ID', type: 'text', key: true, generated: true },
+      { name: 'Name', type: 'text', required: true },
+      { name: 'Department', type: 'text' },
+      { name: 'Active', type: 'checkbox', defaultValue: true }
+    ]
   },
   pages: {
     sheet: 'CONTENT_PAGES',
-    key: 'Page ID',
-    headers: ['Page ID', 'Title', 'Slug', 'Body', 'Audience', 'Published', 'Sort Order'],
-    required: ['Title', 'Slug']
+    fields: [
+      { name: 'Page ID', type: 'text', key: true, generated: true },
+      { name: 'Title', type: 'text', required: true },
+      { name: 'Slug', type: 'text', required: true },
+      { name: 'Body', type: 'textarea', table: false },
+      { name: 'Audience', type: 'select', options: ['all', 'student', 'staff'] },
+      { name: 'Published', type: 'checkbox' },
+      { name: 'Sort Order', type: 'number' }
+    ]
   },
   resources: {
     sheet: 'RESOURCES',
-    key: 'Resource ID',
-    headers: ['Resource ID', 'Title', 'Category', 'Description', 'URL', 'Audience', 'Published', 'Sort Order'],
-    required: ['Title']
+    fields: [
+      { name: 'Resource ID', type: 'text', key: true, generated: true },
+      { name: 'Title', type: 'text', required: true },
+      { name: 'Category', type: 'text' },
+      { name: 'Description', type: 'textarea', table: false },
+      { name: 'URL', type: 'url' },
+      { name: 'Audience', type: 'select', options: ['all', 'student', 'staff'] },
+      { name: 'Published', type: 'checkbox' },
+      { name: 'Sort Order', type: 'number' }
+    ]
+  },
+  cohortMembers: {
+    sheetPattern: 'COHORT: [Cohort]',
+    fields: [
+      { name: 'StudentId', type: 'email', required: true, key: true, validator: 'email' },
+      { name: 'Student ID', type: 'text', required: true, validator: 'studentId' },
+      { name: 'Display Name', type: 'text', required: true },
+      { name: 'Reg', type: 'text', table: false },
+      { name: 'Surname', type: 'text' },
+      { name: 'First Name', type: 'text' },
+      { name: 'Preferred Name', type: 'text', table: false },
+      { name: 'Chinese Name', type: 'text', table: false },
+      { name: 'Family Email', type: 'email', table: false },
+      { name: 'Date of Birth', type: 'date', table: false },
+      { name: 'House', type: 'text', table: false },
+      { name: 'Gender', type: 'text', table: false },
+      { name: 'supervisorId', type: 'email' },
+      { name: 'subject', type: 'text' },
+      { name: 'latestMilestone', type: 'text' },
+      { name: 'EEFolder', type: 'text', table: false },
+      { name: 'EEDoc', type: 'text', table: false },
+      { name: 'RPPFDoc', type: 'text', table: false },
+      { name: 'EEPoster', type: 'text', table: false }
+    ]
+  },
+  milestoneProgress: {
+    sheet: 'MILESTONE_PROGRESS',
+    internal: true,
+    fields: [
+      { name: 'StudentId', type: 'email', required: true, validator: 'email' },
+      { name: 'milestoneId', type: 'text', required: true },
+      { name: 'completed', type: 'checkbox', required: true },
+      { name: 'completedAt', type: 'datetime', required: true },
+      { name: 'completedBy', type: 'email', required: true, validator: 'email' }
+    ]
+  },
+  auditLogs: {
+    sheet: 'AUDIT_LOGS',
+    internal: true,
+    fields: [
+      { name: 'Timestamp', type: 'datetime', required: true },
+      { name: 'User', type: 'email', required: true, validator: 'email' },
+      { name: 'Action', type: 'text', required: true },
+      { name: 'Payload', type: 'text' }
+    ]
   }
 };
 
-var MILESTONE_PROGRESS = {
-  sheet: 'MILESTONE_PROGRESS',
-  headers: ['StudentId', 'milestoneId', 'completed', 'completedAt', 'completedBy']
-};
-var MILESTONE_TYPES = ['form', 'upload', 'doc', 'approval', 'meeting'];
-var MILESTONE_OWNERS = ['student', 'supervisor', 'lead', 'coordinator'];
+function getTableConfig_(entity) {
+  var config = APP_TABLES[entity];
+  if (!config) throw new Error('Unknown Admin section.');
+  return config;
+}
 
-var COHORT_MEMBER_HEADERS = [
-  'StudentId', 'Student ID', 'Display Name', 'Reg', 'Surname', 'First Name', 'Preferred Name',
-  'Chinese Name', 'Family Email', 'Date of Birth', 'House', 'Gender', 'supervisorId', 'subject',
-  'latestMilestone', 'EEFolder', 'EEDoc', 'RPPFDoc', 'EEPoster'
-];
+function getTableFields_(entity) {
+  return getTableConfig_(entity).fields;
+}
+
+function getTableHeaders_(entity) {
+  return getTableFields_(entity).map(function(field) { return field.name; });
+}
+
+function getTableKey_(entity) {
+  var keyFields = getTableFields_(entity).filter(function(field) { return field.key; });
+  if (keyFields.length !== 1) throw new Error('Schema for ' + entity + ' must define exactly one key field.');
+  return keyFields[0].name;
+}
+
+function getRequiredFields_(entity) {
+  return getTableFields_(entity).filter(function(field) { return field.required; }).map(function(field) { return field.name; });
+}
+
+function getFieldConfig_(entity, fieldName) {
+  return getTableFields_(entity).filter(function(field) { return field.name === fieldName; })[0] || null;
+}
+
+function getAdminSchema_(entity) {
+  var config = getTableConfig_(entity);
+  var fields = config.fields.map(function(field) {
+    var result = {};
+    Object.keys(field).forEach(function(key) {
+      if (key !== 'validator' && key !== 'generated' && key !== 'serverDerived') result[key] = field[key];
+    });
+    if (field.options) {
+      result.options = field.options.map(function(option) { return { value: option, label: option }; });
+    }
+    if (field.optionsFrom === 'phases') {
+      var phaseSheet = getSpreadsheet_().getSheetByName(APP_TABLES.phases.sheet);
+      result.options = phaseSheet && phaseSheet.getLastRow() > 1
+        ? readRecords_(phaseSheet).filter(function(phase) { return field.name === 'prerequisitePhaseId' || toBoolean_(phase.active); }).map(function(phase) {
+            return { value: text_(phase[field.optionValue]), label: text_(phase.phaseId) + ' · ' + text_(phase[field.optionLabel]) };
+          })
+        : [];
+    }
+    return result;
+  });
+  return { entity: entity, sheet: config.sheet || config.sheetPattern, fields: fields };
+}
+
+function getTableSchemaReport() {
+  var spreadsheet = getSpreadsheet_();
+  var sheets = [];
+  Object.keys(APP_TABLES).forEach(function(entity) {
+    var config = APP_TABLES[entity];
+    if (config.sheetPattern) {
+      var cohortSheets = spreadsheet.getSheets().filter(function(sheet) { return /^COHORT:\s*\d{4}$/i.test(sheet.getName()); });
+      if (!cohortSheets.length) {
+        sheets.push({ sheet: config.sheetPattern, status: 'ISSUE', issues: ['No cohort sheets were found.'] });
+      } else {
+        cohortSheets.forEach(function(sheet) { sheets.push(inspectSheetSchema_(sheet, entity)); });
+      }
+      return;
+    }
+    var sheet = spreadsheet.getSheetByName(config.sheet);
+    if (!sheet) {
+      sheets.push({ sheet: config.sheet, status: 'ISSUE', issues: ['Sheet is missing.'] });
+      return;
+    }
+    sheets.push(inspectSheetSchema_(sheet, entity));
+  });
+  var issueCount = sheets.reduce(function(count, item) { return count + item.issues.length; }, 0);
+  return { checkedAt: new Date().toISOString(), passCount: sheets.filter(function(item) { return item.status === 'PASS'; }).length, issueCount: issueCount, sheets: sheets };
+}
+
+function inspectSheetSchema_(sheet, entity) {
+  var expected = getTableHeaders_(entity);
+  var actual = getHeaders_(sheet);
+  var issues = [];
+  var duplicates = actual.filter(function(header, index) { return header && actual.indexOf(header) !== index; });
+  var missing = expected.filter(function(header) { return actual.indexOf(header) < 0; });
+  var unexpected = actual.filter(function(header) { return header && expected.indexOf(header) < 0; });
+  if (duplicates.length) issues.push('Duplicate fields: ' + unique_(duplicates).join(', '));
+  if (missing.length) issues.push('Missing fields: ' + missing.join(', '));
+  if (unexpected.length) issues.push('Unexpected fields: ' + unique_(unexpected).join(', '));
+  var shared = actual.filter(function(header) { return expected.indexOf(header) >= 0; });
+  var expectedShared = expected.filter(function(header) { return actual.indexOf(header) >= 0; });
+  if (!issues.length && shared.join('\u0000') !== expectedShared.join('\u0000')) {
+    issues.push('Field order differs from the expected order (named-column reads remain safe).');
+  }
+  return { sheet: sheet.getName(), status: issues.length ? 'ISSUE' : 'PASS', expected: expected, actual: actual, issues: issues };
+}
+
+function assertSheetSchema_(sheet, entity) {
+  var report = inspectSheetSchema_(sheet, entity);
+  if (report.issues.length) throw new Error(report.sheet + ' schema mismatch: ' + report.issues.join(' '));
+  return report;
+}
+
+function unique_(values) {
+  return values.filter(function(value, index) { return values.indexOf(value) === index; });
+}
+
+function validateRecordFields_(entity, values, originalKey) {
+  var fields = getTableFields_(entity);
+  fields.forEach(function(field) {
+    var value = values[field.name];
+    if (field.required && !text_(value)) throw new Error(field.name + ' is required.');
+    if (field.key && originalKey && text_(value) !== text_(originalKey)) throw new Error(field.name + ' cannot be changed.');
+    if (value === '' || value === undefined || value === null) return;
+    if (field.options && field.options.length && !field.options.some(function(option) { return String(option).toLowerCase() === String(value).toLowerCase(); })) {
+      throw new Error(field.errorMessage || (field.name + ' must be one of: ' + field.options.join(', ') + '.'));
+    }
+    if (field.type === 'number' && !isFinite(Number(value))) throw new Error(field.name + ' must be a number.');
+    if (field.type === 'date' && isNaN(Date.parse(value))) throw new Error(field.name + ' must be a valid date.');
+    if (field.type === 'url' && !/^https:\/\/\S+$/i.test(text_(value))) throw new Error(field.name + ' must be an HTTPS URL.');
+    if (field.type === 'checkbox' && typeof value !== 'boolean' && ['true', 'false', '1', '0', 'yes', 'no'].indexOf(String(value).toLowerCase()) < 0) {
+      throw new Error(field.name + ' must be checked or unchecked.');
+    }
+    if (field.validator === 'email') validateEmail_(value, field.name);
+    if (field.validator === 'studentId' && !/^\d{8}$/.test(text_(value))) throw new Error(field.name + ' must be an 8-digit number.');
+    if (field.validator === 'phaseId' && !/^[a-z][a-z0-9_-]*$/i.test(text_(value))) {
+      throw new Error(field.name + ' must start with a letter and contain only letters, numbers, hyphens, or underscores.');
+    }
+  });
+}
+
+var AUDIT_LOG_HEADERS = getTableHeaders_('auditLogs');
+var MILESTONE_PROGRESS = {
+  sheet: APP_TABLES.milestoneProgress.sheet,
+  headers: getTableHeaders_('milestoneProgress')
+};
 
 function getAppBootstrap() {
   try {
@@ -92,8 +302,9 @@ function getCohortStudents(cohortId) {
   if (data.length < 2) return [];
 
   var headers = data[0].map(headerName_);
-  var emailIndex = cohortLoginKeyIndex_(headers);
-  if (emailIndex < 0) throw new Error('The cohort sheet needs exactly one StudentId column.');
+    var emailIndexes = findHeaderIndexes_(headers, 'StudentId');
+    if (emailIndexes.length !== 1) throw new Error('The cohort sheet needs exactly one StudentId column.');
+    var emailIndex = emailIndexes[0];
   var idIndexes = findHeaderIndexes_(headers, 'Student ID');
   var displayIndex = findHeaderIndex_(headers, ['Display Name', 'DisplayName']);
   var preferredIndex = findHeaderIndex_(headers, ['Preferred Name']);
@@ -226,33 +437,35 @@ function getAdminRecords(entity) {
   requireAdmin_('LIST_' + String(entity || '').toUpperCase());
   if (entity === 'cohortMembers') throw new Error('Choose a cohort to manage its students.');
   var config = getTableConfig_(entity);
+  if (config.internal) throw new Error('Internal sheets cannot be managed through Admin.');
+  var schema = getAdminSchema_(entity);
+  var headers = getTableHeaders_(entity);
   if (entity === 'cohorts') return {
-    headers: config.headers,
+    schema: schema,
+    headers: headers,
     records: listCohorts_(true).map(function(item) {
       return { 'Cohort': item.id, 'SheetName': item.sheetName, 'Status': item.status || 'Active' };
     })
   };
   var sheet = getSpreadsheet_().getSheetByName(config.sheet);
-  if (entity === 'studentUsers') {
-    var userRecords = sheet ? readRecords_(sheet) : [];
-    return {
-      headers: config.headers,
-      records: userRecords.map(function(record) {
-        var projected = {};
-        config.headers.forEach(function(header) { projected[header] = record[header] === undefined ? '' : record[header]; });
-        return projected;
-      })
-    };
-  }
+  if (sheet) assertSheetSchema_(sheet, entity);
   return {
-    headers: sheet ? getHeaders_(sheet) : config.headers,
+    schema: schema,
+    headers: headers,
     records: sheet ? readRecords_(sheet) : []
   };
+}
+
+function getAdminSchema(entity) {
+  requireAdmin_('GET_SCHEMA_' + String(entity || '').toUpperCase());
+  if (getTableConfig_(entity).internal) throw new Error('Internal sheets do not have Admin forms.');
+  return getAdminSchema_(entity);
 }
 
 function getCohortMembersForAdmin(cohortId) {
   requireAdmin_('LIST_COHORT_MEMBERS');
   var sheet = getCohortSheet_(cohortId);
+  assertSheetSchema_(sheet, 'cohortMembers');
   var data = sheet.getDataRange().getValues();
   var headers = data.length ? data[0].map(headerName_) : getHeaders_(sheet);
   var idIndexes = findHeaderIndexes_(headers, 'Student ID');
@@ -269,32 +482,24 @@ function getCohortMembersForAdmin(cohortId) {
     record.hasStudentIdConflict = ids.some(function(value) { return value !== ids[0]; });
     return record;
   });
-  return { headers: headers, records: records };
+  return { schema: getAdminSchema_('cohortMembers'), headers: headers, records: records };
 }
 
 function saveAdminRecord(entity, record, originalKey) {
   var user = requireAdmin_('SAVE_' + String(entity || '').toUpperCase());
   var config = getTableConfig_(entity);
+  if (config.internal) throw new Error('Internal sheets cannot be managed through Admin.');
   if (entity === 'cohorts') return saveCohort_(user, record || {}, originalKey);
   if (entity === 'cohortMembers') throw new Error('Use the cohort student editor.');
 
   var values = record || {};
-  config.required.forEach(function(field) {
-    if (!text_(values[field])) throw new Error(field + ' is required.');
-  });
+  validateRecordFields_(entity, values, originalKey);
   if (entity === 'studentUsers') {
-    validateEmail_(values.StudentId, 'StudentId');
-    if (!/^\d{8}$/.test(text_(values['Student ID']))) throw new Error('Student ID must be an 8-digit number.');
     values.studentEmail = normalizeEmail_(values.StudentId);
   }
   if (entity === 'milestones') {
-    if (MILESTONE_TYPES.indexOf(text_(values.type).toLowerCase()) < 0) throw new Error('Choose a supported milestone type.');
-    if (MILESTONE_OWNERS.indexOf(text_(values.mOwner).toLowerCase()) < 0) throw new Error('Owner must be student, supervisor, lead, or coordinator.');
     values.type = text_(values.type).toLowerCase();
     values.mOwner = text_(values.mOwner).toLowerCase();
-    if (values.offsetDays !== '' && values.offsetDays !== undefined && !isFinite(Number(values.offsetDays))) {
-      throw new Error('offsetDays must be a number.');
-    }
     var milestonePhase = findRecordByValue_(getSpreadsheet_().getSheetByName('PHASES'), 'phaseId', values.phase);
     if (!milestonePhase || !toBoolean_(milestonePhase.active)) throw new Error('Choose an active phase before saving this milestone.');
   }
@@ -302,8 +507,6 @@ function saveAdminRecord(entity, record, originalKey) {
     values.phaseId = text_(values.phaseId).toLowerCase();
     values.sequence = Number(values.sequence);
     values.active = values.active === undefined || values.active === '' ? true : toBoolean_(values.active);
-    if (!/^[a-z][a-z0-9_-]*$/.test(values.phaseId)) throw new Error('phaseId must start with a letter and contain only letters, numbers, hyphens, or underscores.');
-    if (!isFinite(values.sequence)) throw new Error('sequence must be a number.');
     validatePhasePrerequisites_(values, originalKey);
   }
   if (entity === 'staffUsers') {
@@ -313,8 +516,9 @@ function saveAdminRecord(entity, record, originalKey) {
     }
   }
 
-  var key = config.key;
-  if (!text_(values[key]) && !originalKey && /ID$/.test(key)) values[key] = Utilities.getUuid();
+  var key = getTableKey_(entity);
+  var keyField = getFieldConfig_(entity, key);
+  if (!text_(values[key]) && !originalKey && keyField.generated) values[key] = Utilities.getUuid();
   if (!text_(values[key])) throw new Error(key + ' is required.');
   if (originalKey && text_(values[key]) !== text_(originalKey)) throw new Error(key + ' cannot be changed.');
   if (entity === 'staffUsers') values.isStaff = true;
@@ -325,7 +529,7 @@ function saveAdminRecord(entity, record, originalKey) {
   }, function() {
     var sheet = getOrCreateManagedSheet_(config);
     var headers = getHeaders_(sheet);
-    assertUniqueHeaders_(headers, config.sheet);
+    assertSheetSchema_(sheet, entity);
     var keyIndex = headers.indexOf(key);
     if (keyIndex < 0) throw new Error('Missing key column ' + key + ' in ' + config.sheet + '.');
 
@@ -353,6 +557,7 @@ function saveAdminRecord(entity, record, originalKey) {
 function deleteAdminRecord(entity, keyValue) {
   var user = requireAdmin_('DELETE_' + String(entity || '').toUpperCase());
   var config = getTableConfig_(entity);
+  if (config.internal) throw new Error('Internal sheets cannot be managed through Admin.');
   if (entity === 'cohortMembers') throw new Error('Use the cohort student editor.');
   if (!text_(keyValue)) throw new Error('A record key is required.');
 
@@ -363,10 +568,13 @@ function deleteAdminRecord(entity, keyValue) {
   }, function() {
     var sheet = getSpreadsheet_().getSheetByName(config.sheet);
     if (entity === 'cohorts') {
-      var rowNumber = sheet ? findRowNumber_(sheet, config.key, keyValue) : -1;
+      if (!sheet) sheet = getOrCreateManagedSheet_(config);
+      assertSheetSchema_(sheet, entity);
+      var rowNumber = findRowNumber_(sheet, getTableKey_(entity), keyValue);
       if (rowNumber < 0) {
-        sheet = getOrCreateManagedSheet_(config);
-        var row = [text_(keyValue), cohortSheetName_(keyValue), 'Inactive'];
+        var inactiveRecord = { Cohort: text_(keyValue), SheetName: cohortSheetName_(keyValue), Status: 'Inactive' };
+        var headers = getHeaders_(sheet);
+        var row = headers.map(function(header) { return inactiveRecord[header] || ''; });
         sheet.getRange(sheet.getLastRow() + 1, 1, 1, row.length).setValues([row]);
       } else {
         var headers = getHeaders_(sheet);
@@ -377,7 +585,8 @@ function deleteAdminRecord(entity, keyValue) {
       return { archived: true };
     }
     if (!sheet) throw new Error('No records exist in ' + config.sheet + '.');
-    var targetRow = findRowNumber_(sheet, config.key, keyValue);
+    assertSheetSchema_(sheet, entity);
+    var targetRow = findRowNumber_(sheet, getTableKey_(entity), keyValue);
     if (targetRow < 0) throw new Error('Record not found.');
     if (entity === 'phases') {
       var milestoneSheet = getSpreadsheet_().getSheetByName(APP_TABLES.milestones.sheet);
@@ -402,12 +611,7 @@ function deleteAdminRecord(entity, keyValue) {
 function saveCohortMember(cohortId, record, originalStudentId) {
   var user = requireAdmin_('SAVE_COHORT_MEMBER');
   var values = record || {};
-  validateEmail_(values.StudentId, 'StudentId');
-  if (!text_(values['Student ID'])) throw new Error('Student ID is required.');
-  if (!/^\d{8}$/.test(text_(values['Student ID']))) throw new Error('Student ID must be an 8-digit number.');
-  if (originalStudentId && normalizeEmail_(values.StudentId) !== normalizeEmail_(originalStudentId)) {
-    throw new Error('StudentId cannot be changed here.');
-  }
+  validateRecordFields_('cohortMembers', values, originalStudentId);
 
   return runAuditedMutation_(user, originalStudentId ? 'UPDATE_COHORT_MEMBER' : 'CREATE_COHORT_MEMBER', {
     cohort: text_(cohortId),
@@ -415,6 +619,7 @@ function saveCohortMember(cohortId, record, originalStudentId) {
   }, function() {
     var sheet = getCohortSheet_(cohortId);
     var headers = getHeaders_(sheet);
+    assertSheetSchema_(sheet, 'cohortMembers');
     var studentIdIndexes = findHeaderIndexes_(headers, 'StudentId');
     if (studentIdIndexes.length !== 1) throw new Error('The cohort sheet must have exactly one StudentId column.');
     var idIndexes = findHeaderIndexes_(headers, 'Student ID');
@@ -458,6 +663,7 @@ function importCohortMembers(cohortId, records) {
   }, function() {
     var sheet = getCohortSheet_(cohortId);
     var headers = getHeaders_(sheet);
+    assertSheetSchema_(sheet, 'cohortMembers');
     var studentIdIndexes = findHeaderIndexes_(headers, 'StudentId');
     var institutionalIdIndexes = findHeaderIndexes_(headers, 'Student ID');
     var displayIndex = findSingleHeaderIndex_(headers, ['Display Name', 'DisplayName']);
@@ -478,11 +684,9 @@ function importCohortMembers(cohortId, records) {
     var newRows = records.map(function(record, index) {
       var values = record || {};
       var studentId = normalizeEmail_(values.StudentId);
-      validateEmail_(studentId, 'Row ' + (index + 2) + ' StudentId');
+      validateRecordFields_('cohortMembers', values);
       var institutionalId = text_(values['Student ID']);
-      if (!/^\d{8}$/.test(institutionalId)) throw new Error('Row ' + (index + 2) + ' Student ID must be an 8-digit number.');
-      var displayName = text_(values['Display Name'] || values.DisplayName);
-      if (!displayName) throw new Error('Row ' + (index + 2) + ' Display Name is required.');
+      var displayName = text_(values['Display Name']);
       if (seen[studentId]) throw new Error('StudentId appears more than once in the import: ' + studentId);
       if (existing[studentId]) throw new Error('StudentId is already in this cohort: ' + studentId);
       seen[studentId] = true;
@@ -525,6 +729,7 @@ function createStudentUsersFromCohort(cohortId, selectedStudentIds) {
     var config = APP_TABLES.studentUsers;
     var userSheet = getOrCreateManagedSheet_(config);
     var userHeaders = getHeaders_(userSheet);
+    assertSheetSchema_(userSheet, 'studentUsers');
     assertUniqueHeaders_(userHeaders, config.sheet);
     if (userHeaders.indexOf('StudentId') < 0) throw new Error('USERS-STUDENTS needs a StudentId column.');
 
@@ -571,6 +776,7 @@ function deleteCohortMember(cohortId, studentId) {
     studentId: normalizeEmail_(studentId)
   }, function() {
     var sheet = getCohortSheet_(cohortId);
+    assertSheetSchema_(sheet, 'cohortMembers');
     var rowNumber = findRowNumber_(sheet, 'StudentId', normalizeEmail_(studentId));
     if (rowNumber < 0) throw new Error('Cohort student not found.');
     sheet.deleteRow(rowNumber);
@@ -646,6 +852,9 @@ function listCohorts_(includeInactive) {
   var spreadsheet = getSpreadsheet_();
   var registry = spreadsheet.getSheetByName('COHORTS');
   var entries = {};
+  if (registry) {
+    assertSheetSchema_(registry, 'cohorts');
+  }
   if (registry && registry.getLastRow() > 1) {
     readRecords_(registry).forEach(function(record) {
       var id = text_(record.Cohort);
@@ -680,16 +889,19 @@ function getCohortSheet_(cohortId) {
 
 function saveCohort_(user, values, originalKey) {
   var cohortId = text_(values.Cohort);
+  validateRecordFields_('cohorts', values, originalKey);
   if (!/^\d{4}$/.test(cohortId)) throw new Error('Cohort must be a four-digit year.');
-  if (originalKey && originalKey !== cohortId) throw new Error('Cohort identifiers cannot be changed.');
   var sheetName = cohortSheetName_(cohortId);
   return runAuditedMutation_(user, originalKey ? 'UPDATE_COHORT' : 'CREATE_COHORT', { cohort: cohortId }, function() {
     var config = APP_TABLES.cohorts;
     var sheet = getOrCreateManagedSheet_(config);
-    var rowNumber = findRowNumber_(sheet, 'Cohort', cohortId);
+    assertSheetSchema_(sheet, 'cohorts');
+    var headers = getHeaders_(sheet);
+    var rowNumber = findRowNumber_(sheet, getTableKey_('cohorts'), cohortId);
     if (!originalKey && rowNumber > 0) throw new Error('This cohort already exists.');
     ensureCohortSheet_(cohortId);
-    var row = [cohortId, sheetName, text_(values.Status) || 'Active'];
+    var rowValues = { Cohort: cohortId, SheetName: sheetName, Status: text_(values.Status) || 'Active' };
+    var row = headers.map(function(header) { return rowValues[header] || ''; });
     if (rowNumber > 0) sheet.getRange(rowNumber, 1, 1, row.length).setValues([row]);
     else sheet.getRange(sheet.getLastRow() + 1, 1, 1, row.length).setValues([row]);
     return { key: cohortId };
@@ -700,7 +912,8 @@ function ensureCohortSheet_(cohortId) {
   var spreadsheet = getSpreadsheet_();
   var sheetName = cohortSheetName_(cohortId);
   if (spreadsheet.getSheetByName(sheetName)) return;
-  spreadsheet.insertSheet(sheetName).getRange(1, 1, 1, COHORT_MEMBER_HEADERS.length).setValues([COHORT_MEMBER_HEADERS]);
+  var headers = getTableHeaders_('cohortMembers');
+  spreadsheet.insertSheet(sheetName).getRange(1, 1, 1, headers.length).setValues([headers]);
 }
 
 function cohortSheetName_(cohortId) {
@@ -722,7 +935,8 @@ function getOrCreateManagedSheet_(config) {
   var sheet = spreadsheet.getSheetByName(config.sheet);
   if (sheet) return sheet;
   sheet = spreadsheet.insertSheet(config.sheet);
-  sheet.getRange(1, 1, 1, config.headers.length).setValues([config.headers]);
+  var headers = config.fields.map(function(field) { return field.name; });
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
   sheet.setFrozenRows(1);
   return sheet;
 }
