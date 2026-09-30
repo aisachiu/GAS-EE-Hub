@@ -5,87 +5,91 @@
     <meta charset="utf-8">
     <style>
       :root {
-        --ink: #17312d;
-        --muted: #647570;
-        --paper: #f3f6f4;
+        --ink: #004C80;
+        --muted: #536273;
+        --paper: #FFFFFF;
         --surface: #ffffff;
-        --line: #d9e2dc;
-        --green: #14745f;
-        --green-soft: #e4f1eb;
-        --coral: #bd533e;
-        --gold: #efc35b;
-        --shadow: 0 12px 32px rgba(22, 48, 43, .08);
+        --line: #E9ECEF;
+        --green: #20C997;
+        --green-soft: #E8F8F3;
+        --coral: #88002B;
+        --gold: #FF5A36;
+        --shadow: 0 4px 14px rgba(0, 76, 128, .08);
       }
       * { box-sizing: border-box; }
-      body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.5 "Aptos", "Segoe UI", sans-serif; }
+      body { margin: 0; background: var(--paper); color: #263746; font: 14px/1.4 Helvetica, "Heiti TC", Arial, sans-serif; }
       button, input, select, textarea { font: inherit; }
       button { cursor: pointer; }
-      .topbar { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 16px clamp(18px, 4vw, 56px); background: var(--ink); color: white; }
-      .brand { display: flex; align-items: center; gap: 12px; font-weight: 750; }
-      .brand-mark { width: 30px; height: 30px; display: grid; place-items: center; color: var(--ink); background: var(--gold); font: 700 16px Georgia, serif; }
-      .account { color: #d6e4dd; text-align: right; font-size: 13px; }
-      .shell { max-width: 1440px; margin: 0 auto; padding: 26px clamp(16px, 4vw, 56px) 56px; }
-      .nav { display: flex; align-items: center; gap: 8px; padding-bottom: 20px; border-bottom: 1px solid var(--line); }
-      .nav button, .subnav button { border: 0; border-radius: 4px; padding: 9px 14px; color: var(--muted); background: transparent; }
+      .topbar { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 8px clamp(12px, 2.5vw, 32px); background: var(--ink); color: white; }
+      .brand { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; letter-spacing: .04em; }
+      .brand-mark { width: 22px; height: 22px; display: grid; place-items: center; color: var(--ink); background: white; font: 700 11px Helvetica, Arial, sans-serif; }
+      .account { color: #e8f0f5; text-align: right; font-size: 11px; line-height: 1.25; }
+      .request-indicator { display: inline-flex; align-items: center; gap: 6px; min-height: 16px; color: #e8f0f5; font-size: 10px; opacity: 0; transition: opacity .18s ease; }
+      .request-indicator.active { opacity: 1; }
+      .request-indicator::before { width: 8px; height: 8px; border: 2px solid rgba(232, 240, 245, .35); border-top-color: var(--green); border-radius: 50%; content: ''; animation: request-spin .8s linear infinite; }
+      @keyframes request-spin { to { transform: rotate(360deg); } }
+      .shell { max-width: 1440px; margin: 0 auto; padding: 10px clamp(12px, 2.5vw, 32px) 32px; }
+      .nav { display: flex; align-items: center; gap: 2px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+      .nav button, .subnav button { border: 0; border-radius: 3px; padding: 6px 10px; color: var(--muted); background: transparent; font-size: 13px; }
       .nav button[aria-current="page"], .subnav button[aria-current="page"] { color: var(--green); background: var(--green-soft); font-weight: 700; }
-      main { padding-top: 30px; }
+      main { padding-top: 14px; }
       h1, h2, h3, p { margin-top: 0; }
-      h1 { margin-bottom: 8px; font: 500 42px/1.1 Georgia, "Times New Roman", serif; letter-spacing: 0; }
-      h2 { font-size: 22px; line-height: 1.2; }
-      h3 { font-size: 17px; margin-bottom: 4px; }
-      .eyebrow { color: var(--coral); font-size: 11px; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
+      h1 { margin-bottom: 4px; font: 600 28px/1.15 Helvetica, "Heiti TC", Arial, sans-serif; letter-spacing: 0; }
+      h2 { font-size: 18px; line-height: 1.2; }
+      h3 { font-size: 15px; margin-bottom: 3px; }
+      .eyebrow { color: var(--coral); font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
       .lede, .muted { color: var(--muted); }
-      .page-head { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
-      .list { display: grid; gap: 10px; max-width: 860px; }
-      .list-row, .resource-row { display: flex; justify-content: space-between; align-items: center; gap: 18px; padding: 17px 20px; background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--green); }
+      .page-head { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
+      .list { display: grid; gap: 7px; max-width: 860px; }
+      .list-row, .resource-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 11px 14px; background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--green); }
       .list-row button { color: inherit; text-align: left; border: 0; background: none; padding: 0; }
       .list-row strong { display: block; font-size: 16px; }
       .list-row small { color: var(--muted); }
       .resource-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 14px; }
-      .resource { min-width: 0; padding: 20px; background: var(--surface); border: 1px solid var(--line); border-top: 3px solid var(--gold); }
+      .resource { min-width: 0; padding: 14px; background: var(--surface); border: 1px solid var(--line); border-top: 3px solid var(--gold); }
       .resource p { white-space: pre-wrap; color: var(--muted); }
       .resource a { color: var(--green); font-weight: 700; overflow-wrap: anywhere; }
-      .subnav { display: flex; flex-wrap: wrap; gap: 6px; margin: 16px 0 22px; }
-      .toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 18px 0; }
-      .toolbar select, .field input, .field select, .field textarea { width: 100%; min-width: 0; padding: 10px 11px; color: var(--ink); background: white; border: 1px solid #b9c8c0; border-radius: 3px; }
-      .toolbar select { width: auto; min-width: 190px; }
-      .button { min-height: 40px; padding: 9px 14px; border: 1px solid var(--green); border-radius: 3px; color: white; background: var(--green); font-weight: 700; }
-      .button.secondary { color: var(--green); background: white; }
+      .subnav { display: flex; flex-wrap: wrap; gap: 3px; margin: 10px 0 14px; }
+      .toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; margin: 10px 0; }
+      .toolbar select, .field input, .field select, .field textarea { width: 100%; min-width: 0; padding: 7px 9px; color: var(--ink); background: white; border: 1px solid var(--line); border-radius: 3px; }
+      .toolbar select { width: auto; min-width: 170px; }
+      .button { min-height: 32px; padding: 6px 10px; border: 1px solid var(--gold); border-radius: 3px; color: white; background: var(--gold); font-weight: 700; }
+      .button.secondary { border-color: var(--ink); color: var(--ink); background: white; }
       .button.danger { border-color: var(--coral); color: white; background: var(--coral); }
       .button:disabled { opacity: .55; cursor: wait; }
       .table-wrap { overflow: auto; background: var(--surface); border: 1px solid var(--line); }
       table { width: 100%; border-collapse: collapse; font-size: 14px; }
-      th, td { max-width: 300px; padding: 12px 14px; text-align: left; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
-      th { position: sticky; top: 0; color: var(--muted); background: #edf2ef; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
+      th, td { max-width: 300px; padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+      th { position: sticky; top: 0; color: var(--muted); background: var(--line); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
       tr:last-child td { border-bottom: 0; }
       .actions { display: flex; gap: 8px; white-space: nowrap; }
       .link-button { border: 0; padding: 4px; color: var(--green); background: transparent; font-weight: 700; }
       .link-button:disabled { color: #84918c; cursor: not-allowed; }
-      .editor { margin-top: 22px; padding: 22px; background: #e9efeb; border-top: 3px solid var(--green); }
-      .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+      .editor { margin-top: 14px; padding: 14px; background: #f8fafb; border-top: 3px solid var(--green); }
+      .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
       .field { min-width: 0; display: grid; gap: 5px; }
       .field label { color: var(--muted); font-size: 12px; font-weight: 700; }
       .field.wide { grid-column: 1 / -1; }
-      .field textarea { min-height: 100px; resize: vertical; }
+      .field textarea { min-height: 76px; resize: vertical; }
       .field.check { align-content: start; }
       .field.check input { width: 18px; height: 18px; accent-color: var(--green); }
-      .notice { margin: 14px 0; padding: 12px 14px; border-left: 3px solid var(--gold); background: #fff7de; color: #604c16; }
+      .notice { margin: 8px 0; padding: 8px 10px; border-left: 3px solid var(--gold); background: #fff5f1; color: #663020; }
       .error { border-left-color: var(--coral); background: #fff0ec; color: #7c2b1b; }
-      .empty { padding: 30px; text-align: center; color: var(--muted); background: var(--surface); border: 1px dashed #b9c8c0; }
+      .empty { padding: 20px; text-align: center; color: var(--muted); background: var(--surface); border: 1px dashed var(--line); }
       .status { min-height: 24px; color: var(--coral); }
       .back { margin-bottom: 22px; }
-      .student-greeting { padding: clamp(24px, 5vw, 56px); background: var(--surface); border-top: 4px solid var(--gold); box-shadow: var(--shadow); }
+      .student-greeting { padding: 16px 18px; background: var(--surface); border-top: 3px solid var(--gold); box-shadow: var(--shadow); }
       .student-greeting h1 { max-width: 840px; }
-      .journey-layout { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 24px; margin-top: 28px; align-items: start; }
-      .journey-controls { padding: 18px; background: #e9efeb; border-top: 3px solid var(--green); }
+      .journey-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 16px; margin-top: 16px; align-items: start; }
+      .journey-controls { padding: 12px; background: #f8fafb; border-top: 3px solid var(--green); }
       .journey-controls.collapsed { display: none; }
-      .quick-todo { display: flex; gap: 6px; margin: 12px 0 20px; }
-      .quick-todo input { min-width: 0; width: 100%; padding: 9px; border: 1px solid #b9c8c0; border-radius: 3px; }
-      .filter-group { display: grid; gap: 8px; padding: 14px 0; border-top: 1px solid #cbd8d0; }
+      .quick-todo { display: flex; gap: 5px; margin: 8px 0 14px; }
+      .quick-todo input { min-width: 0; width: 100%; padding: 7px; border: 1px solid var(--line); border-radius: 3px; }
+      .filter-group { display: grid; gap: 6px; padding: 10px 0; border-top: 1px solid var(--line); }
       .filter-group label { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
       .filter-group input { accent-color: var(--green); }
-      .timeline { display: grid; gap: 12px; min-width: 0; }
-      .task-card { position: relative; display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 14px; padding: 17px 18px; background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--green); }
+      .timeline { display: grid; gap: 8px; min-width: 0; }
+      .task-card { position: relative; display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 10px; padding: 11px 13px; background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--green); }
       .task-card.system-task { border-left-color: var(--coral); }
       .task-card.student-task { border-left-color: var(--gold); }
       .task-card.completed { opacity: .72; }
@@ -94,37 +98,42 @@
       .task-card input[type="checkbox"] { width: 19px; height: 19px; margin: 3px 0 0; accent-color: var(--green); }
       .task-card h3 { margin: 0 0 5px; }
       .task-card p { margin: 0; color: var(--muted); white-space: pre-wrap; }
-      .task-card select, .task-card input[type="date"] { padding: 5px 7px; border: 1px solid var(--line); color: var(--ink); background: white; }
+      .task-card select, .task-card input[type="date"] { padding: 4px 6px; border: 1px solid var(--line); color: var(--ink); background: white; font-size: 12px; }
       .task-meta { display: grid; justify-items: end; gap: 7px; color: var(--muted); font-size: 12px; }
       .task-kind { color: var(--coral); font-size: 10px; font-weight: 750; text-transform: uppercase; }
-      .task-card.student-task .task-kind { color: #8a6713; }
+      .task-card.student-task .task-kind { color: var(--gold); }
       .todo-editor { display: grid; gap: 7px; margin-top: 9px; }
-      .todo-editor input, .todo-editor textarea { width: 100%; padding: 7px; border: 1px solid var(--line); }
-      .timeline-toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-      .timeline-toolbar select { padding: 8px 10px; border: 1px solid var(--line); background: white; }
+      .todo-editor input, .todo-editor textarea { width: 100%; padding: 6px; border: 1px solid var(--line); }
+      .timeline-toolbar { display: flex; gap: 7px; align-items: center; flex-wrap: wrap; }
+      .timeline-toolbar select { padding: 6px 8px; border: 1px solid var(--line); background: white; }
       .drop-hint { display: none; color: var(--green); font-size: 11px; }
       .task-card.drag-over .drop-hint { display: block; }
-      .template-board { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 16px; align-items: start; }
-      .template-phase { min-width: 0; padding: 18px; background: var(--surface); border: 1px solid var(--line); border-top: 3px solid var(--green); }
-      .template-phase header p { margin-bottom: 14px; }
+      .template-board { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 10px; align-items: start; }
+      .template-phase { min-width: 0; padding: 12px; background: var(--surface); border: 1px solid var(--line); border-top: 3px solid var(--green); }
+      .template-phase header p { margin-bottom: 9px; }
       .template-phase.drag-over { border-color: var(--coral); background: #fff8f5; }
-      .template-list { display: grid; gap: 8px; }
-      .template-card { display: grid; gap: 6px; min-width: 0; padding: 12px; background: #f7faf8; border: 1px solid var(--line); cursor: grab; overflow-wrap: anywhere; }
+      .template-list { display: grid; gap: 5px; }
+      .template-card { display: grid; gap: 4px; min-width: 0; padding: 8px 10px; background: #f8fafb; border: 1px solid var(--line); cursor: grab; overflow-wrap: anywhere; font-size: 13px; }
+      .sync-pending { border-color: var(--coral) !important; box-shadow: 0 0 0 2px rgba(189, 83, 62, .2); }
+      .sync-confirmed { animation: sync-confirmed .85s ease both; }
+      .sync-rejected { animation: sync-rejected .85s ease both; }
+      @keyframes sync-confirmed { 0%, 100% { box-shadow: 0 0 0 0 rgba(20, 116, 95, 0); } 35% { box-shadow: 0 0 0 4px rgba(20, 116, 95, .45); } }
+      @keyframes sync-rejected { 0%, 100% { box-shadow: 0 0 0 0 rgba(189, 83, 62, 0); } 35% { box-shadow: 0 0 0 4px rgba(189, 83, 62, .5); } }
       .template-card small { color: var(--muted); }
       .template-card:active { cursor: grabbing; }
       #assignment-roster input[type="date"] { min-width: 140px; padding: 7px; border: 1px solid var(--line); background: white; }
       #assignment-roster td:first-child { width: 56px; }
       #assignment-roster input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--green); }
-      .pathway { display: grid; gap: 18px; max-width: 980px; margin-top: 34px; }
+      .pathway { display: grid; gap: 12px; max-width: 980px; margin-top: 18px; }
       .pathway-phase { background: var(--surface); border: 1px solid var(--line); border-top: 3px solid var(--green); }
-      .pathway-phase.locked { border-top-color: #aab7b0; }
-      .phase-heading { display: flex; justify-content: space-between; gap: 18px; padding: 20px 22px 14px; }
-      .phase-heading h2 { margin-bottom: 4px; font: 500 25px/1.2 Georgia, "Times New Roman", serif; }
+      .pathway-phase.locked { border-top-color: var(--line); }
+      .phase-heading { display: flex; justify-content: space-between; gap: 14px; padding: 13px 15px 9px; }
+      .phase-heading h2 { margin-bottom: 3px; font: 600 18px/1.2 Helvetica, "Heiti TC", Arial, sans-serif; }
       .phase-status { flex: none; align-self: start; padding: 4px 9px; color: var(--green); background: var(--green-soft); font-size: 12px; font-weight: 700; }
-      .locked .phase-status { color: var(--muted); background: #edf0ee; }
-      .phase-description { margin: 0 22px 14px; color: var(--muted); }
+      .locked .phase-status { color: var(--muted); background: var(--line); }
+      .phase-description { margin: 0 15px 9px; color: var(--muted); }
       .milestone-list { margin: 0; padding: 0; list-style: none; }
-      .milestone-item { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: start; gap: 12px; padding: 15px 22px; border-top: 1px solid var(--line); }
+      .milestone-item { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: start; gap: 10px; padding: 10px 15px; border-top: 1px solid var(--line); }
       .milestone-item input { width: 19px; height: 19px; margin: 3px 0 0; accent-color: var(--green); }
       .milestone-item h3 { margin: 0 0 4px; }
       .milestone-item p { margin: 0; color: var(--muted); white-space: pre-wrap; }
@@ -141,7 +150,7 @@
         .field.wide { grid-column: auto; }
         .list-row { align-items: flex-start; }
         .account { max-width: 48%; overflow-wrap: anywhere; }
-        h1 { font-size: 34px; }
+        h1 { font-size: 25px; }
         .template-phase { padding: 14px; }
         #assignment-roster td, #assignment-roster th { padding: 9px 8px; }
         #assignment-roster input[type="date"] { min-width: 128px; }
@@ -172,7 +181,9 @@
         assignmentStudentIds: [],
         importRecords: null,
         journeyFilters: { phaseId: 'all', showSystem: true, showStudent: true },
-        journeyControlsOpen: true
+        journeyControlsOpen: true,
+        requests: { active: 0, nextId: 0 },
+        mutationQueues: {}
       };
 
       document.addEventListener('DOMContentLoaded', start);
@@ -193,16 +204,83 @@
 
       function callServer(method) {
         const args = Array.prototype.slice.call(arguments, 1);
+        beginRequest(method);
         return new Promise(function(resolve, reject) {
           if (!window.google || !google.script || !google.script.run) {
+            endRequest(method);
             reject(new Error('Open this app from its Google Apps Script deployment.'));
             return;
           }
-          const runner = google.script.run.withSuccessHandler(resolve).withFailureHandler(function(error) {
+          const runner = google.script.run.withSuccessHandler(function(result) {
+            endRequest(method);
+            resolve(result);
+          }).withFailureHandler(function(error) {
+            endRequest(method);
             reject(new Error(error && error.message ? error.message : String(error)));
           });
           runner[method].apply(runner, args);
         });
+      }
+
+      function runMutation(method, args, options) {
+        const config = options || {};
+        const queueKey = config.key || method;
+        const prior = state.mutationQueues[queueKey] || Promise.resolve();
+        const operation = prior.catch(function() {}).then(function() {
+          const operationId = ++state.requests.nextId;
+          if (config.start) config.start(operationId);
+          return callServer.apply(null, [method].concat(args || [])).then(function(result) {
+            if (config.confirm) config.confirm(result, operationId);
+            return result;
+          }).catch(function(error) {
+            if (config.reject) {
+              config.reject(error, operationId);
+              return { rejected: true, error: error };
+            }
+            throw error;
+          });
+        });
+        state.mutationQueues[queueKey] = operation.catch(function() {});
+        return operation;
+      }
+
+      function beginRequest(label) {
+        state.requests.active += 1;
+        const indicator = document.getElementById('request-indicator');
+        if (indicator) {
+          indicator.textContent = label ? 'Saving ' + humanizeRequestLabel(label) + '...' : 'Working...';
+          indicator.classList.add('active');
+          indicator.setAttribute('aria-busy', 'true');
+        }
+      }
+
+      function endRequest() {
+        state.requests.active = Math.max(0, state.requests.active - 1);
+        const indicator = document.getElementById('request-indicator');
+        if (indicator && state.requests.active === 0) {
+          indicator.textContent = '';
+          indicator.classList.remove('active');
+          indicator.setAttribute('aria-busy', 'false');
+        }
+      }
+
+      function humanizeRequestLabel(label) {
+        return String(label).replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase();
+      }
+
+      function markSync(element, status) {
+        if (!element) return;
+        element.classList.remove('sync-pending', 'sync-confirmed', 'sync-rejected');
+        if (status === 'pending') {
+          element.classList.add('sync-pending');
+          element.setAttribute('aria-busy', 'true');
+          return;
+        }
+        element.setAttribute('aria-busy', 'false');
+        if (status === 'confirmed' || status === 'rejected') {
+          element.classList.add('sync-' + status);
+          window.setTimeout(function() { element.classList.remove('sync-' + status); }, 900);
+        }
       }
 
       function renderShell() {
@@ -213,12 +291,13 @@
         document.getElementById('app').innerHTML = `
           <header class="topbar">
             <div class="brand"><span class="brand-mark">EE</span><span>VSA EE HUB</span></div>
-            <div class="account">${escapeHtml(state.user.displayName)}<br>${escapeHtml(state.user.email)}</div>
+            <div class="account"><span id="request-indicator" class="request-indicator" aria-live="polite" aria-busy="false"></span><br>${escapeHtml(state.user.displayName)}<br>${escapeHtml(state.user.email)}</div>
           </header>
           <div class="shell">
             <nav class="nav" aria-label="Main navigation">${tabs.map(function(tab) {
               return `<button type="button" data-view="${tab[0]}" aria-current="${state.view === tab[0] ? 'page' : 'false'}">${tab[1]}</button>`;
             }).join('')}</nav>
+            <div id="feedback-region" aria-live="polite"></div>
             <main id="main" aria-live="polite"></main>
           </div>`;
         document.querySelectorAll('[data-view]').forEach(function(button) {
@@ -270,14 +349,14 @@
         const systemTask = item.CreatorType === 'System';
         const dateValue = item.DueDate ? String(item.DueDate).slice(0, 10) : '';
         return `<article class="task-card ${systemTask ? 'system-task' : 'student-task'} ${item.Status === 'Completed' ? 'completed' : ''}" data-task-id="${escapeHtml(item.TaskId)}" data-phase-id="${escapeHtml(item.PhaseId || '')}" data-creator-type="${escapeHtml(item.CreatorType)}" draggable="${item.canEdit ? 'true' : 'false'}">
-          <div><select data-task-status="${escapeHtml(item.TaskId)}" aria-label="Task status" ${item.canUpdate ? '' : 'disabled'}>${['Pending', 'In Progress', 'Completed'].map(function(status) {
+          <div><select data-task-status="${escapeHtml(item.TaskId)}" data-current-status="${escapeHtml(item.Status)}" aria-label="Task status" ${item.canUpdate ? '' : 'disabled'}>${['Pending', 'In Progress', 'Completed'].map(function(status) {
             return `<option value="${status}" ${item.Status === status ? 'selected' : ''}>${status}</option>`;
           }).join('')}</select></div>
           <div class="task-content"><span class="task-kind">${systemTask ? 'Official milestone' : 'My To-Do'}</span>
             ${item.canEdit ? `<div class="todo-editor"><input data-todo-title="${escapeHtml(item.TaskId)}" value="${escapeHtml(item.Title)}" maxlength="240" aria-label="To-Do title"><textarea data-todo-description="${escapeHtml(item.TaskId)}" aria-label="To-Do description">${escapeHtml(item.Description || '')}</textarea><button type="button" class="link-button" data-save-todo="${escapeHtml(item.TaskId)}">Save</button></div>` : `<h3>${escapeHtml(item.Title)}</h3><p>${escapeHtml(item.Description || '')}</p>`}
             ${item.canEdit ? '<span class="drop-hint">Drop to place this To-Do beside this date</span>' : ''}
           </div>
-          <div class="task-meta"><strong>${escapeHtml(item.PhaseId || 'To-Do')}</strong>${dateValue ? `<time datetime="${escapeHtml(dateValue)}">${escapeHtml(dateValue)}</time>` : '<span>No due date</span>'}${item.canEdit ? `<input type="date" data-task-date="${escapeHtml(item.TaskId)}" value="${escapeHtml(dateValue)}" aria-label="To-Do due date">` : ''}</div>
+          <div class="task-meta"><strong>${escapeHtml(item.PhaseId || 'To-Do')}</strong>${dateValue ? `<time datetime="${escapeHtml(dateValue)}">${escapeHtml(dateValue)}</time>` : '<span>No due date</span>'}${item.canEdit ? `<input type="date" data-task-date="${escapeHtml(item.TaskId)}" data-current-date="${escapeHtml(dateValue)}" value="${escapeHtml(dateValue)}" aria-label="To-Do due date">` : ''}</div>
         </article>`;
       }
 
@@ -291,7 +370,26 @@
         if (quickTodo) quickTodo.addEventListener('submit', function(event) {
           event.preventDefault();
           const input = document.getElementById('quick-todo-title');
-          callServer('addStudentTodo', input.value).then(renderStudentView).catch(showError);
+          const button = quickTodo.querySelector('button');
+          const title = input.value.trim();
+          if (!title) return;
+          button.disabled = true;
+          runMutation('addStudentTodo', [title], { key: 'student-todo:new' }).then(function(result) {
+            const timeline = document.getElementById('action-timeline');
+            const item = { TaskId: result.TaskId, StudentId: state.user.email, CreatorType: 'Student', TemplateId: '', PhaseId: '', Title: title, Description: '', DueDate: '', Status: 'Pending', canEdit: true, canUpdate: true };
+            if (timeline) {
+              timeline.insertAdjacentHTML('beforeend', renderActionItem(item));
+              const card = timeline.querySelector('[data-task-id="' + cssEscape(result.TaskId) + '"]');
+              bindNewTodoCard(card, email, cohort);
+              markSync(card, 'confirmed');
+            }
+            input.value = '';
+            button.disabled = false;
+            showSuccess('To-Do saved.');
+          }).catch(function(error) {
+            button.disabled = false;
+            showError(error, quickTodo);
+          });
         });
         main.querySelectorAll('[name="phase-filter"]').forEach(function(input) {
           input.addEventListener('change', function() { state.journeyFilters.phaseId = input.value; applyJourneyFilters(); });
@@ -305,19 +403,63 @@
         });
         main.querySelectorAll('[data-task-status]').forEach(function(input) {
           input.addEventListener('change', function() {
-            input.disabled = true;
-            callServer('setActionItemStatus', input.dataset.taskStatus, input.value, email, cohort).then(renderStudentView).catch(showError);
+            const card = input.closest('[data-task-id]');
+            const previousStatus = input.dataset.currentStatus;
+            const nextStatus = input.value;
+            markSync(card, 'pending');
+            runMutation('setActionItemStatus', [input.dataset.taskStatus, nextStatus, email, cohort], {
+              key: 'action-item:' + input.dataset.taskStatus,
+              confirm: function() {
+                input.dataset.currentStatus = nextStatus;
+                card.classList.toggle('completed', nextStatus === 'Completed');
+                markSync(card, 'confirmed');
+              },
+              reject: function(error) {
+                input.value = previousStatus;
+                markSync(card, 'rejected');
+                showError(error, card);
+              }
+            });
           });
         });
         main.querySelectorAll('[data-task-date]').forEach(function(input) {
-          input.addEventListener('change', function() { callServer('setActionItemDueDate', input.dataset.taskDate, input.value).then(renderStudentView).catch(showError); });
+          input.addEventListener('change', function() {
+            const card = input.closest('[data-task-id]');
+            const previousDate = input.dataset.currentDate;
+            const nextDate = input.value;
+            const time = card.querySelector('time');
+            markSync(card, 'pending');
+            runMutation('setActionItemDueDate', [input.dataset.taskDate, nextDate], {
+              key: 'action-item:' + input.dataset.taskDate,
+              confirm: function() {
+                input.dataset.currentDate = nextDate;
+                if (time) { time.dateTime = nextDate; time.textContent = nextDate; }
+                markSync(card, 'confirmed');
+              },
+              reject: function(error) {
+                input.value = previousDate;
+                markSync(card, 'rejected');
+                showError(error, card);
+              }
+            });
+          });
         });
         main.querySelectorAll('[data-save-todo]').forEach(function(button) {
           button.addEventListener('click', function() {
             const card = button.closest('[data-task-id]');
-            const title = card.querySelector('[data-todo-title]').value;
-            const description = card.querySelector('[data-todo-description]').value;
-            callServer('updateStudentTodo', button.dataset.saveTodo, title, description).then(renderStudentView).catch(showError);
+            const titleInput = card.querySelector('[data-todo-title]');
+            const descriptionInput = card.querySelector('[data-todo-description]');
+            const title = titleInput.value;
+            const description = descriptionInput.value;
+            markSync(card, 'pending');
+            runMutation('updateStudentTodo', [button.dataset.saveTodo, title, description], {
+              key: 'action-item:' + button.dataset.saveTodo,
+              confirm: function() { markSync(card, 'confirmed'); },
+              reject: function(error) {
+                markSync(card, 'rejected');
+                showError(error, card);
+              }
+            });
           });
         });
         main.querySelectorAll('[data-task-id][draggable="true"]').forEach(function(card) {
@@ -333,10 +475,58 @@
             const taskId = event.dataTransfer.getData('text/plain');
             if (!taskId || taskId === card.dataset.taskId) return;
             const position = event.clientY < card.getBoundingClientRect().top + card.getBoundingClientRect().height / 2 ? 'before' : 'after';
-            callServer('repositionStudentTodo', taskId, card.dataset.taskId, position).then(renderStudentView).catch(showError);
+            const movingCard = main.querySelector('[data-task-id="' + cssEscape(taskId) + '"]');
+            if (!movingCard || !movingCard.matches('.student-task')) return;
+            const previousParent = movingCard.parentElement;
+            const previousNextSibling = movingCard.nextElementSibling;
+            if (position === 'before') card.parentElement.insertBefore(movingCard, card);
+            else card.parentElement.insertBefore(movingCard, card.nextElementSibling);
+            markSync(movingCard, 'pending');
+            runMutation('repositionStudentTodo', [taskId, card.dataset.taskId, position], {
+              key: 'action-order',
+              confirm: function() { markSync(movingCard, 'confirmed'); },
+              reject: function(error) {
+                if (previousNextSibling && previousNextSibling.parentElement === previousParent) previousParent.insertBefore(movingCard, previousNextSibling);
+                else previousParent.appendChild(movingCard);
+                markSync(movingCard, 'rejected');
+                showError(error, movingCard);
+              }
+            });
           });
         });
         applyJourneyFilters();
+      }
+
+      function bindNewTodoCard(card, email, cohort) {
+        if (!card) return;
+        const status = card.querySelector('[data-task-status]');
+        if (status) status.addEventListener('change', function() {
+          const nextStatus = status.value;
+          markSync(card, 'pending');
+          runMutation('setActionItemStatus', [status.dataset.taskStatus, nextStatus, email, cohort], { key: 'action-item:' + status.dataset.taskStatus,
+            confirm: function() { status.dataset.currentStatus = nextStatus; card.classList.toggle('completed', nextStatus === 'Completed'); markSync(card, 'confirmed'); },
+            reject: function(error) { status.value = status.dataset.currentStatus; markSync(card, 'rejected'); showError(error, card); }
+          });
+        });
+        const date = card.querySelector('[data-task-date]');
+        if (date) date.addEventListener('change', function() {
+          const nextDate = date.value;
+          markSync(card, 'pending');
+          runMutation('setActionItemDueDate', [date.dataset.taskDate, nextDate], { key: 'action-item:' + date.dataset.taskDate,
+            confirm: function() { date.dataset.currentDate = nextDate; markSync(card, 'confirmed'); },
+            reject: function(error) { date.value = date.dataset.currentDate; markSync(card, 'rejected'); showError(error, card); }
+          });
+        });
+        const save = card.querySelector('[data-save-todo]');
+        if (save) save.addEventListener('click', function() {
+          const title = card.querySelector('[data-todo-title]').value;
+          const description = card.querySelector('[data-todo-description]').value;
+          markSync(card, 'pending');
+          runMutation('updateStudentTodo', [save.dataset.saveTodo, title, description], { key: 'action-item:' + save.dataset.saveTodo,
+            confirm: function() { markSync(card, 'confirmed'); },
+            reject: function(error) { markSync(card, 'rejected'); showError(error, card); }
+          });
+        });
       }
 
       function applyJourneyFilters() {
@@ -472,6 +662,14 @@
         callServer('getAdminRecords', state.adminEntity).then(renderAdminData).catch(showError);
       }
 
+      function refreshAdminSectionSilently() {
+        if (state.adminEntity === 'cohortMembers') {
+          callServer('getCohortMembersForAdmin', state.cohortId).then(renderAdminData).catch(showError);
+          return;
+        }
+        callServer('getAdminRecords', state.adminEntity).then(renderAdminData).catch(showError);
+      }
+
       function renderTemplateDesigner(target) {
         target.innerHTML = '<p class="muted">Loading phases and templates...</p>';
         Promise.all([callServer('getAdminRecords', 'phases'), callServer('getAdminRecords', 'milestoneTemplates')]).then(function(results) {
@@ -504,14 +702,45 @@
             event.preventDefault();
             phase.classList.remove('drag-over');
             const templateId = event.dataTransfer.getData('text/plain');
+            const card = Array.from(target.querySelectorAll('[data-template-drag]')).find(function(item) { return item.dataset.templateDrag === templateId; });
             const targetCard = event.target.closest('[data-template-drag]');
+            if (!card || (targetCard && targetCard === card)) return;
+            const previousParent = card.parentElement;
+            const previousPhaseId = card.closest('[data-phase-drop]') && card.closest('[data-phase-drop]').dataset.phaseDrop;
+            const previousNextSibling = card.nextElementSibling;
             const beforeTemplateId = targetCard && targetCard.dataset.templateDrag !== templateId ? targetCard.dataset.templateDrag : '';
-            callServer('reorderMilestoneTemplate', templateId, phase.dataset.phaseDrop, beforeTemplateId).then(function() {
-              state.status = 'Template order saved.';
-              loadAdminSection();
-            }).catch(showError);
+            const insertionPoint = beforeTemplateId ? Array.from(target.querySelectorAll('[data-template-drag]')).find(function(item) { return item.dataset.templateDrag === beforeTemplateId; }) : null;
+            if (insertionPoint) insertionPoint.parentElement.insertBefore(card, insertionPoint);
+            else phase.querySelector('.template-list').appendChild(card);
+            card.dataset.templatePhase = phase.dataset.phaseDrop;
+            markSync(card, 'pending');
+            runMutation('reorderMilestoneTemplate', [templateId, phase.dataset.phaseDrop, beforeTemplateId], {
+              key: 'template-order',
+              confirm: function(result) {
+                const authoritative = (result.order || []).filter(function(item) { return item.templateId === templateId; })[0];
+                if (!authoritative || authoritative.phaseId !== phase.dataset.phaseDrop) {
+                  rollbackTemplateCard(card, previousParent, previousNextSibling, previousPhaseId);
+                  markSync(card, 'rejected');
+                  showError(new Error('The template order changed before this save was confirmed.'));
+                  return;
+                }
+                markSync(card, 'confirmed');
+              },
+              reject: function(error) {
+                rollbackTemplateCard(card, previousParent, previousNextSibling, previousPhaseId);
+                markSync(card, 'rejected');
+                showError(error);
+              }
+            });
           });
         });
+      }
+
+      function rollbackTemplateCard(card, previousParent, previousNextSibling, previousPhaseId) {
+        if (!card || !previousParent) return;
+        if (previousNextSibling && previousNextSibling.parentElement === previousParent) previousParent.insertBefore(card, previousNextSibling);
+        else previousParent.appendChild(card);
+        card.dataset.templatePhase = previousPhaseId || card.dataset.templatePhase;
       }
 
       function switchAdminSection(entity) {
@@ -567,13 +796,25 @@
             button.addEventListener('click', function() {
               const index = Number(button.dataset.syncStudent);
               const dateInput = target.querySelector('[data-anchor-student="' + index + '"]');
+              const row = button.closest('tr');
               button.disabled = true;
-              callServer('setStudentAnchorDate', cohortId, records[index].StudentId, dateInput.value).then(function() {
-                return callServer('syncStudentActionItemDates', records[index].StudentId, cohortId);
+              markSync(row, 'pending');
+              runMutation('setStudentAnchorDate', [cohortId, records[index].StudentId, dateInput.value], {
+                key: 'anchor-date:' + records[index].StudentId
+              }).then(function() {
+                return runMutation('syncStudentActionItemDates', [records[index].StudentId, cohortId], {
+                  key: 'anchor-date:' + records[index].StudentId
+                });
               }).then(function(result) {
                 state.status = 'Updated ' + result.updated + ' system due dates.';
-                renderAssignmentManager(document.getElementById('admin-content'));
-              }).catch(function(error) { button.disabled = false; showError(error); });
+                markSync(row, 'confirmed');
+                button.disabled = false;
+                showSuccess(state.status);
+              }).catch(function(error) {
+                button.disabled = false;
+                markSync(row, 'rejected');
+                showError(error, row);
+              });
             });
           });
         }).catch(showError);
@@ -585,10 +826,11 @@
         if (!date) { showError(new Error('Choose a baseline anchor date.')); return; }
         const button = document.getElementById('assign-milestones');
         button.disabled = true;
-        callServer('assignMilestonesToStudents', state.cohortId, state.assignmentStudentIds, date).then(function(result) {
+        runMutation('assignMilestonesToStudents', [state.cohortId, state.assignmentStudentIds, date], { key: 'assignments:' + state.cohortId }).then(function(result) {
           state.status = result.createdTasks + ' system action items created for ' + result.assignedStudents + ' students.';
           state.assignmentStudentIds = [];
-          renderAssignmentManager(document.getElementById('admin-content'));
+          button.disabled = false;
+          showSuccess(state.status);
         }).catch(function(error) { button.disabled = false; showError(error); });
       }
 
@@ -731,11 +973,11 @@
       function confirmRosterImport(event) {
         const button = event.currentTarget;
         button.disabled = true;
-        callServer('importCohortMembers', state.cohortId, state.importRecords).then(function(result) {
+        runMutation('importCohortMembers', [state.cohortId, state.importRecords], { key: 'cohort-members:' + state.cohortId }).then(function(result) {
           state.status = 'Imported ' + result.imported + ' students.';
           state.importRecords = null;
           document.getElementById('roster-import-panel').innerHTML = '';
-          loadAdminSection();
+          refreshAdminSectionSilently();
         }).catch(function(error) {
           button.disabled = false;
           showError(error);
@@ -746,10 +988,10 @@
         const button = document.getElementById('create-selected-users');
         if (!state.selectedMemberIds.length || !window.confirm('Add the selected students as user accounts? Existing accounts will be skipped.')) return;
         button.disabled = true;
-        callServer('createStudentUsersFromCohort', state.cohortId, state.selectedMemberIds).then(function(result) {
+        runMutation('createStudentUsersFromCohort', [state.cohortId, state.selectedMemberIds], { key: 'cohort-users:' + state.cohortId }).then(function(result) {
           state.status = result.created + ' user accounts added; ' + result.alreadyExists + ' already existed.';
           state.selectedMemberIds = [];
-          loadAdminSection();
+          refreshAdminSectionSilently();
         }).catch(function(error) {
           button.disabled = false;
           showError(error);
@@ -855,14 +1097,14 @@
         });
         const submit = form.querySelector('[type="submit"]');
         submit.disabled = true;
-        const request = entity === 'cohortMembers'
-          ? callServer('saveCohortMember', state.cohortId, record, state.originalKey || '')
-          : callServer('saveAdminRecord', entity, record, state.originalKey || '');
+        const request = runMutation(entity === 'cohortMembers' ? 'saveCohortMember' : 'saveAdminRecord', entity === 'cohortMembers'
+          ? [state.cohortId, record, state.originalKey || '']
+          : [entity, record, state.originalKey || ''], { key: 'admin:' + entity + ':' + (state.originalKey || 'new') });
         request.then(function(result) {
           state.status = result && result.auditWarning ? 'Saved, but the completion audit entry could not be written. Check AUDIT_LOGS.' : 'Saved.';
           state.editingRecord = null;
           state.originalKey = '';
-          loadAdminSection();
+          refreshAdminSectionSilently();
         }).catch(function(error) {
           submit.disabled = false;
           showError(error);
@@ -874,13 +1116,13 @@
         const key = keyValue(entity, record);
         const noun = entity === 'cohorts' ? 'archive this cohort' : 'delete this record';
         if (!window.confirm(`Are you sure you want to ${noun}?`)) return;
-        const request = entity === 'cohortMembers'
-          ? callServer('deleteCohortMember', state.cohortId, key)
-          : callServer('deleteAdminRecord', entity, key);
+        const request = runMutation(entity === 'cohortMembers' ? 'deleteCohortMember' : 'deleteAdminRecord', entity === 'cohortMembers'
+          ? [state.cohortId, key]
+          : [entity, key], { key: 'admin:' + entity + ':' + key });
         request.then(function(result) {
           state.status = result && result.auditWarning ? 'Change saved, but the completion audit entry could not be written.' : 'Change saved.';
           state.editingRecord = null;
-          loadAdminSection();
+          refreshAdminSectionSilently();
         }).catch(showError);
       }
 
@@ -922,12 +1164,21 @@
           .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
       }
 
-      function showError(error) {
+      function showError(error, relatedElement) {
         const message = error && error.message ? error.message : String(error);
-        const main = document.getElementById('main');
-        const admin = document.getElementById('admin-content');
-        const target = admin || main;
-        if (target) target.innerHTML = `<p class="notice error">${escapeHtml(message)}</p>`;
+        const feedback = document.getElementById('feedback-region');
+        if (feedback) {
+          feedback.innerHTML = `<p class="notice error">${escapeHtml(message)}</p>`;
+          window.setTimeout(function() { if (feedback) feedback.innerHTML = ''; }, 5000);
+        }
+        if (relatedElement) relatedElement.setAttribute('aria-label', message);
+      }
+
+      function showSuccess(message) {
+        const feedback = document.getElementById('feedback-region');
+        if (!feedback) return;
+        feedback.innerHTML = `<p class="notice">${escapeHtml(message)}</p>`;
+        window.setTimeout(function() { if (feedback) feedback.innerHTML = ''; }, 3500);
       }
 
       function showFatal(title, message) {

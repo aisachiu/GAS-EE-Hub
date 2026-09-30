@@ -99,7 +99,18 @@ function reorderMilestoneTemplate(templateId, targetPhaseId, beforeTemplateId) {
     }
     rows.splice(insertIndex, 0, movingRow);
     sheet.getRange(1, 1, rows.length, headers.length).setValues(rows);
-    return { moved: true };
+    return {
+      moved: true,
+      templateId: text_(templateId),
+      phaseId: text_(targetPhaseId),
+      order: rows.slice(1).map(function(row, rowIndex) {
+        return {
+          templateId: text_(row[templateColumn]),
+          phaseId: text_(row[phaseColumn]),
+          position: rowIndex
+        };
+      })
+    };
   });
 }
 
