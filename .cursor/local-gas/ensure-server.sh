@@ -3,7 +3,8 @@ set -euo pipefail
 
 port="${EE_HUB_PORT:-8787}"
 log="${EE_HUB_LOG:-/tmp/ee-hub.log}"
-root="/workspace"
+root="${EE_HUB_ROOT:-/workspace}"
+export EE_HUB_ROOT="$root"
 
 if curl -sf "http://127.0.0.1:${port}/health" >/dev/null; then
   exit 0

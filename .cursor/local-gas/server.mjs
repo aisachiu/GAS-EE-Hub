@@ -9,7 +9,23 @@ import vm from 'node:vm';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+function resolveRoot() {
+  const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+  const candidates = [
+    process.env.EE_HUB_ROOT,
+    path.resolve(scriptDir, '../..'),
+    '/workspace',
+    process.cwd()
+  ].filter(Boolean);
+  for (const candidate of candidates) {
+    if (fs.existsSync(path.join(candidate, 'Backend.js')) && fs.existsSync(path.join(candidate, 'Index.html'))) {
+      return candidate;
+    }
+  }
+  throw new Error('Could not find the EE Hub sources. Set EE_HUB_ROOT to the repository root.');
+}
+
+const root = resolveRoot();
 const port = Number(process.env.EE_HUB_PORT || 8787);
 const host = process.env.EE_HUB_HOST || '0.0.0.0';
 const activeEmail = process.env.EE_HUB_USER || 'dev@vsa.local';
