@@ -222,11 +222,12 @@ window.google.script.run = {
     }
   });
 
-  ['Backend.js', 'Audit.js', 'PhaseRules.js', 'ActionItemEngine.js', 'Code.js'].forEach((fileName) => {
+  ['Backend.js', 'Audit.js', 'PhaseRules.js', 'ActionItemEngine.js', 'Hub.js', 'Forms.js', 'Code.js'].forEach((fileName) => {
     vm.runInContext(fs.readFileSync(path.join(root, fileName), 'utf8'), context, { filename: fileName });
   });
 
   seedWorkbook(spreadsheet);
+  vm.runInContext('seedPublishedSubjectForm_()', context);
   return context;
 }
 
@@ -323,7 +324,9 @@ function seedWorkbook(spreadsheet) {
     staff.getRange(1, 1, 1, staffHeaders.length).setValues([staffHeaders]);
     staff.setFrozenRows(1);
   }
-  if (!sheetHasEmail(staff, activeEmail)) {
+  const students = spreadsheet.getSheetByName('USERS-STUDENTS');
+  const signingInAsStudent = students && sheetHasEmail(students, activeEmail);
+  if (!sheetHasEmail(staff, activeEmail) && !signingInAsStudent) {
     staff.getRange(staff.getLastRow() + 1, 1, 1, staffHeaders.length).setValues([[
       activeEmail, 'Dev Admin', 'Extended Essay', 'DEV', true, true, true, true, true, '', ''
     ]]);

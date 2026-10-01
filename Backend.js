@@ -142,6 +142,35 @@ var APP_TABLES = {
       { name: 'Action', type: 'text', required: true },
       { name: 'Payload', type: 'text' }
     ]
+  },
+  formDefinitions: {
+    sheet: 'FORM_DEFINITIONS',
+    internal: true,
+    fields: [
+      { name: 'milestoneId', type: 'text', required: true, key: true },
+      { name: 'status', type: 'select', required: true, options: ['Draft', 'Published'] },
+      { name: 'version', type: 'number', required: true },
+      { name: 'fieldsJson', type: 'textarea', table: false },
+      { name: 'html', type: 'textarea', table: false },
+      { name: 'js', type: 'textarea', table: false },
+      { name: 'submitCompletes', type: 'checkbox', defaultValue: true },
+      { name: 'LastUpdated', type: 'datetime', required: true },
+      { name: 'UpdatedBy', type: 'email', required: true }
+    ]
+  },
+  milestoneEvents: {
+    sheet: 'MILESTONE_EVENTS',
+    internal: true,
+    fields: [
+      { name: 'EventId', type: 'text', required: true, key: true },
+      { name: 'TaskId', type: 'text', required: true },
+      { name: 'StudentId', type: 'email', required: true },
+      { name: 'MilestoneId', type: 'text', required: true },
+      { name: 'EventType', type: 'select', required: true, options: ['returned', 'approved', 'session_logged', 'note'] },
+      { name: 'Comment', type: 'textarea' },
+      { name: 'Actor', type: 'email', required: true },
+      { name: 'CreatedAt', type: 'datetime', required: true }
+    ]
   }
 };
 
