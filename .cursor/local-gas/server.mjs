@@ -226,15 +226,108 @@ window.google.script.run = {
     vm.runInContext(fs.readFileSync(path.join(root, fileName), 'utf8'), context, { filename: fileName });
   });
 
-  const staffHeaders = ['EMAIL', 'DisplayName', 'Primary Department', 'StaffCode', 'isStaff', 'isSupervisor', 'isLead', 'isCoordinator', 'isAdmin', 'EEQuota', 'EESubjects'];
-  const staff = spreadsheet.insertSheet('USERS-STAFF');
-  staff.getRange(1, 1, 1, staffHeaders.length).setValues([staffHeaders]);
-  staff.setFrozenRows(1);
-  staff.getRange(2, 1, 1, staffHeaders.length).setValues([[
-    activeEmail, 'Dev Admin', 'Extended Essay', 'DEV', true, true, true, true, true, '', ''
-  ]]);
-
+  seedWorkbook(spreadsheet);
   return context;
+}
+
+const staffHeaders = ['EMAIL', 'DisplayName', 'Primary Department', 'StaffCode', 'isStaff', 'isSupervisor', 'isLead', 'isCoordinator', 'isAdmin', 'EEQuota', 'EESubjects'];
+
+function parseCsv(text) {
+  const rows = [];
+  let row = [];
+  let field = '';
+  let quoted = false;
+  const source = String(text).replace(/^\uFEFF/, '');
+  for (let index = 0; index < source.length; index += 1) {
+    const character = source[index];
+    if (character === '"') {
+      if (quoted && source[index + 1] === '"') {
+        field += '"';
+        index += 1;
+      } else {
+        quoted = !quoted;
+      }
+    } else if (!quoted && character === ',') {
+      row.push(field);
+      field = '';
+    } else if (!quoted && (character === '\n' || character === '\r')) {
+      if (character === '\r' && source[index + 1] === '\n') index += 1;
+      row.push(field);
+      if (row.some((value) => value.trim() !== '')) rows.push(row);
+      row = [];
+      field = '';
+    } else {
+      field += character;
+    }
+  }
+  if (field.length || row.length) {
+    row.push(field);
+    if (row.some((value) => value.trim() !== '')) rows.push(row);
+  }
+  return rows;
+}
+
+function loadCsvSheet(spreadsheet, sheetName, filePath) {
+  const table = parseCsv(fs.readFileSync(filePath, 'utf8'));
+  if (!table.length) return null;
+  const width = table.reduce((max, line) => Math.max(max, line.length), 0);
+  const sheet = spreadsheet.insertSheet(sheetName);
+  const values = table.map((line) => {
+    const copy = line.slice();
+    while (copy.length < width) copy.push('');
+    return copy;
+  });
+  sheet.getRange(1, 1, values.length, width).setValues(values);
+  sheet.setFrozenRows(1);
+  return sheet;
+}
+
+function sheetHasEmail(sheet, email) {
+  if (!sheet || sheet.getLastRow() < 2) return false;
+  const values = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues();
+  const expected = email.toLowerCase();
+  return values.some((line) => String(line[0] || '').trim().toLowerCase() === expected);
+}
+
+function seedWorkbook(spreadsheet) {
+  const sampleDir = path.join(root, '.cursor/local-gas/sample');
+  const samples = [
+    ['USERS-STAFF.csv', 'USERS-STAFF'],
+    ['USERS-STUDENTS.csv', 'USERS-STUDENTS'],
+    ['SUBJECTS.csv', 'SUBJECTS'],
+    ['PHASES.csv', 'PHASES'],
+    ['MILESTONE_TEMPLATES.csv', 'MILESTONE_TEMPLATES'],
+    ['COHORTS.csv', 'COHORTS'],
+    ['COHORT-2028.csv', 'COHORT: 2028'],
+    ['STUDENT_ACTION_ITEMS.csv', 'STUDENT_ACTION_ITEMS'],
+    ['AUDIT_LOGS.csv', 'AUDIT_LOGS']
+  ];
+  if (fs.existsSync(sampleDir)) {
+    samples.forEach(([fileName, sheetName]) => {
+      const filePath = path.join(sampleDir, fileName);
+      if (fs.existsSync(filePath)) loadCsvSheet(spreadsheet, sheetName, filePath);
+    });
+  }
+
+  const roster = spreadsheet.getSheetByName('COHORT: 2028');
+  if (roster && !spreadsheet.getSheetByName('COHORT: 2026')) {
+    const headers = roster.getRange(1, 1, 1, roster.getLastColumn()).getValues();
+    const empty = spreadsheet.insertSheet('COHORT: 2026');
+    empty.getRange(1, 1, 1, headers[0].length).setValues(headers);
+    empty.setFrozenRows(1);
+  }
+
+  let staff = spreadsheet.getSheetByName('USERS-STAFF');
+  if (!staff) {
+    staff = spreadsheet.insertSheet('USERS-STAFF');
+    staff.getRange(1, 1, 1, staffHeaders.length).setValues([staffHeaders]);
+    staff.setFrozenRows(1);
+  }
+  if (!sheetHasEmail(staff, activeEmail)) {
+    staff.getRange(staff.getLastRow() + 1, 1, 1, staffHeaders.length).setValues([[
+      activeEmail, 'Dev Admin', 'Extended Essay', 'DEV', true, true, true, true, true, '', ''
+    ]]);
+  }
 }
 
 const context = createRuntime();
