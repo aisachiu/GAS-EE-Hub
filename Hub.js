@@ -137,6 +137,7 @@ function getStudentHome() {
   });
   var published = {};
   try { publishedFormIds_().forEach(function(id) { published[id] = true; }); } catch (error) { /* definitions may not exist yet */ }
+  var ticketNotice = studentTicketNotice_(user.email);
   return {
     displayName: placement.displayName || user.displayName,
     email: user.email,
@@ -154,7 +155,9 @@ function getStudentHome() {
     phases: phases,
     templates: templates,
     actionItems: items,
-    publishedForms: published
+    publishedForms: published,
+    unreadTicketCount: ticketNotice.count,
+    unreadTicketTitle: ticketNotice.title
   };
 }
 
