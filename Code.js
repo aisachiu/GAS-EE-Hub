@@ -64,7 +64,7 @@ function createMissingSheets() {
 
   Object.keys(APP_TABLES).forEach(function(entity) {
     var config = APP_TABLES[entity];
-    if (config.sheetPattern) return;
+    if (config.sheetPattern || config.internal) return;
     if (entity === 'milestoneTemplates' && skipTemplateCreation) return;
     createSheetAfterConfirmation_(spreadsheet, ui, config.sheet, getTableHeaders_(entity), created, declined);
   });

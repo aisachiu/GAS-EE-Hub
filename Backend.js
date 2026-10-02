@@ -90,6 +90,17 @@ var APP_TABLES = {
       { name: 'Sort Order', type: 'number' }
     ]
   },
+  faqs: {
+    sheet: 'FAQS',
+    fields: [
+      { name: 'FaqId', type: 'text', key: true, generated: true },
+      { name: 'Question', type: 'text', required: true },
+      { name: 'Answer', type: 'textarea', required: true, table: false },
+      { name: 'Audience', type: 'select', options: ['all', 'student', 'staff'] },
+      { name: 'Published', type: 'checkbox', defaultValue: true },
+      { name: 'SortOrder', type: 'number' }
+    ]
+  },
   cohortMembers: {
     sheetPattern: 'COHORT: [Cohort]',
     fields: [
@@ -141,6 +152,66 @@ var APP_TABLES = {
       { name: 'User', type: 'email', required: true, validator: 'email' },
       { name: 'Action', type: 'text', required: true },
       { name: 'Payload', type: 'text' }
+    ]
+  },
+  formDefinitions: {
+    sheet: 'FORM_DEFINITIONS',
+    internal: true,
+    fields: [
+      { name: 'milestoneId', type: 'text', required: true, key: true },
+      { name: 'status', type: 'select', required: true, options: ['Draft', 'Published'] },
+      { name: 'version', type: 'number', required: true },
+      { name: 'fieldsJson', type: 'textarea', table: false },
+      { name: 'html', type: 'textarea', table: false },
+      { name: 'js', type: 'textarea', table: false },
+      { name: 'submitCompletes', type: 'checkbox', defaultValue: true },
+      { name: 'LastUpdated', type: 'datetime', required: true },
+      { name: 'UpdatedBy', type: 'email', required: true }
+    ]
+  },
+  milestoneEvents: {
+    sheet: 'MILESTONE_EVENTS',
+    internal: true,
+    fields: [
+      { name: 'EventId', type: 'text', required: true, key: true },
+      { name: 'TaskId', type: 'text', required: true },
+      { name: 'StudentId', type: 'email', required: true },
+      { name: 'MilestoneId', type: 'text', required: true },
+      { name: 'EventType', type: 'select', required: true, options: ['returned', 'approved', 'session_logged', 'note'] },
+      { name: 'Comment', type: 'textarea' },
+      { name: 'Actor', type: 'email', required: true },
+      { name: 'CreatedAt', type: 'datetime', required: true }
+    ]
+  },
+  tickets: {
+    sheet: 'TICKETS',
+    internal: true,
+    fields: [
+      { name: 'TicketId', type: 'text', required: true, key: true },
+      { name: 'StudentId', type: 'email', required: true, validator: 'email' },
+      { name: 'Cohort', type: 'text' },
+      { name: 'Category', type: 'text', required: true },
+      { name: 'Title', type: 'text', required: true },
+      { name: 'Status', type: 'select', required: true, options: ['Open', 'In Progress', 'Resolved', 'Closed'] },
+      { name: 'Route', type: 'select', required: true, options: ['supervisor', 'coordinator'] },
+      { name: 'Assignee', type: 'email' },
+      { name: 'CreatedAt', type: 'datetime', required: true },
+      { name: 'LastUpdated', type: 'datetime', required: true },
+      { name: 'LastActor', type: 'email', required: true },
+      { name: 'StudentUnread', type: 'checkbox' },
+      { name: 'StaffUnread', type: 'checkbox' }
+    ]
+  },
+  ticketMessages: {
+    sheet: 'TICKET_MESSAGES',
+    internal: true,
+    fields: [
+      { name: 'MessageId', type: 'text', required: true, key: true },
+      { name: 'TicketId', type: 'text', required: true },
+      { name: 'AuthorEmail', type: 'email', required: true },
+      { name: 'AuthorRole', type: 'select', required: true, options: ['student', 'staff'] },
+      { name: 'Body', type: 'textarea', required: true },
+      { name: 'CreatedAt', type: 'datetime', required: true }
     ]
   }
 };
