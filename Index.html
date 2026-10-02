@@ -116,6 +116,67 @@
       .todo-editor input, .todo-editor textarea { width: 100%; padding: 6px; border: 1px solid var(--line); }
       .timeline-toolbar { display: flex; gap: 7px; align-items: center; flex-wrap: wrap; }
       .timeline-toolbar select { padding: 6px 8px; border: 1px solid var(--line); background: white; }
+      .journey { display: grid; gap: 12px; }
+      .journey-head { display: flex; justify-content: space-between; gap: 8px 12px; align-items: end; flex-wrap: wrap; }
+      .journey-head h1 { margin-bottom: 0; }
+      .journey-score { margin: 0; text-align: right; color: var(--muted); }
+      .journey-score strong { display: block; color: var(--ink); font-size: 22px; line-height: 1; }
+      .journey-bar { height: 6px; border-radius: 999px; background: #e7eef3; overflow: hidden; }
+      .journey-bar span { display: block; height: 100%; background: var(--green); }
+      .journey-path { display: flex; gap: 0; margin: 0; padding: 4px 0 0; list-style: none; overflow-x: auto; position: relative; }
+      .journey-path > li { flex: 1 1 0; min-width: 0; }
+      .journey-path::before { content: ''; position: absolute; left: 12%; right: 12%; top: 16px; height: 2px; background: #d5e0e8; }
+      .phase-stop { position: relative; z-index: 1; display: grid; justify-items: center; gap: 3px; width: 100%; border: 0; padding: 0 6px 4px; background: transparent; color: var(--muted); }
+      .phase-mark { width: 16px; height: 16px; border: 2px solid #c5d3de; border-radius: 50%; background: white; }
+      .phase-stop.done { color: #0d7a5f; }
+      .phase-stop.done .phase-mark { border-color: var(--green); background: var(--green); }
+      .phase-stop.here { color: var(--ink); font-weight: 700; }
+      .phase-stop.here .phase-mark { border-color: var(--ink); background: var(--ink); box-shadow: 0 0 0 4px rgba(0, 76, 128, .16); }
+      .phase-stop[aria-pressed="true"] .phase-name { color: var(--gold); }
+      .phase-name { font-size: 12px; line-height: 1.15; }
+      .phase-count { font-size: 11px; }
+      .journey-filters { display: flex; flex-wrap: wrap; gap: 6px; }
+      .journey-filters button { border: 1px solid var(--line); border-radius: 999px; padding: 5px 10px; background: white; color: var(--muted); font-weight: 700; }
+      .journey-filters button[aria-pressed="true"] { border-color: var(--ink); color: white; background: var(--ink); }
+      .here-card { padding: 14px 16px; color: white; background: var(--ink); border-left: 5px solid var(--gold); }
+      .here-card h2, .here-card p { color: white; }
+      .here-card .muted, .here-card .eyebrow { color: #d5e4ef; }
+      .journey-phase { background: white; border: 1px solid var(--line); }
+      .journey-phase.here { border-top: 3px solid var(--gold); }
+      .journey-phase header { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; padding: 10px 12px 0; }
+      .journey-phase h2 { margin: 0; font-size: 18px; }
+      .steps-rail { list-style: none; margin: 0; padding: 8px 12px 12px; }
+      .journey .step { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 10px; padding: 8px 0; text-align: left; font-size: 14px; font-weight: 400; color: inherit; }
+      .journey .step + .step { border-top: 1px solid var(--line); }
+      .rail { width: 12px; height: 12px; margin-top: 4px; border: 2px solid #c5d3de; border-radius: 50%; background: white; }
+      .journey .step.done .rail { border-color: var(--green); background: var(--green); }
+      .journey .step.here .rail { border-color: var(--ink); background: var(--ink); }
+      .journey .step.todo .rail { border-color: var(--gold); }
+      .journey .step.done h3 { color: var(--muted); font-weight: 600; }
+      .step-top { display: flex; justify-content: space-between; gap: 6px 10px; align-items: baseline; flex-wrap: wrap; }
+      .step-top h3 { margin: 0; font-size: 15px; }
+      .journey .step p { margin: 3px 0 0; }
+      .journey-panel { position: fixed; top: 0; right: 0; z-index: 25; height: 100vh; width: 36px; overflow: hidden; background: var(--ink); transition: width .2s ease; }
+      .journey-panel.open { width: clamp(300px, 34vw, 420px); background: #f6f8f9; border-left: 1px solid var(--line); box-shadow: -8px 0 24px rgba(0, 30, 50, .12); }
+      .journey-peek { position: absolute; top: 40px; right: auto; bottom: 0; left: 0; width: 36px; border: 0; color: white; background: transparent; writing-mode: vertical-rl; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+      .journey-panel.open .journey-peek { display: none; }
+      .journey-panel:not(.open) .journey-drawer { visibility: hidden; }
+      .journey-drawer { width: clamp(300px, 34vw, 420px); height: 100%; display: flex; flex-direction: column; background: #f6f8f9; }
+      .journey-panel-bar { display: flex; align-items: center; justify-content: space-between; height: 40px; padding: 0 10px; color: white; background: var(--ink); flex: none; }
+      .journey-panel-bar button { border: 0; color: white; background: transparent; font-weight: 700; }
+      .journey-scroll { flex: 1; overflow: auto; padding: 10px; }
+      .journey-panel h1 { font-size: 20px; }
+      .journey-panel .here-card h2 { font-size: 16px; }
+      .journey-panel .journey-filters button { padding: 4px 8px; font-size: 12px; }
+      .journey-toggle { border: 1px solid rgba(255,255,255,.5); border-radius: 999px; padding: 3px 10px; color: white; background: transparent; font-weight: 700; }
+      .journey-toggle[aria-expanded="true"] { color: var(--ink); background: white; }
+      body.has-journey { padding-right: 36px; transition: padding-right .2s ease; }
+      body.has-journey.journey-open { padding-right: clamp(300px, 34vw, 420px); }
+      .step-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; }
+      .add-todo { display: flex; gap: 6px; padding: 0 12px 12px; }
+      .add-todo input { min-width: 0; flex: 1; padding: 7px 9px; border: 1px solid var(--line); border-radius: 3px; }
+      .todo-edit { display: grid; gap: 6px; margin-top: 8px; }
+      .todo-edit input, .todo-edit textarea { width: 100%; padding: 6px 8px; border: 1px solid var(--line); }
       .drop-hint { display: none; color: var(--green); font-size: 11px; }
       .task-card.drag-over .drop-hint { display: block; }
       .template-board { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 10px; align-items: start; }
@@ -175,8 +236,12 @@
       .tabs { display: flex; gap: 2px; align-self: stretch; min-width: 0; overflow-x: auto; }
       .tabs button { border: 0; border-bottom: 3px solid transparent; padding: 8px 12px; color: #d5e4ef; background: transparent; font-weight: 700; white-space: nowrap; }
       .tabs button[aria-current="page"] { color: white; border-bottom-color: var(--gold); }
-      .topbar { min-height: 40px; padding: 0 12px; }
-      main { max-width: 1180px; margin: 0 auto; padding: 10px; }
+      .topbar { position: sticky; top: 0; z-index: 30; min-height: 40px; padding: 0 12px; }
+      main { max-width: 1180px; margin: 0 auto; padding: 10px; container-type: inline-size; }
+      @container (max-width: 760px) {
+        .tiles, .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .doc-grid { grid-template-columns: 1fr; }
+      }
       .hero { display: flex; justify-content: space-between; gap: 16px; align-items: center; flex-wrap: wrap; padding: 14px 16px; color: white; background: var(--ink); border-left: 5px solid var(--gold); }
       .hero p { margin: 0; color: #d5e4ef; }
       .hero h2 { margin: 2px 0 4px; color: white; }
@@ -184,9 +249,9 @@
       .tile, .scard, .strip, .doc-card { padding: 10px 12px; background: white; border: 1px solid var(--line); }
       .tile .val { font-size: 20px; font-weight: 700; color: var(--ink); }
       .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; list-style: none; margin: 8px 0 0; padding: 0; }
-      .step { text-align: center; color: var(--muted); font-size: 12px; font-weight: 700; }
-      .step.current { color: var(--ink); }
-      .step.done { color: var(--green); }
+      .steps .step { text-align: center; color: var(--muted); font-size: 12px; font-weight: 700; }
+      .steps .step.current { color: var(--ink); }
+      .steps .step.done { color: var(--green); }
       .segs { display: grid; grid-template-columns: repeat(16, 1fr); gap: 2px; }
       .segs i { display: block; height: 7px; border-radius: 2px; background: var(--line); }
       .segs i.d { background: var(--ink); } .segs i.p { background: var(--gold); } .segs i.l { background: var(--coral); }
@@ -196,7 +261,7 @@
       .chip { display: inline-flex; align-items: center; padding: 1px 8px; border-radius: 999px; background: #eef3f6; color: #3d4d5c; font-size: 12px; font-weight: 700; }
       .chip.bad { background: #fde8ea; color: var(--coral); }
       .chip.ok { background: var(--green-soft); color: #0d7a5f; }
-      .form-dialog { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: 12px; background: rgba(0, 30, 50, .45); }
+      .form-dialog { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 12px; background: rgba(0, 30, 50, .45); }
       .form-dialog[hidden] { display: none; }
       .form-panel { width: min(720px, 100%); max-height: calc(100vh - 24px); overflow: auto; padding: 14px; background: white; border-top: 4px solid var(--gold); }
       .doc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -259,6 +324,11 @@
         .task-card { grid-template-columns: 24px minmax(0, 1fr); padding: 14px; }
         .task-meta { grid-column: 2; justify-items: start; grid-template-columns: repeat(2, max-content); align-items: center; }
       }
+      @media (max-width: 720px) {
+        .journey-panel.open { z-index: 40; width: min(100vw - 12px, 420px); }
+        .journey-panel.open .journey-drawer { width: min(100vw - 12px, 420px); }
+        body.has-journey.journey-open { padding-right: 0; }
+      }
     </style>
   </head>
   <body>
@@ -277,8 +347,9 @@
         selectedMemberIds: [],
         assignmentStudentIds: [],
         importRecords: null,
+        journeyOpen: false,
         journeyFilters: { phaseId: 'all', showSystem: true, showStudent: true },
-        journeyControlsOpen: true,
+        editingTodo: '',
         section: '',
         actingAs: '',
         studentHome: null,
@@ -396,7 +467,7 @@
         const student = state.user.role === 'student';
         const permissions = state.user.permissions || {};
         const tabs = student
-          ? [['home', 'Home'], ['journey', 'Journey'], ['mywork', 'My Work'], ['resources', 'Resources'], ['help', 'Help']]
+          ? [['home', 'Home'], ['mywork', 'My Work'], ['resources', 'Resources'], ['help', 'Help']]
           : [['students', 'My Students'], ['resources', 'Resources']];
         if (!student && (state.actingAs === 'supervisor' || state.actingAs === 'coordinator') && (permissions.isSupervisor || permissions.canAdmin)) {
           tabs.splice(1, 0, ['tickets', 'Tickets']);
@@ -404,16 +475,25 @@
         if (permissions.canAdmin) tabs.push(['admin', 'Admin']);
         if (!tabs.some(function(tab) { return tab[0] === state.section; })) state.section = tabs[0][0];
         state.view = state.section;
+        document.body.classList.toggle('has-journey', student);
+        document.body.classList.toggle('journey-open', student && state.journeyOpen);
         document.getElementById('app').innerHTML = `
           <header class="topbar">
             <div class="brand"><span class="brand-mark">EE</span><span>EE Hub</span>${student ? '' : '<span class="staff-pill">Staff</span>'}</div>
             <nav class="tabs" aria-label="Sections">${tabs.map(function(tab) {
               return `<button type="button" data-view="${tab[0]}" aria-current="${state.section === tab[0] ? 'page' : 'false'}">${tabLabel(tab)}</button>`;
             }).join('')}</nav>
-            <div class="account"><span id="request-indicator" class="request-indicator" aria-live="polite" aria-busy="false"></span><div>${escapeHtml(state.user.displayName)}</div></div>
+            <div class="account">${student ? `<button type="button" class="journey-toggle" id="journey-toggle" aria-expanded="${state.journeyOpen ? 'true' : 'false'}" aria-controls="journey-panel">Journey</button>` : ''}<span id="request-indicator" class="request-indicator" aria-live="polite" aria-busy="false"></span><div>${escapeHtml(state.user.displayName)}</div></div>
           </header>
           <div id="feedback-region" aria-live="polite"></div>
           <main id="main"></main>
+          ${student ? `<aside id="journey-panel" class="journey-panel${state.journeyOpen ? ' open' : ''}" aria-label="Journey and to-dos">
+            <button type="button" class="journey-peek" id="journey-peek" aria-expanded="${state.journeyOpen ? 'true' : 'false'}" aria-controls="journey-drawer">Journey</button>
+            <div class="journey-drawer" id="journey-drawer"${state.journeyOpen ? '' : ' inert'} aria-hidden="${state.journeyOpen ? 'false' : 'true'}">
+              <div class="journey-panel-bar"><strong>Journey</strong><button type="button" id="journey-close">Close</button></div>
+              <div id="journey-body" class="journey-scroll"></div>
+            </div>
+          </aside>` : ''}
           <div id="form-dialog" class="form-dialog" hidden></div>`;
         document.querySelectorAll('[data-view]').forEach(function(button) {
           button.addEventListener('click', function() {
@@ -431,6 +511,23 @@
         else if (state.section === 'tickets') renderStaffTickets();
         else if (student) renderStudentSection();
         else renderStaffHome();
+        if (student) {
+          const journeyToggle = document.getElementById('journey-toggle');
+          const journeyPeek = document.getElementById('journey-peek');
+          const journeyClose = document.getElementById('journey-close');
+          if (journeyToggle) journeyToggle.addEventListener('click', function() { setJourneyOpen(!state.journeyOpen); });
+          if (journeyPeek) journeyPeek.addEventListener('click', function() {
+            setJourneyOpen(true);
+            const closeButton = document.getElementById('journey-close');
+            if (closeButton) closeButton.focus();
+          });
+          if (journeyClose) journeyClose.addEventListener('click', function() {
+            setJourneyOpen(false);
+            const peek = document.getElementById('journey-peek');
+            if (peek) peek.focus();
+          });
+          mountJourneyPanel();
+        }
         if (!student && tabs.some(function(tab) { return tab[0] === 'tickets'; }) && state.ticketBadgeFor !== state.actingAs) {
           const requested = state.actingAs;
           state.ticketBadgeFor = requested;
@@ -454,21 +551,59 @@
         button.innerHTML = label + (count ? '<span class="dot" aria-label="Unread"></span>' : '');
       }
 
+      function loadStudentHome() {
+        if (state.studentHome) return Promise.resolve(state.studentHome);
+        if (!state.studentHomeRequest) {
+          state.studentHomeRequest = callServer('getStudentHome').then(function(home) {
+            state.studentHome = home;
+            return home;
+          }).finally(function() {
+            state.studentHomeRequest = null;
+          });
+        }
+        return state.studentHomeRequest;
+      }
+
+      function setJourneyOpen(open) {
+        state.journeyOpen = !!open;
+        document.body.classList.toggle('journey-open', state.journeyOpen);
+        const panel = document.getElementById('journey-panel');
+        if (panel) panel.classList.toggle('open', state.journeyOpen);
+        const toggle = document.getElementById('journey-toggle');
+        const peek = document.getElementById('journey-peek');
+        if (toggle) toggle.setAttribute('aria-expanded', state.journeyOpen ? 'true' : 'false');
+        if (peek) peek.setAttribute('aria-expanded', state.journeyOpen ? 'true' : 'false');
+        const drawer = document.getElementById('journey-drawer');
+        if (drawer) {
+          drawer.setAttribute('aria-hidden', state.journeyOpen ? 'false' : 'true');
+          if (state.journeyOpen) drawer.removeAttribute('inert');
+          else drawer.setAttribute('inert', '');
+        }
+      }
+
+      function mountJourneyPanel() {
+        const body = document.getElementById('journey-body');
+        if (!body) return;
+        if (!state.studentHome) body.innerHTML = '<p class="muted">Loading your journey...</p>';
+        loadStudentHome().then(function(home) {
+          paintStudentJourney(home);
+        }).catch(function(error) {
+          const target = document.getElementById('journey-body');
+          if (target) target.innerHTML = '<p class="notice error">' + escapeHtml(error && error.message ? error.message : error) + '</p>';
+        });
+      }
+
       function renderStudentSection() {
         const main = document.getElementById('main');
         main.innerHTML = '<p class="muted">Loading your EE...</p>';
-        const request = state.studentHome ? Promise.resolve(state.studentHome) : callServer('getStudentHome');
-        request.then(function(home) {
-          state.studentHome = home;
-          if (state.section === 'journey') paintStudentJourney(home);
-          else if (state.section === 'mywork') paintStudentWork(home);
+        loadStudentHome().then(function(home) {
+          if (state.section === 'mywork') paintStudentWork(home);
           else paintStudentHome(home);
         }).catch(showError);
       }
 
       function renderStudentView() {
-        state.section = 'journey';
-        renderStudentSection();
+        setJourneyOpen(true);
       }
 
       function nextIncomplete(home) {
@@ -494,7 +629,7 @@
         }).length;
         const done = (home.actionItems || []).filter(function(item) { return item.CreatorType === 'System' && item.Status === 'Completed'; }).length;
         const currentPhase = next ? (home.phases.filter(function(phase) { return phase.phaseId === next.template.phase; })[0] || {}).phaseTitle : 'Complete';
-        const hero = next ? `<section class="hero"><div><p class="eyebrow">Your next step</p><h2>${escapeHtml(next.template.title)}</h2><p>${escapeHtml(next.template.description || 'Complete this milestone before the due date.')}</p></div><div>${next.item && next.item.DueDate ? `<div class="chip">${escapeHtml(String(next.item.DueDate).slice(0, 10))}</div>` : ''}${formButton(home, next)}</div></section>` : '<section class="hero"><div><p class="eyebrow">All caught up</p><h2>No action needed right now</h2><p>Check Journey for what is coming.</p></div></section>';
+        const hero = next ? `<section class="hero"><div><p class="eyebrow">Your next step</p><h2>${escapeHtml(next.template.title)}</h2><p>${escapeHtml(next.template.description || 'Complete this milestone before the due date.')}</p></div><div>${next.item && next.item.DueDate ? `<div class="chip">${escapeHtml(String(next.item.DueDate).slice(0, 10))}</div>` : ''}${formButton(home, next)}</div></section>` : '<section class="hero"><div><p class="eyebrow">All caught up</p><h2>No action needed right now</h2><p>Open Journey to see what is coming.</p></div></section>';
         main.innerHTML = `${hero}
           ${home.unreadTicketCount ? `<div class="notice">Reply received${home.unreadTicketTitle ? ': ' + escapeHtml(home.unreadTicketTitle) : ''}. <button type="button" class="link-button" id="open-help">Open Help</button></div>` : ''}
           ${returned ? `<div class="notice">Returned: ${escapeHtml(returned.Title)}. ${escapeHtml(returned.returnedComment)}</div>` : ''}
@@ -529,10 +664,215 @@
       }
 
       function paintStudentJourney(home) {
-        const main = document.getElementById('main');
-        main.innerHTML = renderActionTimeline(home.actionItems || []);
-        bindActionTimeline(main, '', home.cohort || '');
+        const main = document.getElementById('journey-body');
+        if (!main) return;
+        const phases = home.phases || [];
+        const items = home.actionItems || [];
+        const templates = home.templates || [];
+        const phaseTitle = {};
+        phases.forEach(function(phase) { phaseTitle[phase.phaseId] = phase.phaseTitle || phase.phaseId; });
+        const current = nextIncomplete(home);
+        const currentPhaseId = current && current.template ? current.template.phase : '';
+        const systemItems = items.filter(function(item) { return item.CreatorType === 'System'; });
+        const doneCount = systemItems.filter(function(item) { return item.Status === 'Completed'; }).length;
+        const total = templates.length || systemItems.length;
+        const zoom = state.journeyFilters.phaseId;
+        const visiblePhases = zoom === 'all' ? phases : phases.filter(function(phase) { return phase.phaseId === zoom; });
+        const composerPhase = zoom === 'all' ? (currentPhaseId || (phases[phases.length - 1] || {}).phaseId || '') : zoom;
+        const percent = total ? Math.round((doneCount / total) * 100) : 0;
+        main.innerHTML = `<section class="journey">
+          <div class="journey-head"><div><p class="eyebrow">Extended Essay</p><h1>Your journey</h1></div><p class="journey-score"><strong>${doneCount}</strong> of ${total} done</p></div>
+          <div class="journey-bar" role="img" aria-label="${doneCount} of ${total} milestones done"><span style="width:${percent}%"></span></div>
+          <ol class="journey-path">${phases.map(function(phase) {
+            const phaseTemplates = templates.filter(function(template) { return template.phase === phase.phaseId; });
+            const phaseDone = phaseTemplates.filter(function(template) {
+              return systemItems.some(function(item) { return item.TemplateId === template.milestoneId && item.Status === 'Completed'; });
+            }).length;
+            const stateClass = phase.phaseId === currentPhaseId ? 'here' : (phaseTemplates.length && phaseDone === phaseTemplates.length ? 'done' : '');
+            return `<li><button type="button" class="phase-stop ${stateClass}" data-zoom="${escapeHtml(phase.phaseId)}" aria-pressed="${zoom === phase.phaseId ? 'true' : 'false'}"><span class="phase-mark"></span><span class="phase-name">${escapeHtml(phase.phaseTitle || phase.phaseId)}</span><span class="phase-count">${phaseDone}/${phaseTemplates.length || 0}</span></button></li>`;
+          }).join('')}</ol>
+          <div class="journey-filters">
+            <button type="button" data-zoom="all" aria-pressed="${zoom === 'all' ? 'true' : 'false'}">Whole journey</button>
+            <button type="button" data-layer="milestones" aria-pressed="${state.journeyFilters.showSystem ? 'true' : 'false'}">Milestones</button>
+            <button type="button" data-layer="todos" aria-pressed="${state.journeyFilters.showStudent ? 'true' : 'false'}">To-dos</button>
+          </div>
+          ${journeyHereCard(home, current, phaseTitle, zoom, currentPhaseId)}
+          ${visiblePhases.length ? visiblePhases.map(function(phase) {
+            return renderJourneyPhase(home, phase, phaseTitle, current, zoom, currentPhaseId, composerPhase);
+          }).join('') : '<div class="empty">Official milestones appear after your cohort is assigned.</div>'}
+        </section>`;
+        bindJourney(main, home, currentPhaseId);
         bindFormButtons(main);
+      }
+
+      function journeyHereCard(home, current, phaseTitle, zoom, currentPhaseId) {
+        if (!current || !current.template) return '<section class="here-card"><p class="eyebrow">All caught up</p><h2>The official milestones are complete</h2><p>Add a to-do if something still needs your attention.</p></section>';
+        if (zoom !== 'all' && zoom !== currentPhaseId) return '';
+        const item = current.item;
+        const title = phaseTitle[current.template.phase] || current.template.phase;
+        const due = item && item.DueDate ? shortDate(item.DueDate) : '';
+        const actions = journeyActions(item, current.template, true);
+        return `<section class="here-card" data-task-id="${item ? escapeHtml(item.TaskId) : ''}"><p class="eyebrow">You are here · ${escapeHtml(title)}</p><h2>${escapeHtml(current.template.title)}</h2><p>${escapeHtml(current.template.description || 'This is your next step.')}</p><div class="step-actions">${due ? `<span class="chip">${escapeHtml(due)}</span>` : ''}${actions || `<span class="chip">${escapeHtml(milestoneProgressLabel(item, current.template))}</span>`}</div></section>`;
+      }
+
+      function renderJourneyPhase(home, phase, phaseTitle, current, zoom, currentPhaseId, composerPhase) {
+        const detailed = zoom !== 'all' || phase.phaseId === currentPhaseId;
+        const milestones = (home.templates || []).filter(function(template) { return template.phase === phase.phaseId; });
+        const todos = (home.actionItems || []).filter(function(item) {
+          return item.CreatorType === 'Student' && (item.PhaseId === phase.phaseId || (!item.PhaseId && phase.phaseId === currentPhaseId));
+        }).sort(function(left, right) {
+          return (left.Status === 'Completed') - (right.Status === 'Completed') || textCompare(left.Title, right.Title);
+        });
+        const showMilestones = state.journeyFilters.showSystem;
+        const showTodos = state.journeyFilters.showStudent;
+        const rows = [];
+        if (showMilestones) milestones.forEach(function(template) {
+          const item = (home.actionItems || []).filter(function(entry) { return entry.CreatorType === 'System' && entry.TemplateId === template.milestoneId; })[0] || null;
+          rows.push(renderJourneyMilestone(template, item, detailed, current, zoom));
+        });
+        if (showTodos) todos.forEach(function(item) { rows.push(renderJourneyTodo(item)); });
+        const composer = showTodos && phase.phaseId === composerPhase ? `<form class="add-todo" data-phase="${escapeHtml(phase.phaseId)}"><input maxlength="240" placeholder="Add a to-do in ${escapeHtml(phase.phaseTitle || phase.phaseId)}" aria-label="New to-do"><button class="button" type="submit">Add</button></form>` : '';
+        const done = milestones.filter(function(template) {
+          return (home.actionItems || []).some(function(item) { return item.TemplateId === template.milestoneId && item.Status === 'Completed'; });
+        }).length;
+        return `<section class="journey-phase ${phase.phaseId === currentPhaseId ? 'here' : ''}"><header><h2>${escapeHtml(phase.phaseTitle || phase.phaseId)}</h2><span class="muted">${done} of ${milestones.length}</span></header><ol class="steps-rail">${rows.join('') || '<li class="muted">Nothing in this view.</li>'}</ol>${composer}</section>`;
+      }
+
+      function renderJourneyMilestone(template, item, detailed, current, zoom) {
+        const status = item ? item.Status : 'Pending';
+        const isHere = current && current.template.milestoneId === template.milestoneId && status !== 'Completed';
+        const showActions = item && item.canUpdate && zoom !== 'all';
+        const due = item && item.DueDate ? shortDate(item.DueDate) : '';
+        return `<li class="step ${status === 'Completed' ? 'done' : ''} ${isHere ? 'here' : ''}" data-task-id="${item ? escapeHtml(item.TaskId) : ''}" data-creator-type="System"><span class="rail"></span><div><div class="step-top"><h3>${escapeHtml(template.title)}</h3><span class="muted">${escapeHtml(milestoneKind(template))}${due ? ' · ' + escapeHtml(due) : ''}</span></div>${detailed ? `<p class="muted">${escapeHtml(template.description || '')}</p>` : ''}${item && item.returnedComment ? `<p class="notice">Returned: ${escapeHtml(item.returnedComment)}</p>` : ''}<div class="step-actions"><span class="muted">${escapeHtml(milestoneProgressLabel(item, template))}</span>${showActions ? journeyActions(item, template, false) : ''}</div></div></li>`;
+      }
+
+      function renderJourneyTodo(item) {
+        const editing = state.editingTodo === item.TaskId;
+        const due = item.DueDate ? String(item.DueDate).slice(0, 10) : '';
+        return `<li class="step todo ${item.Status === 'Completed' ? 'done' : ''}" data-task-id="${escapeHtml(item.TaskId)}" data-creator-type="Student"><span class="rail"></span><div><div class="step-top"><h3>${escapeHtml(item.Title)}</h3><span class="muted">To-do${due ? ' · ' + escapeHtml(shortDate(due)) : ''}</span></div>${item.Description && !editing ? `<p class="muted">${escapeHtml(item.Description)}</p>` : ''}${editing ? `<div class="todo-edit"><input data-todo-title value="${escapeHtml(item.Title)}" maxlength="240" aria-label="To-do title"><textarea data-todo-description aria-label="To-do note">${escapeHtml(item.Description || '')}</textarea><input type="date" data-todo-date value="${escapeHtml(due)}" aria-label="To-do date"><div class="step-actions"><button type="button" class="button" data-save-todo="${escapeHtml(item.TaskId)}">Save</button><button type="button" class="button secondary" data-close-todo>Close</button></div></div>` : `<div class="step-actions"><button type="button" class="button ${item.Status === 'Completed' ? 'secondary' : ''}" data-set-status="${item.Status === 'Completed' ? 'Pending' : 'Completed'}">${item.Status === 'Completed' ? 'Not done yet' : 'Done'}</button><button type="button" class="link-button" data-edit-todo="${escapeHtml(item.TaskId)}">Edit</button></div>`}</div></li>`;
+      }
+
+      function journeyActions(item, template, prominent) {
+        if (!item || !item.canUpdate || item.Status === 'Completed') return '';
+        let html = '';
+        if (template && template.type === 'form') html += formJourneyButton(template);
+        if (template && template.type !== 'form' && item.Status === 'Pending') html += '<button type="button" class="button secondary" data-set-status="In Progress">Start</button>';
+        if (!template || template.type !== 'form') html += `<button type="button" class="button${prominent ? '' : ''}" data-set-status="Completed">Done</button>`;
+        return html;
+      }
+
+      function formJourneyButton(template) {
+        if (state.studentHome && state.studentHome.publishedForms && state.studentHome.publishedForms[template.milestoneId]) return `<button type="button" class="button" data-open-form="${escapeHtml(template.milestoneId)}">Open form</button>`;
+        return '<span class="muted">Form not published yet</span>';
+      }
+
+      function milestoneKind(template) {
+        const names = { form: 'Form', upload: 'Upload', doc: 'Document', approval: 'Approval', meeting: 'Session' };
+        return names[template.type] || 'Milestone';
+      }
+
+      function milestoneProgressLabel(item, template) {
+        if (item && item.Status === 'Completed') return 'Done';
+        if (item && item.canUpdate) return item.Status === 'In Progress' ? 'In progress' : 'Yours to do';
+        if (template.type === 'meeting') return 'Your supervisor logs this session';
+        if (template.mOwner === 'supervisor') return 'With your supervisor';
+        if (template.mOwner === 'coordinator') return 'With the EE Coordinator';
+        if (template.mOwner === 'lead') return 'With your subject lead';
+        return 'Waiting';
+      }
+
+      function shortDate(value) {
+        const text = String(value || '').slice(0, 10);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return '';
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const parts = text.split('-');
+        return Number(parts[2]) + ' ' + months[Number(parts[1]) - 1] + ' ' + parts[0];
+      }
+
+      function textCompare(left, right) {
+        return String(left || '').localeCompare(String(right || ''));
+      }
+
+      function bindJourney(main, home, currentPhaseId) {
+        main.querySelectorAll('[data-zoom]').forEach(function(button) {
+          button.addEventListener('click', function() {
+            const next = button.dataset.zoom;
+            state.journeyFilters.phaseId = state.journeyFilters.phaseId === next && next !== 'all' ? 'all' : next;
+            paintStudentJourney(home);
+          });
+        });
+        main.querySelectorAll('[data-layer]').forEach(function(button) {
+          button.addEventListener('click', function() {
+            if (button.dataset.layer === 'milestones') state.journeyFilters.showSystem = !state.journeyFilters.showSystem;
+            else state.journeyFilters.showStudent = !state.journeyFilters.showStudent;
+            paintStudentJourney(home);
+          });
+        });
+        main.querySelectorAll('[data-set-status]').forEach(function(button) {
+          button.addEventListener('click', function() {
+            const card = button.closest('[data-task-id]');
+            const taskId = card && card.dataset.taskId;
+            if (!taskId) return;
+            button.disabled = true;
+            runMutation('setActionItemStatus', [taskId, button.dataset.setStatus, '', home.cohort || ''], { key: 'action-item:' + taskId }).then(function() {
+              patchJourneyItem(taskId, { Status: button.dataset.setStatus });
+              paintStudentJourney(state.studentHome || home);
+              showSuccess(button.dataset.setStatus === 'Completed' ? 'Marked done.' : 'Progress saved.');
+            }).catch(function(error) { button.disabled = false; showError(error); });
+          });
+        });
+        main.querySelectorAll('.add-todo').forEach(function(form) {
+          form.addEventListener('submit', function(event) {
+            event.preventDefault();
+            const input = form.querySelector('input');
+            const title = input.value.trim();
+            if (!title) return;
+            const phaseId = form.dataset.phase || currentPhaseId || '';
+            form.querySelector('button').disabled = true;
+            runMutation('addStudentTodo', [title, phaseId], { key: 'student-todo:new' }).then(function(result) {
+              const created = { TaskId: result.TaskId, StudentId: state.user.email, CreatorType: 'Student', TemplateId: '', PhaseId: phaseId, Title: title, Description: '', DueDate: '', Status: 'Pending', canEdit: true, canUpdate: true };
+              if (state.studentHome) state.studentHome.actionItems = (state.studentHome.actionItems || []).concat([created]);
+              else home.actionItems = (home.actionItems || []).concat([created]);
+              state.journeyFilters.showStudent = true;
+              paintStudentJourney(state.studentHome || home);
+              const fresh = document.querySelector('.add-todo input');
+              if (fresh) fresh.focus();
+              showSuccess('To-do added.');
+            }).catch(function(error) { form.querySelector('button').disabled = false; showError(error, form); });
+          });
+        });
+        main.querySelectorAll('[data-edit-todo]').forEach(function(button) {
+          button.addEventListener('click', function() {
+            state.editingTodo = button.dataset.editTodo;
+            paintStudentJourney(home);
+          });
+        });
+        const closeTodo = main.querySelector('[data-close-todo]');
+        if (closeTodo) closeTodo.addEventListener('click', function() { state.editingTodo = ''; paintStudentJourney(home); });
+        main.querySelectorAll('[data-save-todo]').forEach(function(button) {
+          button.addEventListener('click', function() {
+            const card = button.closest('[data-task-id]');
+            const title = card.querySelector('[data-todo-title]').value;
+            const description = card.querySelector('[data-todo-description]').value;
+            const date = card.querySelector('[data-todo-date]').value;
+            button.disabled = true;
+            runMutation('updateStudentTodo', [button.dataset.saveTodo, title, description], { key: 'action-item:' + button.dataset.saveTodo }).then(function() {
+              return runMutation('setActionItemDueDate', [button.dataset.saveTodo, date], { key: 'action-item-date:' + button.dataset.saveTodo });
+            }).then(function() {
+              patchJourneyItem(button.dataset.saveTodo, { Title: title, Description: description, DueDate: date });
+              state.editingTodo = '';
+              paintStudentJourney(state.studentHome || home);
+              showSuccess('To-do saved.');
+            }).catch(function(error) { button.disabled = false; showError(error, card); });
+          });
+        });
+      }
+
+      function patchJourneyItem(taskId, changes) {
+        if (!state.studentHome || !state.studentHome.actionItems) return;
+        const item = state.studentHome.actionItems.filter(function(entry) { return entry.TaskId === taskId; })[0];
+        if (!item) return;
+        Object.keys(changes).forEach(function(key) { item[key] = changes[key]; });
       }
 
       function paintStudentWork(home) {
@@ -847,215 +1187,7 @@
           button.addEventListener('click', function() { openStudentForm(button.dataset.openForm); });
         });
         const journey = main.querySelector('[data-go-journey]');
-        if (journey) journey.addEventListener('click', function() { state.section = 'journey'; renderShell(); });
-      }
-
-      function renderActionTimeline(items) {
-        const phases = Array.from(new Set(items.map(function(item) { return item.PhaseId; }).filter(Boolean))).sort();
-        const isOwnStudentView = state.user.role === 'student' && !state.selectedStudent;
-        return `<div class="timeline-toolbar"><button type="button" class="button secondary" id="toggle-journey-controls">${state.journeyControlsOpen ? 'Hide controls' : 'Show controls'}</button><span class="muted">${items.length} action items</span></div>
-          <div class="journey-layout">
-            <aside class="journey-controls ${state.journeyControlsOpen ? '' : 'collapsed'}" id="journey-controls">
-              ${isOwnStudentView ? '<form class="quick-todo" id="quick-todo"><input id="quick-todo-title" maxlength="240" placeholder="Add a new To-Do..." aria-label="New To-Do"><button class="button" type="submit" title="Add To-Do">+</button></form>' : ''}
-              <div class="filter-group"><strong>Phase</strong><label><input type="radio" name="phase-filter" value="all" ${state.journeyFilters.phaseId === 'all' ? 'checked' : ''}> All phases</label>${phases.map(function(phaseId) {
-                return `<label><input type="radio" name="phase-filter" value="${escapeHtml(phaseId)}" ${state.journeyFilters.phaseId === phaseId ? 'checked' : ''}> ${escapeHtml(phaseId)}</label>`;
-              }).join('')}</div>
-              <div class="filter-group"><strong>Tasks</strong><label><input type="checkbox" data-creator-filter="System" ${state.journeyFilters.showSystem ? 'checked' : ''}> Official milestones</label><label><input type="checkbox" data-creator-filter="Student" ${state.journeyFilters.showStudent ? 'checked' : ''}> My To-Dos</label></div>
-            </aside>
-            <section class="timeline" id="action-timeline" aria-label="Extended Essay timeline">${items.length ? items.map(renderActionItem).join('') : '<div class="empty">No action items yet. Official milestones appear after your cohort is assigned.</div>'}</section>
-          </div>`;
-      }
-
-      function renderActionItem(item) {
-        const systemTask = item.CreatorType === 'System';
-        const dateValue = item.DueDate ? String(item.DueDate).slice(0, 10) : '';
-        return `<article class="task-card ${systemTask ? 'system-task' : 'student-task'} ${item.Status === 'Completed' ? 'completed' : ''}" data-task-id="${escapeHtml(item.TaskId)}" data-phase-id="${escapeHtml(item.PhaseId || '')}" data-creator-type="${escapeHtml(item.CreatorType)}" draggable="${item.canEdit ? 'true' : 'false'}">
-          <div><select data-task-status="${escapeHtml(item.TaskId)}" data-current-status="${escapeHtml(item.Status)}" aria-label="Task status" ${item.canUpdate ? '' : 'disabled'}>${['Pending', 'In Progress', 'Completed'].map(function(status) {
-            return `<option value="${status}" ${item.Status === status ? 'selected' : ''}>${status}</option>`;
-          }).join('')}</select></div>
-          <div class="task-content"><span class="task-kind">${systemTask ? 'Official milestone' : 'My To-Do'}</span>
-            ${item.canEdit ? `<div class="todo-editor"><input data-todo-title="${escapeHtml(item.TaskId)}" value="${escapeHtml(item.Title)}" maxlength="240" aria-label="To-Do title"><textarea data-todo-description="${escapeHtml(item.TaskId)}" aria-label="To-Do description">${escapeHtml(item.Description || '')}</textarea><button type="button" class="link-button" data-save-todo="${escapeHtml(item.TaskId)}">Save</button></div>` : `<h3>${escapeHtml(item.Title)}</h3><p>${escapeHtml(item.Description || '')}</p>${item.templateType === 'form' && state.studentHome && state.studentHome.publishedForms && state.studentHome.publishedForms[item.TemplateId] ? `<button type="button" class="button" data-open-form="${escapeHtml(item.TemplateId)}">Open form</button>` : ''}${item.returnedComment ? `<p class="notice">Returned: ${escapeHtml(item.returnedComment)}</p>` : ''}`}
-            ${item.canEdit ? '<span class="drop-hint">Drop to place this To-Do beside this date</span>' : ''}
-          </div>
-          <div class="task-meta"><strong>${escapeHtml(item.PhaseId || 'To-Do')}</strong>${dateValue ? `<time datetime="${escapeHtml(dateValue)}">${escapeHtml(dateValue)}</time>` : '<span>No due date</span>'}${item.canEdit ? `<input type="date" data-task-date="${escapeHtml(item.TaskId)}" data-current-date="${escapeHtml(dateValue)}" value="${escapeHtml(dateValue)}" aria-label="To-Do due date">` : ''}</div>
-        </article>`;
-      }
-
-      function bindActionTimeline(main, email, cohort) {
-        const toggle = document.getElementById('toggle-journey-controls');
-        toggle.addEventListener('click', function() {
-          state.journeyControlsOpen = !state.journeyControlsOpen;
-          renderStudentSection();
-        });
-        const quickTodo = document.getElementById('quick-todo');
-        if (quickTodo) quickTodo.addEventListener('submit', function(event) {
-          event.preventDefault();
-          const input = document.getElementById('quick-todo-title');
-          const button = quickTodo.querySelector('button');
-          const title = input.value.trim();
-          if (!title) return;
-          button.disabled = true;
-          runMutation('addStudentTodo', [title], { key: 'student-todo:new' }).then(function(result) {
-            const timeline = document.getElementById('action-timeline');
-            const item = { TaskId: result.TaskId, StudentId: state.user.email, CreatorType: 'Student', TemplateId: '', PhaseId: '', Title: title, Description: '', DueDate: '', Status: 'Pending', canEdit: true, canUpdate: true };
-            if (timeline) {
-              timeline.insertAdjacentHTML('beforeend', renderActionItem(item));
-              const card = timeline.querySelector('[data-task-id="' + cssEscape(result.TaskId) + '"]');
-              bindNewTodoCard(card, email, cohort);
-              markSync(card, 'confirmed');
-            }
-            input.value = '';
-            button.disabled = false;
-            showSuccess('To-Do saved.');
-          }).catch(function(error) {
-            button.disabled = false;
-            showError(error, quickTodo);
-          });
-        });
-        main.querySelectorAll('[name="phase-filter"]').forEach(function(input) {
-          input.addEventListener('change', function() { state.journeyFilters.phaseId = input.value; applyJourneyFilters(); });
-        });
-        main.querySelectorAll('[data-creator-filter]').forEach(function(input) {
-          input.addEventListener('change', function() {
-            if (input.dataset.creatorFilter === 'System') state.journeyFilters.showSystem = input.checked;
-            else state.journeyFilters.showStudent = input.checked;
-            applyJourneyFilters();
-          });
-        });
-        main.querySelectorAll('[data-task-status]').forEach(function(input) {
-          input.addEventListener('change', function() {
-            const card = input.closest('[data-task-id]');
-            const previousStatus = input.dataset.currentStatus;
-            const nextStatus = input.value;
-            markSync(card, 'pending');
-            runMutation('setActionItemStatus', [input.dataset.taskStatus, nextStatus, email, cohort], {
-              key: 'action-item:' + input.dataset.taskStatus,
-              confirm: function() {
-                input.dataset.currentStatus = nextStatus;
-                card.classList.toggle('completed', nextStatus === 'Completed');
-                markSync(card, 'confirmed');
-              },
-              reject: function(error) {
-                input.value = previousStatus;
-                markSync(card, 'rejected');
-                showError(error, card);
-              }
-            });
-          });
-        });
-        main.querySelectorAll('[data-task-date]').forEach(function(input) {
-          input.addEventListener('change', function() {
-            const card = input.closest('[data-task-id]');
-            const previousDate = input.dataset.currentDate;
-            const nextDate = input.value;
-            const time = card.querySelector('time');
-            markSync(card, 'pending');
-            runMutation('setActionItemDueDate', [input.dataset.taskDate, nextDate], {
-              key: 'action-item:' + input.dataset.taskDate,
-              confirm: function() {
-                input.dataset.currentDate = nextDate;
-                if (time) { time.dateTime = nextDate; time.textContent = nextDate; }
-                markSync(card, 'confirmed');
-              },
-              reject: function(error) {
-                input.value = previousDate;
-                markSync(card, 'rejected');
-                showError(error, card);
-              }
-            });
-          });
-        });
-        main.querySelectorAll('[data-save-todo]').forEach(function(button) {
-          button.addEventListener('click', function() {
-            const card = button.closest('[data-task-id]');
-            const titleInput = card.querySelector('[data-todo-title]');
-            const descriptionInput = card.querySelector('[data-todo-description]');
-            const title = titleInput.value;
-            const description = descriptionInput.value;
-            markSync(card, 'pending');
-            runMutation('updateStudentTodo', [button.dataset.saveTodo, title, description], {
-              key: 'action-item:' + button.dataset.saveTodo,
-              confirm: function() { markSync(card, 'confirmed'); },
-              reject: function(error) {
-                markSync(card, 'rejected');
-                showError(error, card);
-              }
-            });
-          });
-        });
-        main.querySelectorAll('[data-task-id][draggable="true"]').forEach(function(card) {
-          card.addEventListener('dragstart', function(event) { event.dataTransfer.setData('text/plain', card.dataset.taskId); card.classList.add('dragging'); });
-          card.addEventListener('dragend', function() { card.classList.remove('dragging'); main.querySelectorAll('.drag-over').forEach(function(item) { item.classList.remove('drag-over'); }); });
-        });
-        main.querySelectorAll('[data-task-id]').forEach(function(card) {
-          card.addEventListener('dragover', function(event) { event.preventDefault(); card.classList.add('drag-over'); });
-          card.addEventListener('dragleave', function() { card.classList.remove('drag-over'); });
-          card.addEventListener('drop', function(event) {
-            event.preventDefault();
-            card.classList.remove('drag-over');
-            const taskId = event.dataTransfer.getData('text/plain');
-            if (!taskId || taskId === card.dataset.taskId) return;
-            const position = event.clientY < card.getBoundingClientRect().top + card.getBoundingClientRect().height / 2 ? 'before' : 'after';
-            const movingCard = main.querySelector('[data-task-id="' + cssEscape(taskId) + '"]');
-            if (!movingCard || !movingCard.matches('.student-task')) return;
-            const previousParent = movingCard.parentElement;
-            const previousNextSibling = movingCard.nextElementSibling;
-            if (position === 'before') card.parentElement.insertBefore(movingCard, card);
-            else card.parentElement.insertBefore(movingCard, card.nextElementSibling);
-            markSync(movingCard, 'pending');
-            runMutation('repositionStudentTodo', [taskId, card.dataset.taskId, position], {
-              key: 'action-order',
-              confirm: function() { markSync(movingCard, 'confirmed'); },
-              reject: function(error) {
-                if (previousNextSibling && previousNextSibling.parentElement === previousParent) previousParent.insertBefore(movingCard, previousNextSibling);
-                else previousParent.appendChild(movingCard);
-                markSync(movingCard, 'rejected');
-                showError(error, movingCard);
-              }
-            });
-          });
-        });
-        applyJourneyFilters();
-      }
-
-      function bindNewTodoCard(card, email, cohort) {
-        if (!card) return;
-        const status = card.querySelector('[data-task-status]');
-        if (status) status.addEventListener('change', function() {
-          const nextStatus = status.value;
-          markSync(card, 'pending');
-          runMutation('setActionItemStatus', [status.dataset.taskStatus, nextStatus, email, cohort], { key: 'action-item:' + status.dataset.taskStatus,
-            confirm: function() { status.dataset.currentStatus = nextStatus; card.classList.toggle('completed', nextStatus === 'Completed'); markSync(card, 'confirmed'); },
-            reject: function(error) { status.value = status.dataset.currentStatus; markSync(card, 'rejected'); showError(error, card); }
-          });
-        });
-        const date = card.querySelector('[data-task-date]');
-        if (date) date.addEventListener('change', function() {
-          const nextDate = date.value;
-          markSync(card, 'pending');
-          runMutation('setActionItemDueDate', [date.dataset.taskDate, nextDate], { key: 'action-item:' + date.dataset.taskDate,
-            confirm: function() { date.dataset.currentDate = nextDate; markSync(card, 'confirmed'); },
-            reject: function(error) { date.value = date.dataset.currentDate; markSync(card, 'rejected'); showError(error, card); }
-          });
-        });
-        const save = card.querySelector('[data-save-todo]');
-        if (save) save.addEventListener('click', function() {
-          const title = card.querySelector('[data-todo-title]').value;
-          const description = card.querySelector('[data-todo-description]').value;
-          markSync(card, 'pending');
-          runMutation('updateStudentTodo', [save.dataset.saveTodo, title, description], { key: 'action-item:' + save.dataset.saveTodo,
-            confirm: function() { markSync(card, 'confirmed'); },
-            reject: function(error) { markSync(card, 'rejected'); showError(error, card); }
-          });
-        });
-      }
-
-      function applyJourneyFilters() {
-        document.querySelectorAll('#action-timeline [data-task-id]').forEach(function(card) {
-          const creatorVisible = card.dataset.creatorType === 'System' ? state.journeyFilters.showSystem : state.journeyFilters.showStudent;
-          const phaseVisible = state.journeyFilters.phaseId === 'all' || card.dataset.phaseId === state.journeyFilters.phaseId;
-          card.classList.toggle('hidden', !creatorVisible || !phaseVisible);
-        });
+        if (journey) journey.addEventListener('click', function() { setJourneyOpen(true); });
       }
 
       function renderStaffHome() {
@@ -1215,6 +1347,7 @@
               closeForm();
               showSuccess(submit ? 'Form submitted.' : 'Draft saved.');
               renderStudentSection();
+              mountJourneyPanel();
             });
           }
         });

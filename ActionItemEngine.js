@@ -42,21 +42,26 @@ function getStudentActionItems_(studentEmail, user) {
   });
 }
 
-function addStudentTodo(title) {
+function addStudentTodo(title, phaseId) {
   var user = requireUser_('ADD_STUDENT_TODO');
   if (user.role !== 'student') denyAccess_(user, 'ADD_STUDENT_TODO', 'Student access required.');
   var taskTitle = text_(title);
   if (!taskTitle) throw new Error('To-Do title is required.');
   if (taskTitle.length > 240) throw new Error('To-Do title must be 240 characters or fewer.');
+  var phase = text_(phaseId);
+  if (phase) {
+    var knownPhase = findRecordByValue_(getSpreadsheet_().getSheetByName(APP_TABLES.phases.sheet), 'phaseId', phase);
+    if (!knownPhase || !toBoolean_(knownPhase.active)) throw new Error('Choose an active phase for this to-do.');
+  }
 
-  return runAuditedMutation_(user, 'ADD_STUDENT_TODO', { studentId: user.email }, function() {
+  return runAuditedMutation_(user, 'ADD_STUDENT_TODO', { studentId: user.email, phaseId: phase }, function() {
     var sheet = getRequiredActionItemsSheet_();
     var values = {
       TaskId: createActionItemId_(),
       StudentId: user.email,
       CreatorType: 'Student',
       TemplateId: '',
-      PhaseId: '',
+      PhaseId: phase,
       Title: taskTitle,
       Description: '',
       DueDate: '',
