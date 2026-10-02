@@ -58,7 +58,10 @@ var ACTIVITY_TITLES = {
   TICKET_CREATE: 'Asked a question',
   TICKET_REPLY: 'Sent a reply',
   TICKET_READ: 'Opened a reply',
-  TICKET_STATUS: 'Changed a question status'
+  TICKET_STATUS: 'Changed a question status',
+  SAVE_COHORT_DRIVE_SETTINGS: 'Saved cohort Drive settings',
+  CHECK_COHORT_DRIVE_FOLDERS: 'Checked student Drive folders',
+  SYNC_COHORT_DRIVE_FOLDERS: 'Updated student Drive folders'
 };
 
 function activityFeedForActor_(actorEmail) {

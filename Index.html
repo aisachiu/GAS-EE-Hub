@@ -76,6 +76,10 @@
       .link-button { border: 0; padding: 4px; color: var(--green); background: transparent; font-weight: 700; }
       .link-button:disabled { color: #84918c; cursor: not-allowed; }
       .editor { margin-top: 14px; padding: 14px; background: #f8fafb; border-top: 3px solid var(--green); }
+      .drive-panel { margin-bottom: 14px; }
+      .drive-results { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
+      .drive-results li { padding: 8px 10px; background: white; border: 1px solid var(--line); }
+      .drive-results a { color: var(--green); font-weight: 700; }
       .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
       .field { min-width: 0; display: grid; gap: 5px; }
       .field label { color: var(--muted); font-size: 12px; font-weight: 700; }
@@ -345,6 +349,7 @@
         originalKey: '',
         status: '',
         selectedMemberIds: [],
+        driveBusy: false,
         assignmentStudentIds: [],
         importRecords: null,
         journeyOpen: false,
@@ -1836,7 +1841,7 @@
             }
             target.innerHTML = `<div class="toolbar"><label for="admin-cohort">Cohort</label><select id="admin-cohort">${cohorts.map(function(cohort) {
               return `<option value="${escapeHtml(cohort.id)}" ${cohort.id === current ? 'selected' : ''}>${escapeHtml(cohort.name)}</option>`;
-            }).join('')}</select></div><div id="admin-records"><p class="muted">Loading students...</p></div>`;
+            }).join('')}</select></div><section class="editor drive-panel" id="drive-folder-panel"><p class="muted">Loading Drive folders...</p></section><div id="admin-records"><p class="muted">Loading students...</p></div>`;
             document.getElementById('admin-cohort').addEventListener('change', function(event) {
               state.cohortId = event.target.value;
               state.editingRecord = null;
@@ -1845,6 +1850,7 @@
               loadAdminSection();
             });
             callServer('getCohortMembersForAdmin', current).then(renderAdminData).catch(showError);
+            renderDriveFolderPanel();
           }).catch(showError);
           return;
         }
@@ -2144,6 +2150,7 @@
           button.addEventListener('click', function() { removeRecord(records[Number(button.dataset.delete)]); });
         });
         if (state.editingRecord) openEditor(state.editingRecord.record, true);
+        updateDriveNamePreview();
       }
 
       function updateSelectedCount() {
@@ -2154,6 +2161,262 @@
         if (count) count.textContent = state.selectedMemberIds.length + ' selected';
         if (action) action.disabled = state.selectedMemberIds.length === 0;
         if (selectAll) selectAll.checked = selectable.length > 0 && selectable.every(function(input) { return input.checked; });
+        const driveDisabled = state.driveBusy || state.selectedMemberIds.length === 0;
+        const checkDrive = document.getElementById('check-drive-folders');
+        const updateDrive = document.getElementById('update-drive-folders');
+        if (checkDrive) checkDrive.disabled = driveDisabled;
+        if (updateDrive) updateDrive.disabled = driveDisabled;
+        updateDriveNamePreview();
+      }
+
+      function renderDriveFolderPanel() {
+        const panel = document.getElementById('drive-folder-panel');
+        if (!panel) return;
+        panel.innerHTML = `<h2>Drive folders</h2>
+          <p class="muted">Create one folder per selected student inside the cohort folder. Each folder link is saved on that student as EE folder. Sharing does not send an email.</p>
+          <div class="form-grid">
+            <div class="field wide"><label for="drive-root-url">Cohort folder</label>
+              <div class="toolbar"><button type="button" class="button secondary" id="choose-drive-root">Choose in Google Drive</button><button type="button" class="button secondary" id="save-drive-root">Save folder link</button><strong id="drive-root-label">No folder selected</strong></div>
+              <input id="drive-root-url" placeholder="Or paste a Google Drive folder link">
+              <p class="notice" id="drive-root-problem" hidden></p>
+            </div>
+            <div class="field"><label for="drive-prefix">Prefix</label><input id="drive-prefix" maxlength="80"></div>
+            <div class="field"><label for="drive-suffix">Suffix</label><input id="drive-suffix" maxlength="80"></div>
+          </div>
+          <p class="muted" id="drive-name-preview"></p>
+          <label class="field check"><input type="checkbox" id="drive-share-student"> Share with the student as editor</label>
+          <label class="field check"><input type="checkbox" id="drive-share-parent"> Share with the parent as viewer</label>
+          <div class="toolbar"><button type="button" class="button secondary" id="check-drive-folders" disabled>Check selected</button><button type="button" class="button" id="update-drive-folders" disabled>Create or update selected</button></div>
+          <div id="drive-folder-results"></div>`;
+        document.getElementById('choose-drive-root').addEventListener('click', chooseDriveRoot);
+        document.getElementById('save-drive-root').addEventListener('click', saveDriveRootFromForm);
+        document.getElementById('check-drive-folders').addEventListener('click', function() { runDriveFolderJob(true); });
+        document.getElementById('update-drive-folders').addEventListener('click', function() { runDriveFolderJob(false); });
+        ['drive-prefix', 'drive-suffix'].forEach(function(id) {
+          document.getElementById(id).addEventListener('input', updateDriveNamePreview);
+        });
+        callServer('getCohortDriveSettings', state.cohortId).then(function(settings) {
+          state.driveSettings = settings;
+          applyDriveFolderSettings(settings);
+          updateSelectedCount();
+        }).catch(showError);
+      }
+
+      function applyDriveFolderSettings(settings) {
+        const prefix = document.getElementById('drive-prefix');
+        const suffix = document.getElementById('drive-suffix');
+        const url = document.getElementById('drive-root-url');
+        const label = document.getElementById('drive-root-label');
+        const problem = document.getElementById('drive-root-problem');
+        if (!prefix || !settings) return;
+        prefix.value = settings.prefix || '';
+        suffix.value = settings.suffix || '';
+        if (url) url.value = settings.rootUrl || settings.rootFolderId || '';
+        if (label) label.textContent = settings.rootName ? settings.rootName : 'No folder selected';
+        if (problem) {
+          problem.hidden = !settings.rootProblem;
+          problem.textContent = settings.rootProblem || '';
+        }
+        updateDriveNamePreview();
+      }
+
+      function readDriveFolderForm() {
+        const url = document.getElementById('drive-root-url');
+        const saved = state.driveSettings || {};
+        return {
+          rootFolderId: (url && url.value.trim()) || saved.rootFolderId || '',
+          prefix: document.getElementById('drive-prefix') ? document.getElementById('drive-prefix').value : '',
+          suffix: document.getElementById('drive-suffix') ? document.getElementById('drive-suffix').value : '',
+          shareStudent: !!(document.getElementById('drive-share-student') && document.getElementById('drive-share-student').checked),
+          shareParent: !!(document.getElementById('drive-share-parent') && document.getElementById('drive-share-parent').checked)
+        };
+      }
+
+      function updateDriveNamePreview() {
+        const node = document.getElementById('drive-name-preview');
+        const prefixInput = document.getElementById('drive-prefix');
+        if (!node || !prefixInput) return;
+        const records = state.adminData && state.adminData.records ? state.adminData.records : [];
+        const selectedId = state.selectedMemberIds[0];
+        const record = records.filter(function(item) { return item.StudentId === selectedId; })[0] || records[0];
+        const displayName = record ? (record['Display Name'] || record.StudentId || 'Student') : 'Student';
+        const prefix = prefixInput.value;
+        const suffix = document.getElementById('drive-suffix') ? document.getElementById('drive-suffix').value : '';
+        const name = String(prefix + displayName + suffix).replace(/[\/\\]/g, '').replace(/[\u0000-\u001f]/g, '').trim();
+        node.textContent = name ? 'Example folder name: ' + name : 'Enter a prefix, suffix, or choose a student with a display name.';
+      }
+
+      function saveDriveRootFromForm() {
+        const form = readDriveFolderForm();
+        if (!form.rootFolderId) {
+          showError(new Error('Paste a Google Drive folder link.'));
+          return;
+        }
+        const button = document.getElementById('save-drive-root');
+        if (button) button.disabled = true;
+        runMutation('saveCohortDriveSettings', [state.cohortId, form], { key: 'drive-settings:' + state.cohortId }).then(function(settings) {
+          state.driveSettings = settings;
+          applyDriveFolderSettings(settings);
+          if (button) button.disabled = false;
+          showSuccess('Cohort folder saved.');
+        }).catch(function(error) {
+          if (button) button.disabled = false;
+          showError(error);
+        });
+      }
+
+      function chooseDriveRoot() {
+        callServer('getDrivePickerConfig').then(function(config) {
+          if (!config || !config.developerKey || !config.token) {
+            const input = document.getElementById('drive-root-url');
+            if (input) input.focus();
+            showError(new Error('Google Drive Picker is not configured. Paste a folder link instead. Set the DRIVE_PICKER_DEVELOPER_KEY script property to enable the picker.'));
+            return;
+          }
+          loadGooglePicker().then(function() {
+            window.gapi.load('picker', function() { showGoogleFolderPicker(config); });
+          }).catch(showError);
+        }).catch(showError);
+      }
+
+      function loadGooglePicker() {
+        return new Promise(function(resolve, reject) {
+          if (window.gapi) { resolve(); return; }
+          const existing = document.getElementById('google-api-script');
+          if (existing) {
+            existing.addEventListener('load', function() { resolve(); });
+            existing.addEventListener('error', function() { reject(new Error('Google Drive Picker could not be loaded.')); });
+            return;
+          }
+          const script = document.createElement('script');
+          script.id = 'google-api-script';
+          script.src = 'https://apis.google.com/js/api.js';
+          script.onload = function() { resolve(); };
+          script.onerror = function() { reject(new Error('Google Drive Picker could not be loaded.')); };
+          document.head.appendChild(script);
+        });
+      }
+
+      function showGoogleFolderPicker(config) {
+        const view = new google.picker.DocsView(google.picker.ViewId.FOLDERS)
+          .setIncludeFolders(true)
+          .setSelectFolderEnabled(true)
+          .setMimeTypes('application/vnd.google-apps.folder');
+        let origin = window.location.protocol + '//' + window.location.host;
+        if (window.google && google.script && google.script.host && google.script.host.origin) origin = google.script.host.origin;
+        const builder = new google.picker.PickerBuilder()
+          .addView(view)
+          .setOAuthToken(config.token)
+          .setDeveloperKey(config.developerKey)
+          .setTitle('Choose the cohort folder')
+          .setOrigin(origin)
+          .setCallback(function(data) {
+            if (!data || data.action !== google.picker.Action.PICKED || !data.docs || !data.docs.length) return;
+            const picked = data.docs[0];
+            const url = document.getElementById('drive-root-url');
+            if (url) url.value = picked.url || picked.id;
+            saveDriveRootFromForm();
+          });
+        if (google.picker.Feature && google.picker.Feature.SUPPORT_DRIVES) builder.enableFeature(google.picker.Feature.SUPPORT_DRIVES);
+        builder.build().setVisible(true);
+      }
+
+      function runDriveFolderJob(dryRun) {
+        if (!state.selectedMemberIds.length || state.driveBusy) return;
+        const form = readDriveFolderForm();
+        if (!form.rootFolderId) {
+          showError(new Error('Choose a cohort folder or paste its link.'));
+          return;
+        }
+        const cohortId = state.cohortId;
+        const ids = state.selectedMemberIds.slice();
+        const results = [];
+        state.driveBusy = true;
+        updateSelectedCount();
+        function finish(error) {
+          state.driveBusy = false;
+          updateSelectedCount();
+          const resultsNode = document.getElementById('drive-folder-results');
+          if (resultsNode && state.cohortId === cohortId) resultsNode.innerHTML = renderDriveFolderResults(results);
+          const problemCount = results.filter(function(student) {
+            return student.status === 'error' || student.status === 'ambiguous' || (student.shares || []).some(function(share) { return share.status === 'failed'; });
+          }).length;
+          const countLabel = results.length + ' student' + (results.length === 1 ? '' : 's');
+          if (error) showError(error);
+          else if (problemCount) showSuccess((dryRun ? 'Checked ' : 'Updated ') + countLabel + '. ' + problemCount + ' need attention.');
+          else if (!dryRun) showSuccess('Drive folders updated for ' + countLabel + '.');
+          else showSuccess('Checked ' + countLabel + '.');
+        }
+        function step(offset) {
+          if (state.cohortId !== cohortId || !document.getElementById('drive-folder-panel')) {
+            state.driveBusy = false;
+            return;
+          }
+          if (offset >= ids.length) {
+            finish();
+            if (!dryRun) refreshAdminSectionSilently();
+            return;
+          }
+          const batch = ids.slice(offset, offset + 8);
+          const resultsNode = document.getElementById('drive-folder-results');
+          if (resultsNode) {
+            resultsNode.innerHTML = '<p class="muted">Working on ' + (offset + 1) + '–' + Math.min(offset + batch.length, ids.length) + ' of ' + ids.length + '...</p>' + renderDriveFolderResults(results);
+          }
+          const method = dryRun ? 'checkCohortDriveFolders' : 'syncCohortDriveFolders';
+          runMutation(method, [cohortId, batch, form], { key: 'drive-folders:' + cohortId }).then(function(result) {
+            (result.students || []).forEach(function(student) { results.push(student); });
+            if (result.settings) {
+              state.driveSettings = result.settings;
+              applyDriveFolderSettings(result.settings);
+            }
+            step(offset + batch.length);
+          }).catch(function(error) { finish(error); });
+        }
+        step(0);
+      }
+
+      function renderDriveFolderResults(students) {
+        if (!students.length) return '';
+        return '<ul class="drive-results">' + students.map(function(student) {
+          const url = safeUrl(student.url);
+          const shares = (student.shares || []).map(driveShareLabel).filter(Boolean).join(' · ');
+          return '<li><strong>' + escapeHtml(student.displayName || student.studentId) + '</strong> · ' + escapeHtml(driveStatusLabel(student.status)) +
+            (student.folderName ? ' · ' + escapeHtml(student.folderName) : '') +
+            (student.message ? '<div class="muted">' + escapeHtml(student.message) + '</div>' : '') +
+            (shares ? '<div class="muted">' + escapeHtml(shares) + '</div>' : '') +
+            (url ? '<div><a href="' + escapeHtml(url) + '" target="_blank" rel="noopener noreferrer">Open folder</a></div>' : '') +
+            '</li>';
+        }).join('') + '</ul>';
+      }
+
+      function driveStatusLabel(status) {
+        const labels = {
+          created: 'Created',
+          relinked: 'Relinked',
+          renamed: 'Renamed',
+          moved: 'Moved',
+          updated: 'Updated',
+          unchanged: 'Already in place',
+          would_create: 'Would create',
+          would_relink: 'Would relink',
+          would_rename: 'Would rename',
+          would_move: 'Would move',
+          would_update: 'Would update',
+          ambiguous: 'Needs a choice',
+          error: 'Needs attention'
+        };
+        return labels[status] || status || 'Needs attention';
+      }
+
+      function driveShareLabel(share) {
+        const who = share.who === 'parent' ? 'Parent' : 'Student';
+        if (share.status === 'shared') return who + ' shared';
+        if (share.status === 'already') return who + ' already had access';
+        if (share.status === 'updated') return who + ' access updated';
+        if (share.status === 'would_share') return who + ' would be shared';
+        if (share.status === 'skipped') return who + ' skipped' + (share.reason ? ': ' + share.reason : '');
+        if (share.status === 'failed') return who + ' not shared' + (share.reason ? ': ' + share.reason : '');
+        return '';
       }
 
       function openRosterImport() {
@@ -2283,7 +2546,7 @@
         const editor = document.getElementById('record-editor');
         editor.innerHTML = `<section class="editor"><h2>${editing ? 'Edit record' : 'Add record'}</h2>
           ${entity === 'studentUsers' && !editing ? '<div id="cohort-import"></div>' : ''}
-          <form id="record-form"><div class="form-grid">${fields.map(function(field) { return fieldMarkup(field, record ? record[field.name] : '', editing); }).join('')}</div>
+          <form id="record-form"><div class="form-grid">${fields.filter(function(field) { return field.form !== false; }).map(function(field) { return fieldMarkup(field, record ? record[field.name] : '', editing); }).join('')}</div>
             <div class="toolbar"><button class="button" type="submit">Save</button><button class="button secondary" type="button" id="cancel-edit">Cancel</button></div></form></section>`;
         const form = document.getElementById('record-form');
         form.addEventListener('submit', saveForm);
