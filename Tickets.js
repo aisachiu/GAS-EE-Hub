@@ -226,13 +226,19 @@ function studentTicketNotice_(email) {
   };
 }
 
-function staffUnreadNotices_(user, view) {
-  var unread = queueTickets_(user, view).filter(function(ticket) { return ticket.staffUnread; });
+function placementForTicket_(studentId, placements) {
+  var email = normalizeEmail_(studentId);
+  if (placements) return placements[email] || null;
+  return findStudentPlacement_(email);
+}
+
+function staffUnreadNotices_(user, view, placements) {
+  var unread = queueTickets_(user, view, placements).filter(function(ticket) { return ticket.staffUnread; });
   unread.sort(function(left, right) { return right.lastUpdated.localeCompare(left.lastUpdated); });
   return {
     count: unread.length,
     tickets: unread.slice(0, 20).map(function(ticket) {
-      var placement = findStudentPlacement_(ticket.studentId);
+      var placement = placementForTicket_(ticket.studentId, placements);
       return {
         ticketId: ticket.ticketId,
         title: ticket.title,
@@ -244,7 +250,7 @@ function staffUnreadNotices_(user, view) {
   };
 }
 
-function staffCanSeeTicket_(user, view, ticket) {
+function staffCanSeeTicket_(user, view, ticket, placements) {
   if (view === 'coordinator') {
     if (!user.permissions.canAdmin) return false;
     if (ticket.route === 'coordinator') return true;
@@ -254,15 +260,15 @@ function staffCanSeeTicket_(user, view, ticket) {
     if (!user.permissions.isSupervisor) return false;
     if (ticket.route !== 'supervisor') return false;
     if (ticket.assignee && ticket.assignee === user.email) return true;
-    var placement = findStudentPlacement_(ticket.studentId);
+    var placement = placementForTicket_(ticket.studentId, placements);
     return !!(placement && placement.supervisorId === user.email);
   }
   return false;
 }
 
-function queueTickets_(user, view) {
+function queueTickets_(user, view, placements) {
   if (view !== 'supervisor' && view !== 'coordinator') return [];
-  return readAllTickets_().filter(function(ticket) { return staffCanSeeTicket_(user, view, ticket); });
+  return readAllTickets_().filter(function(ticket) { return staffCanSeeTicket_(user, view, ticket, placements); });
 }
 
 function sortTickets_(tickets, unreadKey) {

@@ -1,7 +1,7 @@
-function canCompleteMilestone_(user, studentEmail, owner, templateType) {
+function canCompleteMilestone_(user, studentEmail, owner, templateType, knownPlacement) {
   var type = text_(templateType).toLowerCase();
-  var placement = null;
-  if (user && user.role === 'staff' && (type === 'meeting' || owner === 'supervisor')) {
+  var placement = knownPlacement || null;
+  if (!placement && user && user.role === 'staff' && (type === 'meeting' || owner === 'supervisor')) {
     placement = findStudentPlacement_(studentEmail);
   }
   if (type === 'meeting') {

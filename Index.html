@@ -184,8 +184,14 @@
       body.has-journey { padding-right: 36px; transition: padding-right .2s ease; }
       body.has-journey.journey-open { padding-right: clamp(300px, 34vw, 420px); }
       .step-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; }
-      .add-todo { display: flex; gap: 6px; padding: 0 12px 12px; }
-      .add-todo input { min-width: 0; flex: 1; padding: 7px 9px; border: 1px solid var(--line); border-radius: 3px; }
+      .add-todo { padding: 2px 2px 8px; }
+      .add-todo-open { border: 0; padding: 0; background: transparent; color: var(--muted); font-size: 12px; font-weight: 600; }
+      .add-todo-open:hover, .add-todo-open:focus { color: var(--ink); }
+      .add-todo-form { display: none; gap: 6px; margin-top: 6px; }
+      .add-todo.is-open .add-todo-form { display: flex; }
+      .add-todo.is-open .add-todo-open { display: none; }
+      .add-todo-form input { min-width: 0; flex: 1; padding: 7px 9px; border: 1px solid var(--line); border-radius: 3px; }
+      .load-quote { display: block; margin-top: 6px; font-style: italic; }
       .todo-edit { display: grid; gap: 6px; margin-top: 8px; }
       .todo-edit input, .todo-edit textarea { width: 100%; padding: 6px 8px; border: 1px solid var(--line); }
       .drop-hint { display: none; color: var(--green); font-size: 11px; }
@@ -343,7 +349,7 @@
     </style>
   </head>
   <body>
-    <div id="app"><div class="shell"><p class="muted">Connecting to VSA EE Hub...</p></div></div>
+    <div id="app"><div class="shell"><p class="muted" data-connect="1">Connecting to VSA EE Hub...</p></div></div>
     <script>
       const state = {
         user: null,
@@ -374,6 +380,8 @@
         staffSupervisor: '',
         staffPane: 'home',
         staffStudentHome: null,
+        quote: '',
+        quotes: [],
         focusTicket: '',
         staffTicketUnread: 0,
         ticketBadgeFor: '',
@@ -383,8 +391,29 @@
 
       document.addEventListener('DOMContentLoaded', start);
 
+      function quoteMarkup() {
+        const bank = state.quotes && state.quotes.length ? state.quotes : (state.quote ? [state.quote] : []);
+        if (!bank.length) return '';
+        const quote = bank[Math.floor(Math.random() * bank.length)];
+        return `<span class="load-quote">${escapeHtml(quote)}</span>`;
+      }
+
+      function loadingLine(message) {
+        return `<p class="muted">${escapeHtml(message)}${quoteMarkup()}</p>`;
+      }
+
+      function rememberQuotes(result) {
+        if (!result) return;
+        if (result.quotes && result.quotes.length) state.quotes = result.quotes.slice();
+        if (result.quote) state.quote = result.quote;
+        const node = document.querySelector('#app [data-connect]');
+        if (node) node.innerHTML = 'Connecting to VSA EE Hub...' + quoteMarkup();
+      }
+
       function start() {
+        callServer('getLoadingQuote').then(rememberQuotes).catch(function() {});
         callServer('getAppBootstrap').then(function(result) {
+          rememberQuotes(result);
           if (!result || !result.user) {
             showFatal('Access unavailable', 'Your signed-in account is not registered in the EE workbook.');
             return;
@@ -611,7 +640,7 @@
           paintStudentJourney(state.staffStudentHome);
           return;
         }
-        if (!state.studentHome) body.innerHTML = '<p class="muted">Loading your journey...</p>';
+        if (!state.studentHome) body.innerHTML = loadingLine('Loading your journey...');
         loadStudentHome().then(function(home) {
           paintStudentJourney(home);
         }).catch(function(error) {
@@ -622,7 +651,7 @@
 
       function renderStudentSection() {
         const main = document.getElementById('main');
-        main.innerHTML = '<p class="muted">Loading your EE...</p>';
+        main.innerHTML = loadingLine('Loading your EE...');
         loadStudentHome().then(function(home) {
           if (state.section === 'mywork') paintStudentWork(home);
           else paintStudentHome(home);
@@ -761,7 +790,6 @@
         const total = templates.length || systemItems.length;
         const zoom = state.journeyFilters.phaseId;
         const visiblePhases = zoom === 'all' ? phases : phases.filter(function(phase) { return phase.phaseId === zoom; });
-        const composerPhase = zoom === 'all' ? (currentPhaseId || (phases[phases.length - 1] || {}).phaseId || '') : zoom;
         const percent = total ? Math.round((doneCount / total) * 100) : 0;
         main.innerHTML = `<section class="journey">
           <div class="journey-head"><div><p class="eyebrow">Extended Essay</p><h1>${home.staffView ? escapeHtml(home.displayName) : 'Your journey'}</h1></div><p class="journey-score"><strong>${doneCount}</strong> of ${total} done</p></div>
@@ -781,7 +809,7 @@
           </div>
           ${journeyHereCard(home, current, phaseTitle, zoom, currentPhaseId)}
           ${visiblePhases.length ? visiblePhases.map(function(phase) {
-            return renderJourneyPhase(home, phase, phaseTitle, current, zoom, currentPhaseId, composerPhase);
+            return renderJourneyPhase(home, phase, phaseTitle, current, zoom, currentPhaseId);
           }).join('') : '<div class="empty">Official milestones appear after your cohort is assigned.</div>'}
         </section>`;
         bindJourney(main, home, currentPhaseId);
@@ -798,7 +826,7 @@
         return `<section class="here-card" data-task-id="${item ? escapeHtml(item.TaskId) : ''}"><p class="eyebrow">You are here · ${escapeHtml(title)}</p><h2>${escapeHtml(current.template.title)}</h2><p>${escapeHtml(current.template.description || 'This is your next step.')}</p><div class="step-actions">${due ? `<span class="chip">${escapeHtml(due)}</span>` : ''}${actions || `<span class="chip">${escapeHtml(milestoneProgressLabel(item, current.template))}</span>`}</div></section>`;
       }
 
-      function renderJourneyPhase(home, phase, phaseTitle, current, zoom, currentPhaseId, composerPhase) {
+      function renderJourneyPhase(home, phase, phaseTitle, current, zoom, currentPhaseId) {
         const detailed = zoom !== 'all' || phase.phaseId === currentPhaseId;
         const milestones = (home.templates || []).filter(function(template) { return template.phase === phase.phaseId; });
         const todos = (home.actionItems || []).filter(function(item) {
@@ -814,11 +842,11 @@
           rows.push(renderJourneyMilestone(template, item, detailed, current, zoom));
         });
         if (showTodos) todos.forEach(function(item) { rows.push(renderJourneyTodo(item)); });
-        const composer = showTodos && home.canWriteTodos !== false && phase.phaseId === composerPhase ? `<form class="add-todo" data-phase="${escapeHtml(phase.phaseId)}"><input maxlength="240" placeholder="Add a to-do in ${escapeHtml(phase.phaseTitle || phase.phaseId)}" aria-label="New to-do"><button class="button" type="submit">Add</button></form>` : '';
+        const composer = showTodos && home.canWriteTodos !== false ? `<div class="add-todo" data-phase="${escapeHtml(phase.phaseId)}"><button type="button" class="add-todo-open" aria-expanded="false">+ Add To Do</button><form class="add-todo-form"><input maxlength="240" placeholder="To-do" aria-label="New to-do"><button class="button" type="submit">Add</button></form></div>` : '';
         const done = milestones.filter(function(template) {
           return (home.actionItems || []).some(function(item) { return item.TemplateId === template.milestoneId && item.Status === 'Completed'; });
         }).length;
-        return `<section class="journey-phase ${phase.phaseId === currentPhaseId ? 'here' : ''}"><header><h2>${escapeHtml(phase.phaseTitle || phase.phaseId)}</h2><span class="muted">${done} of ${milestones.length}</span></header><ol class="steps-rail">${rows.join('') || '<li class="muted">Nothing in this view.</li>'}</ol>${composer}</section>`;
+        return `<section class="journey-phase ${phase.phaseId === currentPhaseId ? 'here' : ''}"><header><h2>${escapeHtml(phase.phaseTitle || phase.phaseId)}</h2><span class="muted">${done} of ${milestones.length}</span></header>${composer}<ol class="steps-rail">${rows.join('') || '<li class="muted">Nothing in this view.</li>'}</ol></section>`;
       }
 
       function renderJourneyMilestone(template, item, detailed, current, zoom) {
@@ -943,24 +971,36 @@
             }).catch(function(error) { button.disabled = false; showError(error); });
           });
         });
-        main.querySelectorAll('.add-todo').forEach(function(form) {
+        main.querySelectorAll('.add-todo').forEach(function(box) {
+          const open = box.querySelector('.add-todo-open');
+          const form = box.querySelector('.add-todo-form');
+          const input = form.querySelector('input');
+          open.addEventListener('click', function() {
+            box.classList.add('is-open');
+            open.setAttribute('aria-expanded', 'true');
+            input.focus();
+          });
           form.addEventListener('submit', function(event) {
             event.preventDefault();
-            const input = form.querySelector('input');
             const title = input.value.trim();
             if (!title) return;
-            const phaseId = form.dataset.phase || currentPhaseId || '';
-            form.querySelector('button').disabled = true;
-            runMutation('addStudentTodo', [title, phaseId], { key: 'student-todo:new' }).then(function(result) {
-              const created = { TaskId: result.TaskId, StudentId: state.user.email, CreatorType: 'Student', TemplateId: '', PhaseId: phaseId, Title: title, Description: '', DueDate: '', Status: 'Pending', canEdit: true, canUpdate: true };
-              if (state.studentHome) state.studentHome.actionItems = (state.studentHome.actionItems || []).concat([created]);
-              else home.actionItems = (home.actionItems || []).concat([created]);
+            const phaseId = box.dataset.phase || currentPhaseId || '';
+            const submit = form.querySelector('button');
+            submit.disabled = true;
+            const addingAsStaff = !!home.staffView;
+            const call = addingAsStaff
+              ? runMutation('addStaffStudentTodo', [title, phaseId, home.email, home.cohort || '', state.actingAs], { key: 'student-todo:new' })
+              : runMutation('addStudentTodo', [title, phaseId], { key: 'student-todo:new' });
+            call.then(function(result) {
+              const created = { TaskId: result.TaskId, StudentId: addingAsStaff ? home.email : state.user.email, CreatorType: 'Student', TemplateId: '', PhaseId: phaseId, Title: title, Description: '', DueDate: '', Status: 'Pending', canEdit: !addingAsStaff, canUpdate: !addingAsStaff };
+              const record = activeJourneyRecord() || home;
+              record.actionItems = (record.actionItems || []).concat([created]);
+              if (state.studentHome && record === state.studentHome) state.studentHome.actionItems = record.actionItems;
+              if (state.staffStudentHome && record === state.staffStudentHome) state.staffStudentHome.actionItems = record.actionItems;
               state.journeyFilters.showStudent = true;
               paintStudentJourney(activeJourneyRecord() || home);
-              const fresh = document.querySelector('.add-todo input');
-              if (fresh) fresh.focus();
               showSuccess('To-do added.');
-            }).catch(function(error) { form.querySelector('button').disabled = false; showError(error, form); });
+            }).catch(function(error) { submit.disabled = false; showError(error, box); });
           });
         });
         main.querySelectorAll('[data-edit-todo]').forEach(function(button) {
@@ -1043,7 +1083,7 @@
       function loadActivityDashboard(host, request, options) {
         if (!host) return;
         const copy = options || {};
-        host.innerHTML = '<p class="muted">Loading activity...</p>';
+        host.innerHTML = loadingLine('Loading activity...');
         request.then(function(feed) {
           if (!host.isConnected) return;
           host.innerHTML = renderActivityDashboard(feed || {}, copy);
@@ -1343,7 +1383,7 @@
       function renderStaffHome() {
         const main = document.getElementById('main');
         if (state.staffStudentHome) { paintStaffAsStudent(state.staffStudentHome); return; }
-        main.innerHTML = '<p class="muted">Loading students...</p>';
+        main.innerHTML = loadingLine('Loading students...');
         callServer('getStaffHome', state.cohortId || '', state.actingAs).then(function(home) {
           state.staffHome = home;
           state.cohortId = home.cohortId || '';
@@ -1597,7 +1637,7 @@
 
       function renderStudentHelp() {
         const main = document.getElementById('main');
-        main.innerHTML = '<p class="muted">Loading questions...</p>';
+        main.innerHTML = loadingLine('Loading questions...');
         callServer('getTicketHub').then(function(hub) {
           state.ticketHub = hub;
           if (state.studentHome) {
@@ -1784,7 +1824,7 @@
 
       function renderStaffTickets() {
         const main = document.getElementById('main');
-        main.innerHTML = '<p class="muted">Loading tickets...</p>';
+        main.innerHTML = loadingLine('Loading tickets...');
         callServer('getStaffTickets', state.actingAs).then(function(hub) {
           state.ticketHub = hub;
           state.staffTicketUnread = hub.unreadCount || 0;
@@ -1827,7 +1867,7 @@
 
       function renderResources() {
         const main = document.getElementById('main');
-        main.innerHTML = '<p class="muted">Loading resources...</p>';
+        main.innerHTML = loadingLine('Loading resources...');
         callServer('getContentHub').then(function(content) {
           const resources = content.resources || [];
           main.innerHTML = `<div class="page-head"><div><p class="eyebrow">Extended Essay</p><h1>Resources</h1><p class="lede">Guidance and reference material for your EE.</p></div></div>
@@ -1982,7 +2022,7 @@
         main.innerHTML = `<div class="page-head"><div><p class="eyebrow">Administration</p><h1>Admin</h1><p class="lede">Manage the records that power the EE Hub.</p></div></div>
           <nav class="subnav" aria-label="Admin sections">${adminSections.map(function(section) {
             return `<button type="button" data-admin-entity="${section[0]}" aria-current="${state.adminEntity === section[0] ? 'page' : 'false'}">${section[1]}</button>`;
-          }).join('')}</nav><div id="admin-content"><p class="muted">Loading...</p></div>`;
+          }).join('')}</nav><div id="admin-content">${loadingLine('Loading...')}</div>`;
         main.querySelectorAll('[data-admin-entity]').forEach(function(button) {
           button.addEventListener('click', function() {
             state.adminEntity = button.dataset.adminEntity;
@@ -2019,7 +2059,7 @@
             }
             target.innerHTML = `<div class="toolbar"><label for="admin-cohort">Cohort</label><select id="admin-cohort">${cohorts.map(function(cohort) {
               return `<option value="${escapeHtml(cohort.id)}" ${cohort.id === current ? 'selected' : ''}>${escapeHtml(cohort.name)}</option>`;
-            }).join('')}</select></div><section class="editor drive-panel" id="drive-folder-panel"><p class="muted">Loading Drive folders...</p></section><div id="admin-records"><p class="muted">Loading students...</p></div>`;
+            }).join('')}</select></div><section class="editor drive-panel" id="drive-folder-panel">${loadingLine('Loading Drive folders...')}</section><div id="admin-records">${loadingLine('Loading students...')}</div>`;
             document.getElementById('admin-cohort').addEventListener('change', function(event) {
               state.cohortId = event.target.value;
               state.editingRecord = null;
@@ -2044,14 +2084,14 @@
       }
 
       function renderFormDesigner(target) {
-        target.innerHTML = '<p class="muted">Loading form milestones...</p>';
+        target.innerHTML = loadingLine('Loading form milestones...');
         callServer('listFormMilestones').then(function(forms) {
           if (!forms.length) { target.innerHTML = '<div class="empty">No milestones use the form type.</div>'; return; }
           const current = forms.some(function(form) { return form.milestoneId === state.formMilestoneId; }) ? state.formMilestoneId : forms[0].milestoneId;
           state.formMilestoneId = current;
           target.innerHTML = `<div class="toolbar"><label for="form-milestone">Milestone</label><select id="form-milestone">${forms.map(function(form) {
             return `<option value="${escapeHtml(form.milestoneId)}" ${form.milestoneId === current ? 'selected' : ''}>${escapeHtml(form.title)} · ${escapeHtml(form.status)}</option>`;
-          }).join('')}</select></div><div id="form-designer"><p class="muted">Loading design...</p></div>`;
+          }).join('')}</select></div><div id="form-designer">${loadingLine('Loading design...')}</div>`;
           document.getElementById('form-milestone').addEventListener('change', function(event) {
             state.formMilestoneId = event.target.value;
             renderFormDesigner(target);
@@ -2126,7 +2166,7 @@
       }
 
       function renderTemplateDesigner(target) {
-        target.innerHTML = '<p class="muted">Loading phases and templates...</p>';
+        target.innerHTML = loadingLine('Loading phases and templates...');
         Promise.all([callServer('getAdminRecords', 'phases'), callServer('getAdminRecords', 'milestoneTemplates')]).then(function(results) {
           const phases = results[0].records || [];
           const templates = results[1].records || [];
@@ -2206,7 +2246,7 @@
       }
 
       function renderAssignmentManager(target) {
-        target.innerHTML = '<p class="muted">Loading cohorts...</p>';
+        target.innerHTML = loadingLine('Loading cohorts...');
         callServer('getCohorts').then(function(cohorts) {
           if (!cohorts.length) { target.innerHTML = '<div class="empty">Create a cohort before assigning milestone templates.</div>'; return; }
           const current = cohorts.some(function(cohort) { return cohort.id === state.cohortId; }) ? state.cohortId : cohorts[0].id;
@@ -2214,7 +2254,7 @@
           target.innerHTML = `<div class="toolbar"><label for="assignment-cohort">Cohort</label><select id="assignment-cohort">${cohorts.map(function(cohort) {
             return `<option value="${escapeHtml(cohort.id)}" ${cohort.id === current ? 'selected' : ''}>${escapeHtml(cohort.name)}</option>`;
           }).join('')}</select><label for="baseline-anchor">Baseline anchor date</label><input id="baseline-anchor" type="date"><button type="button" class="button" id="assign-milestones">Assign selected</button><label><input type="checkbox" id="select-all-assignment"> Select all</label><span id="assignment-count" class="muted">0 selected</span></div>
-            ${state.status ? `<p class="status">${escapeHtml(state.status)}</p>` : ''}<div id="assignment-roster"><p class="muted">Loading students...</p></div>`;
+            ${state.status ? `<p class="status">${escapeHtml(state.status)}</p>` : ''}<div id="assignment-roster">${loadingLine('Loading students...')}</div>`;
           document.getElementById('assignment-cohort').addEventListener('change', function(event) {
             state.cohortId = event.target.value;
             state.assignmentStudentIds = [];
