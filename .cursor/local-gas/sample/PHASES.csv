@@ -1,5 +1,0 @@
-phaseId,phaseTitle,phaseDescription,sequence,prerequisitePhaseId,active
-p1,Setup,,1,,TRUE
-p2,Planning,,2,p1,TRUE
-p3,Drafting,,3,p2,TRUE
-p4,Reflecting,,4,p3,TRUE
