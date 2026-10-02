@@ -3,6 +3,7 @@
   <head>
     <base target="_top">
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
       :root {
         --ink: #004C80;
@@ -49,6 +50,15 @@
       .resource { min-width: 0; padding: 14px; background: var(--surface); border: 1px solid var(--line); border-top: 3px solid var(--gold); }
       .resource p { white-space: pre-wrap; color: var(--muted); }
       .resource a { color: var(--green); font-weight: 700; overflow-wrap: anywhere; }
+      .resource-body { margin: 8px 0; color: #263746; }
+      .resource-body.plain { white-space: pre-wrap; color: var(--muted); }
+      .resource-body h1, .resource-body h2, .resource-body h3 { margin: 0 0 6px; color: var(--ink); font-size: 16px; line-height: 1.3; }
+      .resource-body p { margin: 0 0 8px; }
+      .resource-body ul, .resource-body ol { margin: 0 0 8px; padding-left: 1.2em; }
+      .resource-body code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+      .resource-editor-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+      .resource-editor-fields textarea[data-field="Body"] { min-height: 280px; }
+      .resource-preview { position: sticky; top: 8px; min-width: 0; }
       .subnav { display: flex; flex-wrap: wrap; gap: 3px; margin: 10px 0 14px; }
       .toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; margin: 10px 0; }
       .toolbar select, .field input, .field select, .field textarea { width: 100%; min-width: 0; padding: 7px 9px; color: var(--ink); background: white; border: 1px solid var(--line); border-radius: 3px; }
@@ -191,7 +201,7 @@
       .form-panel { width: min(720px, 100%); max-height: calc(100vh - 24px); overflow: auto; padding: 14px; background: white; border-top: 4px solid var(--gold); }
       .doc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
       .milestone-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
-      @media (max-width: 800px) { .tiles, .steps, .doc-grid { grid-template-columns: 1fr 1fr; } .topbar { flex-wrap: wrap; } }
+      @media (max-width: 800px) { .tiles, .steps, .doc-grid { grid-template-columns: 1fr 1fr; } .topbar { flex-wrap: wrap; } .resource-editor-layout { grid-template-columns: 1fr; } .resource-preview { position: static; } }
       @media (max-width: 700px) {
         .topbar { align-items: flex-start; padding: 14px 16px; }
         .shell { padding: 16px 14px 36px; }
@@ -1168,28 +1178,152 @@
         const main = document.getElementById('main');
         main.innerHTML = '<p class="muted">Loading resources...</p>';
         callServer('getContentHub').then(function(content) {
-          const pages = content.pages || [];
           const resources = content.resources || [];
           main.innerHTML = `<div class="page-head"><div><p class="eyebrow">Extended Essay</p><h1>Resources</h1><p class="lede">Guidance and reference material for your EE.</p></div></div>
-            ${pages.length ? `<section><h2>Guides</h2><div class="resource-grid">${pages.map(renderPage).join('')}</div></section>` : ''}
-            <section class="${pages.length ? 'section-gap' : ''}"><h2>Reference library</h2>${resources.length ? `<div class="resource-grid">${resources.map(renderResource).join('')}</div>` : '<div class="empty">Resources will appear here when published.</div>'}</section>`;
+            ${resources.length ? `<div class="resource-grid">${resources.map(renderResource).join('')}</div>` : '<div class="empty">Resources will appear here when published.</div>'}`;
         }).catch(showError);
       }
 
-      function renderPage(page) {
-        return `<article class="resource"><p class="eyebrow">${escapeHtml(page.Audience || 'All')}</p><h3>${escapeHtml(page.Title)}</h3><p>${escapeHtml(page.Body || '')}</p></article>`;
+      function renderResource(resource) {
+        return renderResourceCard(resource);
       }
 
-      function renderResource(resource) {
+      function renderResourceCard(resource) {
         const url = safeUrl(resource.URL);
-        return `<article class="resource"><p class="eyebrow">${escapeHtml(resource.Category || 'Resource')}</p><h3>${escapeHtml(resource.Title)}</h3><p>${escapeHtml(resource.Description || '')}</p>${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">Open resource ↗</a>` : ''}</article>`;
+        const description = resource.Description ? `<p>${escapeHtml(resource.Description)}</p>` : '';
+        const body = renderResourceBody(resource.Body, resource['Body Format']);
+        return `<article class="resource"><p class="eyebrow">${escapeHtml(resource.Category || 'Resource')}</p><h3>${escapeHtml(resource.Title || 'Untitled resource')}</h3>${description}${body}${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">Open resource ↗</a>` : ''}</article>`;
+      }
+
+      function renderResourceBody(body, format) {
+        const text = String(body || '');
+        if (!text.trim()) return '';
+        const kind = String(format || 'plain').toLowerCase();
+        if (kind === 'html') return `<div class="resource-body html">${sanitizeResourceHtml(text)}</div>`;
+        if (kind === 'markdown') return `<div class="resource-body markdown">${renderMarkdown(text)}</div>`;
+        return `<div class="resource-body plain">${escapeHtml(text)}</div>`;
+      }
+
+      function sanitizeResourceHtml(value) {
+        const template = document.createElement('template');
+        template.innerHTML = String(value || '');
+        template.content.querySelectorAll('script, iframe, object, embed, link, meta').forEach(function(node) { node.remove(); });
+        template.content.querySelectorAll('*').forEach(function(node) {
+          Array.from(node.attributes).forEach(function(attr) {
+            const name = attr.name.toLowerCase();
+            if (name.indexOf('on') === 0 || ((name === 'href' || name === 'src') && /^\s*javascript:/i.test(attr.value))) node.removeAttribute(attr.name);
+          });
+        });
+        return template.innerHTML;
+      }
+
+      function markdownBlock(line) {
+        if (/^(#{1,3})\s+\S/.test(line)) return 'heading';
+        if (/^[-*]\s+\S/.test(line)) return 'ul';
+        if (/^\d+\.\s+\S/.test(line)) return 'ol';
+        return '';
+      }
+
+      function renderMarkdown(source) {
+        const lines = String(source || '').replace(/\r\n/g, '\n').split('\n');
+        const blocks = [];
+        let index = 0;
+        while (index < lines.length) {
+          const line = lines[index];
+          if (!String(line || '').trim()) { index++; continue; }
+          const kind = markdownBlock(line);
+          if (kind === 'heading') {
+            const heading = /^(#{1,3})\s+(\S.*)$/.exec(line);
+            blocks.push(`<h${heading[1].length}>${renderMarkdownInline(heading[2])}</h${heading[1].length}>`);
+            index++;
+            continue;
+          }
+          if (kind === 'ul' || kind === 'ol') {
+            const items = [];
+            while (index < lines.length && markdownBlock(lines[index]) === kind) {
+              items.push(`<li>${renderMarkdownInline(lines[index].replace(kind === 'ul' ? /^[-*]\s+/ : /^\d+\.\s+/, ''))}</li>`);
+              index++;
+            }
+            blocks.push(kind === 'ul' ? `<ul>${items.join('')}</ul>` : `<ol>${items.join('')}</ol>`);
+            continue;
+          }
+          const paragraph = [];
+          while (index < lines.length && String(lines[index] || '').trim() && !markdownBlock(lines[index])) {
+            paragraph.push(renderMarkdownInline(lines[index]));
+            index++;
+          }
+          if (!paragraph.length) { index++; continue; }
+          blocks.push(`<p>${paragraph.join('<br>')}</p>`);
+        }
+        return blocks.join('');
+      }
+
+      function renderMarkdownInline(raw) {
+        const text = String(raw || '');
+        const parts = [];
+        const code = /`([^`\n]+)`/g;
+        let last = 0;
+        let match;
+        while ((match = code.exec(text))) {
+          parts.push(renderMarkdownEmphasis(text.slice(last, match.index)));
+          parts.push(`<code>${escapeHtml(match[1])}</code>`);
+          last = match.index + match[0].length;
+        }
+        parts.push(renderMarkdownEmphasis(text.slice(last)));
+        return parts.join('');
+      }
+
+      function renderMarkdownEmphasis(raw) {
+        const text = String(raw || '');
+        let html = '';
+        let index = 0;
+        while (index < text.length) {
+          if (text.slice(index, index + 2) === '**') {
+            const end = text.indexOf('**', index + 2);
+            if (end > index + 2) {
+              html += '<strong>' + escapeHtml(text.slice(index + 2, end)) + '</strong>';
+              index = end + 2;
+              continue;
+            }
+          }
+          if (text.charAt(index) === '*') {
+            const end = text.indexOf('*', index + 1);
+            if (end > index + 1) {
+              html += '<em>' + escapeHtml(text.slice(index + 1, end)) + '</em>';
+              index = end + 1;
+              continue;
+            }
+          }
+          const link = /^\[([^\]\n]+)\]\((https:\/\/[^\s)]+)\)/.exec(text.slice(index));
+          if (link) {
+            const safe = safeUrl(link[2]);
+            html += safe
+              ? '<a href="' + escapeHtml(safe) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(link[1]) + '</a>'
+              : escapeHtml(link[0]);
+            index += link[0].length;
+            continue;
+          }
+          const next = text.slice(index).search(/[*[]/);
+          if (next < 0) {
+            html += escapeHtml(text.slice(index));
+            break;
+          }
+          if (next === 0) {
+            html += escapeHtml(text.charAt(index));
+            index += 1;
+            continue;
+          }
+          html += escapeHtml(text.slice(index, index + next));
+          index += next;
+        }
+        return html;
       }
 
       const adminSections = [
         ['cohorts', 'Cohorts'], ['cohortMembers', 'Students in cohorts'], ['phases', 'Phases'], ['milestoneTemplates', 'Milestone templates'],
         ['templateDesigner', 'Template designer'], ['assignments', 'Assignments'],
         ['studentUsers', 'Student users'], ['staffUsers', 'Staff users'], ['subjects', 'Subjects'], ['formDesigner', 'Milestone forms'],
-        ['pages', 'Website pages'], ['resources', 'Resources'], ['faqs', 'FAQs']
+        ['resources', 'Resources'], ['faqs', 'FAQs']
       ];
 
       function renderAdmin() {
@@ -1668,6 +1802,10 @@
       }
 
       function openEditor(record, preserve, phaseOptionsLoaded) {
+        if (state.adminEntity === 'resources') {
+          openResourceEditor(record, preserve);
+          return;
+        }
         const data = state.adminData || { headers: [] };
         const entity = state.adminEntity;
         const fields = data.schema && data.schema.fields ? data.schema.fields : (data.headers || []).map(function(name) { return { name: name }; });
@@ -1687,6 +1825,66 @@
           document.getElementById('record-editor').innerHTML = '';
         });
         if (entity === 'studentUsers' && !editing) renderCohortImport();
+      }
+
+      function openResourceEditor(record, preserve) {
+        const source = record || (preserve && state.editingRecord ? state.editingRecord.record : null);
+        const editing = !!source;
+        state.editingRecord = source ? { record: source } : null;
+        state.originalKey = editing ? keyValue('resources', source) : '';
+        const value = function(name, fallback) {
+          if (!source || source[name] === undefined || source[name] === null || source[name] === '') return fallback;
+          return source[name];
+        };
+        const audience = value('Audience', 'all');
+        const format = String(value('Body Format', 'plain') || 'plain').toLowerCase();
+        const editor = document.getElementById('record-editor');
+        editor.innerHTML = `<section class="editor"><h2>${editing ? 'Edit resource' : 'Add resource'}</h2>
+          <form id="record-form">${editing ? `<input type="hidden" data-field="Resource ID" value="${escapeHtml(source['Resource ID'] || '')}">` : ''}<div class="resource-editor-layout"><div class="resource-editor-fields"><div class="form-grid">
+            <div class="field"><label>Title *</label><input data-field="Title" value="${escapeHtml(value('Title', ''))}" required></div>
+            <div class="field"><label>Category</label><input data-field="Category" value="${escapeHtml(value('Category', ''))}"></div>
+            <div class="field wide"><label>Description</label><textarea data-field="Description">${escapeHtml(value('Description', ''))}</textarea></div>
+            <div class="field"><label>URL</label><input type="url" data-field="URL" value="${escapeHtml(value('URL', ''))}" placeholder="https://"></div>
+            <div class="field"><label>Slug</label><input data-field="Slug" value="${escapeHtml(value('Slug', ''))}"></div>
+            <div class="field"><label>Audience</label><select data-field="Audience">${['all', 'student', 'staff'].map(function(option) {
+              return `<option value="${option}" ${audience === option ? 'selected' : ''}>${option}</option>`;
+            }).join('')}</select></div>
+            <div class="field"><label>Sort Order</label><input type="number" data-field="Sort Order" value="${escapeHtml(value('Sort Order', ''))}"></div>
+            <div class="field"><label>Body format</label><select data-field="Body Format">${[['plain', 'Plain text'], ['markdown', 'Markup'], ['html', 'HTML']].map(function(option) {
+              return `<option value="${option[0]}" ${format === option[0] ? 'selected' : ''}>${option[1]}</option>`;
+            }).join('')}</select></div>
+            <label class="field check"><input type="checkbox" data-field="Published" ${toBoolean(source && source.Published) ? 'checked' : ''}> Published</label>
+            <div class="field wide"><label>Body</label><textarea data-field="Body">${escapeHtml(value('Body', ''))}</textarea></div>
+          </div>
+          <label class="field check"><input type="checkbox" id="live-preview" checked> Live preview</label>
+          <p class="notice error" id="resource-save-error" hidden></p></div>
+          <aside class="resource-preview"><p class="eyebrow">Preview</p><div id="resource-preview-card"></div></aside></div>
+          <div class="toolbar"><button class="button" type="submit">Save</button><button class="button secondary" type="button" id="cancel-edit">Cancel</button></div></form></section>`;
+        const form = document.getElementById('record-form');
+        form.addEventListener('submit', saveForm);
+        document.getElementById('cancel-edit').addEventListener('click', function() {
+          state.editingRecord = null;
+          state.originalKey = '';
+          document.getElementById('record-editor').innerHTML = '';
+        });
+        const live = document.getElementById('live-preview');
+        function paintResourcePreview() {
+          const card = document.getElementById('resource-preview-card');
+          if (!card || !live.checked) return;
+          const draft = {};
+          form.querySelectorAll('[data-field]').forEach(function(input) {
+            draft[input.dataset.field] = input.type === 'checkbox' ? input.checked : input.value;
+          });
+          try {
+            card.innerHTML = renderResourceCard(draft);
+          } catch (error) {
+            card.innerHTML = '<p class="notice error">Preview could not render this body.</p>';
+          }
+        }
+        form.addEventListener('input', paintResourcePreview);
+        form.addEventListener('change', paintResourcePreview);
+        live.addEventListener('change', paintResourcePreview);
+        paintResourcePreview();
       }
 
       function fieldMarkup(field, value, editing) {
@@ -1765,6 +1963,8 @@
           else record[input.dataset.field] = input.value;
         });
         const submit = form.querySelector('[type="submit"]');
+        const localError = document.getElementById('resource-save-error');
+        if (localError) { localError.hidden = true; localError.textContent = ''; }
         submit.disabled = true;
         const request = runMutation(entity === 'cohortMembers' ? 'saveCohortMember' : 'saveAdminRecord', entity === 'cohortMembers'
           ? [state.cohortId, record, state.originalKey || '']
@@ -1777,6 +1977,11 @@
         }).catch(function(error) {
           submit.disabled = false;
           showError(error);
+          const editorError = document.getElementById('resource-save-error');
+          if (editorError) {
+            editorError.hidden = false;
+            editorError.textContent = error && error.message ? error.message : String(error);
+          }
         });
       }
 

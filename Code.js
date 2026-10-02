@@ -64,10 +64,19 @@ function createMissingSheets() {
 
   Object.keys(APP_TABLES).forEach(function(entity) {
     var config = APP_TABLES[entity];
-    if (config.sheetPattern || config.internal) return;
+    if (config.sheetPattern || config.internal || entity === 'resources') return;
     if (entity === 'milestoneTemplates' && skipTemplateCreation) return;
     createSheetAfterConfirmation_(spreadsheet, ui, config.sheet, getTableHeaders_(entity), created, declined);
   });
+
+  try {
+    var resourceMigration = migrateResourcesSheet_();
+    if (resourceMigration.created) created.push(APP_TABLES.resources.sheet);
+    if (resourceMigration.columnsAdded.length) migrated.push('RESOURCES columns: ' + resourceMigration.columnsAdded.join(', '));
+    if (resourceMigration.pagesCopied) migrated.push(resourceMigration.pagesCopied + ' CONTENT_PAGES row(s) copied into RESOURCES');
+  } catch (error) {
+    issues.push(String(error.message || error));
+  }
 
   var cohortRegistry = spreadsheet.getSheetByName(APP_TABLES.cohorts.sheet);
   if (cohortRegistry && cohortRegistry.getLastRow() > 1) {
