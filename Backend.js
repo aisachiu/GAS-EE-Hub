@@ -95,6 +95,16 @@ var APP_TABLES = {
       { name: 'SortOrder', type: 'number' }
     ]
   },
+  ticketCategories: {
+    sheet: 'TICKET_CATEGORIES',
+    fields: [
+      { name: 'CategoryId', type: 'text', key: true, generated: true },
+      { name: 'Name', type: 'text', required: true },
+      { name: 'Route', type: 'select', required: true, label: 'Who they message', options: ['supervisor', 'coordinator'], optionLabels: ["The student's supervisor", 'EE Coordinator'] },
+      { name: 'SortOrder', type: 'number', label: 'Sort order' },
+      { name: 'Active', type: 'checkbox', defaultValue: true }
+    ]
+  },
   cohortMembers: {
     sheetPattern: 'COHORT: [Cohort]',
     fields: [
@@ -246,7 +256,10 @@ function getAdminSchema_(entity) {
       if (key !== 'validator' && key !== 'generated' && key !== 'serverDerived') result[key] = field[key];
     });
     if (field.options) {
-      result.options = field.options.map(function(option) { return { value: option, label: option }; });
+      result.options = field.options.map(function(option, index) {
+        var label = field.optionLabels && field.optionLabels[index] ? field.optionLabels[index] : option;
+        return { value: option, label: label };
+      });
     }
     if (field.optionsFrom === 'phases') {
       var phaseSheet = getSpreadsheet_().getSheetByName(APP_TABLES.phases.sheet);
@@ -533,6 +546,7 @@ function getAdminRecords(entity) {
     })
   };
   if (entity === 'resources') migrateResourcesSheet_();
+  if (entity === 'ticketCategories') seedDefaultTicketCategories_();
   var sheet = getSpreadsheet_().getSheetByName(config.sheet);
   if (sheet) assertSheetSchema_(sheet, entity);
   return {
@@ -612,6 +626,7 @@ function saveAdminRecord(entity, record, originalKey) {
       throw new Error('A published resource needs a URL or a body.');
     }
   }
+  if (entity === 'ticketCategories') validateTicketCategory_(values, originalKey);
 
   var key = getTableKey_(entity);
   var keyField = getFieldConfig_(entity, key);

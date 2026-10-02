@@ -182,16 +182,18 @@ function repositionStudentTodo(taskId, targetTaskId, position) {
   });
 }
 
-function setActionItemStatus(taskId, status, studentEmail, cohortId) {
+function setActionItemStatus(taskId, status, studentEmail, cohortId, viewAs) {
   var user = requireUser_('SET_ACTION_ITEM_STATUS');
   var targetStudentId = user.role === 'student' ? user.email : normalizeEmail_(studentEmail);
   var item = findActionItem_(taskId);
   if (normalizeEmail_(item.record.StudentId) !== targetStudentId) {
     denyAccess_(user, 'SET_ACTION_ITEM_STATUS', 'Task belongs to another student.');
   }
+  var staffContext = null;
   if (user.role === 'staff') {
-    if (!cohortId || !getCohortStudents(cohortId).some(function(student) { return student.email === targetStudentId; })) {
-      denyAccess_(user, 'SET_ACTION_ITEM_STATUS', 'Student is not in the selected cohort.');
+    staffContext = staffStudentContext_(user, targetStudentId, cohortId, 'SET_ACTION_ITEM_STATUS', viewAs);
+    if (text_(item.record.CreatorType) === 'Student') {
+      denyAccess_(user, 'SET_ACTION_ITEM_STATUS', 'Staff can only read student to-dos.');
     }
   } else if (user.role !== 'student' || targetStudentId !== user.email) {
     denyAccess_(user, 'SET_ACTION_ITEM_STATUS', 'Student access required.');
@@ -199,7 +201,13 @@ function setActionItemStatus(taskId, status, studentEmail, cohortId) {
 
   var statusField = getFieldConfig_('studentActionItems', 'Status');
   if (!statusField.options.some(function(option) { return option === status; })) throw new Error('Choose a valid task status.');
-  requireActionItemStatusPermission_(user, item.record);
+  if (staffContext) {
+    if (!staffMayUpdateSystemItem_(user, staffContext, item.record)) {
+      denyAccess_(user, 'SET_ACTION_ITEM_STATUS', 'You cannot update this milestone.');
+    }
+  } else {
+    requireActionItemStatusPermission_(user, item.record);
+  }
 
   return runAuditedMutation_(user, 'UPDATE_ACTION_ITEM_STATUS', {
     taskId: text_(taskId), studentId: targetStudentId, status: status

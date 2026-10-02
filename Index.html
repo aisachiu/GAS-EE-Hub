@@ -88,6 +88,13 @@
       .field.check { align-content: start; }
       .field.check input { width: 18px; height: 18px; accent-color: var(--green); }
       .notice { margin: 8px 0; padding: 8px 10px; border-left: 3px solid var(--gold); background: #fff5f1; color: #663020; }
+      .notice-list { margin: 0 0 14px; }
+      .notice-list h2 { margin-bottom: 8px; font-size: 16px; }
+      .notice-list ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-width: 720px; }
+      .notice-list button { display: flex; flex-direction: column; align-items: flex-start; width: 100%; padding: 8px 10px; text-align: left; border: 1px solid var(--line); border-left: 3px solid var(--gold); background: #fff5f1; color: inherit; }
+      .staff-panes { display: flex; gap: 4px; }
+      .staff-panes button { border: 1px solid var(--line); background: white; color: var(--ink); padding: 6px 10px; font-weight: 700; }
+      .staff-panes button[aria-current="page"] { color: white; background: var(--ink); border-color: var(--ink); }
       .error { border-left-color: var(--coral); background: #fff0ec; color: #7c2b1b; }
       .empty { padding: 20px; text-align: center; color: var(--muted); background: var(--surface); border: 1px dashed var(--line); }
       .status { min-height: 24px; color: var(--coral); }
@@ -361,6 +368,13 @@
         staffHome: null,
         staffStudent: null,
         staffQuery: '',
+        staffSort: 'surname',
+        staffTrack: 'all',
+        staffMine: false,
+        staffSupervisor: '',
+        staffPane: 'home',
+        staffStudentHome: null,
+        focusTicket: '',
         staffTicketUnread: 0,
         ticketBadgeFor: '',
         requests: { active: 0, nextId: 0 },
@@ -471,6 +485,8 @@
       function renderShell() {
         const student = state.user.role === 'student';
         const permissions = state.user.permissions || {};
+        const staffJourney = !student && state.section === 'students' && !!state.staffStudentHome;
+        const showJourney = student || staffJourney;
         const tabs = student
           ? [['home', 'Home'], ['mywork', 'My Work'], ['resources', 'Resources'], ['help', 'Help']]
           : [['students', 'My Students'], ['resources', 'Resources']];
@@ -480,19 +496,19 @@
         if (permissions.canAdmin) tabs.push(['admin', 'Admin']);
         if (!tabs.some(function(tab) { return tab[0] === state.section; })) state.section = tabs[0][0];
         state.view = state.section;
-        document.body.classList.toggle('has-journey', student);
-        document.body.classList.toggle('journey-open', student && state.journeyOpen);
+        document.body.classList.toggle('has-journey', showJourney);
+        document.body.classList.toggle('journey-open', showJourney && state.journeyOpen);
         document.getElementById('app').innerHTML = `
           <header class="topbar">
             <div class="brand"><span class="brand-mark">EE</span><span>EE Hub</span>${student ? '' : '<span class="staff-pill">Staff</span>'}</div>
             <nav class="tabs" aria-label="Sections">${tabs.map(function(tab) {
               return `<button type="button" data-view="${tab[0]}" aria-current="${state.section === tab[0] ? 'page' : 'false'}">${tabLabel(tab)}</button>`;
             }).join('')}</nav>
-            <div class="account">${student ? `<button type="button" class="journey-toggle" id="journey-toggle" aria-expanded="${state.journeyOpen ? 'true' : 'false'}" aria-controls="journey-panel">Journey</button>` : ''}<span id="request-indicator" class="request-indicator" aria-live="polite" aria-busy="false"></span><div>${escapeHtml(state.user.displayName)}</div></div>
+            <div class="account">${showJourney ? `<button type="button" class="journey-toggle" id="journey-toggle" aria-expanded="${state.journeyOpen ? 'true' : 'false'}" aria-controls="journey-panel">Journey</button>` : ''}<span id="request-indicator" class="request-indicator" aria-live="polite" aria-busy="false"></span><div>${escapeHtml(state.user.displayName)}</div></div>
           </header>
           <div id="feedback-region" aria-live="polite"></div>
           <main id="main"></main>
-          ${student ? `<aside id="journey-panel" class="journey-panel${state.journeyOpen ? ' open' : ''}" aria-label="Journey and to-dos">
+          ${showJourney ? `<aside id="journey-panel" class="journey-panel${state.journeyOpen ? ' open' : ''}" aria-label="Journey and to-dos">
             <button type="button" class="journey-peek" id="journey-peek" aria-expanded="${state.journeyOpen ? 'true' : 'false'}" aria-controls="journey-drawer">Journey</button>
             <div class="journey-drawer" id="journey-drawer"${state.journeyOpen ? '' : ' inert'} aria-hidden="${state.journeyOpen ? 'false' : 'true'}">
               <div class="journey-panel-bar"><strong>Journey</strong><button type="button" id="journey-close">Close</button></div>
@@ -506,6 +522,8 @@
             state.view = state.section;
             state.selectedStudent = null;
             state.staffStudent = null;
+            state.staffStudentHome = null;
+            state.journeyOpen = false;
             state.status = '';
             renderShell();
           });
@@ -516,7 +534,7 @@
         else if (state.section === 'tickets') renderStaffTickets();
         else if (student) renderStudentSection();
         else renderStaffHome();
-        if (student) {
+        if (showJourney) {
           const journeyToggle = document.getElementById('journey-toggle');
           const journeyPeek = document.getElementById('journey-peek');
           const journeyClose = document.getElementById('journey-close');
@@ -589,6 +607,10 @@
       function mountJourneyPanel() {
         const body = document.getElementById('journey-body');
         if (!body) return;
+        if (state.user.role !== 'student' && state.staffStudentHome) {
+          paintStudentJourney(state.staffStudentHome);
+          return;
+        }
         if (!state.studentHome) body.innerHTML = '<p class="muted">Loading your journey...</p>';
         loadStudentHome().then(function(home) {
           paintStudentJourney(home);
@@ -634,9 +656,9 @@
         }).length;
         const done = (home.actionItems || []).filter(function(item) { return item.CreatorType === 'System' && item.Status === 'Completed'; }).length;
         const currentPhase = next ? (home.phases.filter(function(phase) { return phase.phaseId === next.template.phase; })[0] || {}).phaseTitle : 'Complete';
-        const hero = next ? `<section class="hero"><div><p class="eyebrow">Your next step</p><h2>${escapeHtml(next.template.title)}</h2><p>${escapeHtml(next.template.description || 'Complete this milestone before the due date.')}</p></div><div>${next.item && next.item.DueDate ? `<div class="chip">${escapeHtml(String(next.item.DueDate).slice(0, 10))}</div>` : ''}${formButton(home, next)}</div></section>` : '<section class="hero"><div><p class="eyebrow">All caught up</p><h2>No action needed right now</h2><p>Open Journey to see what is coming.</p></div></section>';
-        main.innerHTML = `${hero}
-          ${home.unreadTicketCount ? `<div class="notice">Reply received${home.unreadTicketTitle ? ': ' + escapeHtml(home.unreadTicketTitle) : ''}. <button type="button" class="link-button" id="open-help">Open Help</button></div>` : ''}
+        const hero = next ? `<section class="hero"><div><p class="eyebrow">${home.staffView ? 'Next step' : 'Your next step'}</p><h2>${escapeHtml(next.template.title)}</h2><p>${escapeHtml(next.template.description || 'Complete this milestone before the due date.')}</p></div><div>${next.item && next.item.DueDate ? `<div class="chip">${escapeHtml(String(next.item.DueDate).slice(0, 10))}</div>` : ''}${formButton(home, next)}</div></section>` : '<section class="hero"><div><p class="eyebrow">All caught up</p><h2>No action needed right now</h2><p>Open Journey to see what is coming.</p></div></section>';
+        main.innerHTML = `${staffStudentBar(home)}${hero}
+          ${renderUnreadNotices(home.unreadTickets)}
           ${returned ? `<div class="notice">Returned: ${escapeHtml(returned.Title)}. ${escapeHtml(returned.returnedComment)}</div>` : ''}
           <section class="strip"><h2>Your EE journey</h2><p class="muted">${escapeHtml(currentPhase || '')}${home.cohort ? ' · Cohort ' + escapeHtml(home.cohort) : ''}</p>
             <ol class="steps">${home.phases.map(function(phase) {
@@ -654,12 +676,68 @@
             <div class="tile"><div class="muted">Anchor</div><div class="val" style="font-size:16px">${escapeHtml(home.anchor || '—')}</div></div>
           </div>`;
         bindFormButtons(main);
-        const help = document.getElementById('open-help');
-        if (help) help.addEventListener('click', function() { state.section = 'help'; renderShell(); });
+        bindStaffStudentChrome();
+        bindUnreadNotices(main, false);
         paintTabDot('help', home.unreadTicketCount, 'Help');
       }
 
+      function staffStudentBar(home) {
+        if (!home || !home.staffView) return '';
+        const pane = state.staffPane === 'mywork' ? 'mywork' : 'home';
+        return `<button type="button" class="link-button back" id="staff-back">← My Students</button>
+          <div class="page-head"><div><p class="eyebrow">Viewing student</p><h1>${escapeHtml(home.displayName)}</h1>
+          <p class="muted">${escapeHtml(home.hrm || '')}${home.studentNumber ? ' · ' + escapeHtml(home.studentNumber) : ''}${home.viewLabel ? ' · ' + escapeHtml(home.viewLabel) : ''}</p></div>
+          <nav class="staff-panes" aria-label="Student sections">
+            <button type="button" data-staff-pane="home" aria-current="${pane === 'home' ? 'page' : 'false'}">Home</button>
+            <button type="button" data-staff-pane="mywork" aria-current="${pane === 'mywork' ? 'page' : 'false'}">My Work</button>
+          </nav></div>`;
+      }
+
+      function bindStaffStudentChrome() {
+        const back = document.getElementById('staff-back');
+        if (back) back.addEventListener('click', function() {
+          state.staffStudent = null;
+          state.staffStudentHome = null;
+          state.journeyOpen = false;
+          renderShell();
+        });
+        document.querySelectorAll('[data-staff-pane]').forEach(function(button) {
+          button.addEventListener('click', function() {
+            state.staffPane = button.dataset.staffPane;
+            if (state.staffStudentHome) paintStaffAsStudent(state.staffStudentHome);
+          });
+        });
+      }
+
+      function renderUnreadNotices(tickets) {
+        const items = tickets || [];
+        if (!items.length) return '';
+        return `<section class="notice-list" aria-label="Unread questions"><h2>Unread</h2><ul>${items.map(function(ticket) {
+          const detail = [ticket.displayName, ticket.category].filter(Boolean).join(' · ');
+          return `<li><button type="button" data-open-unread="${escapeHtml(ticket.ticketId)}"><strong>${escapeHtml(ticket.title || 'Question')}</strong>${detail ? `<span class="muted">${escapeHtml(detail)}</span>` : ''}</button></li>`;
+        }).join('')}</ul></section>`;
+      }
+
+      function bindUnreadNotices(main, staff) {
+        main.querySelectorAll('[data-open-unread]').forEach(function(button) {
+          button.addEventListener('click', function() {
+            state.focusTicket = button.dataset.openUnread;
+            state.staffStudent = null;
+            state.staffStudentHome = null;
+            state.journeyOpen = false;
+            state.section = staff ? 'tickets' : 'help';
+            renderShell();
+          });
+        });
+      }
+
       function formButton(home, next) {
+        if (home.staffView) {
+          if (!next || !next.template) return '';
+          if (next.template.type === 'form') return `<button type="button" class="button secondary" data-view-response="${escapeHtml(next.template.milestoneId)}">View form</button>`;
+          if (next.item && next.item.canUpdate) return '<button type="button" class="button secondary" data-go-journey>Open journey</button>';
+          return '<p>Waiting on ' + escapeHtml(next.template.mOwner) + '.</p>';
+        }
         if (!next || !next.item || next.template.mOwner !== 'student') return next && next.template ? '<p>Waiting on ' + escapeHtml(next.template.mOwner) + '.</p>' : '';
         if (next.template.type === 'form') {
           if (home.publishedForms && home.publishedForms[next.template.milestoneId]) return `<button type="button" class="button" data-open-form="${escapeHtml(next.template.milestoneId)}">Open form</button>`;
@@ -686,7 +764,7 @@
         const composerPhase = zoom === 'all' ? (currentPhaseId || (phases[phases.length - 1] || {}).phaseId || '') : zoom;
         const percent = total ? Math.round((doneCount / total) * 100) : 0;
         main.innerHTML = `<section class="journey">
-          <div class="journey-head"><div><p class="eyebrow">Extended Essay</p><h1>Your journey</h1></div><p class="journey-score"><strong>${doneCount}</strong> of ${total} done</p></div>
+          <div class="journey-head"><div><p class="eyebrow">Extended Essay</p><h1>${home.staffView ? escapeHtml(home.displayName) : 'Your journey'}</h1></div><p class="journey-score"><strong>${doneCount}</strong> of ${total} done</p></div>
           <div class="journey-bar" role="img" aria-label="${doneCount} of ${total} milestones done"><span style="width:${percent}%"></span></div>
           <ol class="journey-path">${phases.map(function(phase) {
             const phaseTemplates = templates.filter(function(template) { return template.phase === phase.phaseId; });
@@ -711,7 +789,7 @@
       }
 
       function journeyHereCard(home, current, phaseTitle, zoom, currentPhaseId) {
-        if (!current || !current.template) return '<section class="here-card"><p class="eyebrow">All caught up</p><h2>The official milestones are complete</h2><p>Add a to-do if something still needs your attention.</p></section>';
+        if (!current || !current.template) return `<section class="here-card"><p class="eyebrow">All caught up</p><h2>The official milestones are complete</h2><p>${home.canWriteTodos === false ? 'Nothing is waiting on you.' : 'Add a to-do if something still needs your attention.'}</p></section>`;
         if (zoom !== 'all' && zoom !== currentPhaseId) return '';
         const item = current.item;
         const title = phaseTitle[current.template.phase] || current.template.phase;
@@ -736,7 +814,7 @@
           rows.push(renderJourneyMilestone(template, item, detailed, current, zoom));
         });
         if (showTodos) todos.forEach(function(item) { rows.push(renderJourneyTodo(item)); });
-        const composer = showTodos && phase.phaseId === composerPhase ? `<form class="add-todo" data-phase="${escapeHtml(phase.phaseId)}"><input maxlength="240" placeholder="Add a to-do in ${escapeHtml(phase.phaseTitle || phase.phaseId)}" aria-label="New to-do"><button class="button" type="submit">Add</button></form>` : '';
+        const composer = showTodos && home.canWriteTodos !== false && phase.phaseId === composerPhase ? `<form class="add-todo" data-phase="${escapeHtml(phase.phaseId)}"><input maxlength="240" placeholder="Add a to-do in ${escapeHtml(phase.phaseTitle || phase.phaseId)}" aria-label="New to-do"><button class="button" type="submit">Add</button></form>` : '';
         const done = milestones.filter(function(template) {
           return (home.actionItems || []).some(function(item) { return item.TemplateId === template.milestoneId && item.Status === 'Completed'; });
         }).length;
@@ -752,14 +830,27 @@
       }
 
       function renderJourneyTodo(item) {
-        const editing = state.editingTodo === item.TaskId;
+        const writable = !!(item.canEdit || item.canUpdate);
+        const editing = writable && state.editingTodo === item.TaskId;
         const due = item.DueDate ? String(item.DueDate).slice(0, 10) : '';
-        return `<li class="step todo ${item.Status === 'Completed' ? 'done' : ''}" data-task-id="${escapeHtml(item.TaskId)}" data-creator-type="Student"><span class="rail"></span><div><div class="step-top"><h3>${escapeHtml(item.Title)}</h3><span class="muted">To-do${due ? ' · ' + escapeHtml(shortDate(due)) : ''}</span></div>${item.Description && !editing ? `<p class="muted">${escapeHtml(item.Description)}</p>` : ''}${editing ? `<div class="todo-edit"><input data-todo-title value="${escapeHtml(item.Title)}" maxlength="240" aria-label="To-do title"><textarea data-todo-description aria-label="To-do note">${escapeHtml(item.Description || '')}</textarea><input type="date" data-todo-date value="${escapeHtml(due)}" aria-label="To-do date"><div class="step-actions"><button type="button" class="button" data-save-todo="${escapeHtml(item.TaskId)}">Save</button><button type="button" class="button secondary" data-close-todo>Close</button></div></div>` : `<div class="step-actions"><button type="button" class="button ${item.Status === 'Completed' ? 'secondary' : ''}" data-set-status="${item.Status === 'Completed' ? 'Pending' : 'Completed'}">${item.Status === 'Completed' ? 'Not done yet' : 'Done'}</button><button type="button" class="link-button" data-edit-todo="${escapeHtml(item.TaskId)}">Edit</button></div>`}</div></li>`;
+        const actions = writable
+          ? `<div class="step-actions"><button type="button" class="button ${item.Status === 'Completed' ? 'secondary' : ''}" data-set-status="${item.Status === 'Completed' ? 'Pending' : 'Completed'}">${item.Status === 'Completed' ? 'Not done yet' : 'Done'}</button><button type="button" class="link-button" data-edit-todo="${escapeHtml(item.TaskId)}">Edit</button></div>`
+          : '';
+        return `<li class="step todo ${item.Status === 'Completed' ? 'done' : ''}" data-task-id="${escapeHtml(item.TaskId)}" data-creator-type="Student"><span class="rail"></span><div><div class="step-top"><h3>${escapeHtml(item.Title)}</h3><span class="muted">To-do${due ? ' · ' + escapeHtml(shortDate(due)) : ''}</span></div>${item.Description && !editing ? `<p class="muted">${escapeHtml(item.Description)}</p>` : ''}${editing ? `<div class="todo-edit"><input data-todo-title value="${escapeHtml(item.Title)}" maxlength="240" aria-label="To-do title"><textarea data-todo-description aria-label="To-do note">${escapeHtml(item.Description || '')}</textarea><input type="date" data-todo-date value="${escapeHtml(due)}" aria-label="To-do date"><div class="step-actions"><button type="button" class="button" data-save-todo="${escapeHtml(item.TaskId)}">Save</button><button type="button" class="button secondary" data-close-todo>Close</button></div></div>` : actions}</div></li>`;
       }
 
       function journeyActions(item, template, prominent) {
         if (!item || !item.canUpdate || item.Status === 'Completed') return '';
         let html = '';
+        if (item.staffUpdate && template && template.type === 'approval') {
+          return '<button type="button" class="button" data-decide="approve">Approve</button><button type="button" class="button secondary" data-decide="return">Return</button>';
+        }
+        if (item.staffUpdate && template && template.type === 'meeting') {
+          return '<button type="button" class="button" data-decide="session">Log session</button>';
+        }
+        if (item.staffUpdate && template && template.type === 'form') {
+          return `<button type="button" class="button secondary" data-view-response="${escapeHtml(template.milestoneId)}">View form</button><button type="button" class="button" data-set-status="Completed">Done</button>`;
+        }
         if (template && template.type === 'form') html += formJourneyButton(template);
         if (template && template.type !== 'form' && item.Status === 'Pending') html += '<button type="button" class="button secondary" data-set-status="In Progress">Start</button>';
         if (!template || template.type !== 'form') html += `<button type="button" class="button${prominent ? '' : ''}" data-set-status="Completed">Done</button>`;
@@ -778,7 +869,10 @@
 
       function milestoneProgressLabel(item, template) {
         if (item && item.Status === 'Completed') return 'Done';
-        if (item && item.canUpdate) return item.Status === 'In Progress' ? 'In progress' : 'Yours to do';
+        if (item && item.canUpdate) {
+          if (item.staffUpdate) return item.Status === 'In Progress' ? 'In progress' : 'You can update this';
+          return item.Status === 'In Progress' ? 'In progress' : 'Yours to do';
+        }
         if (template.type === 'meeting') return 'Your supervisor logs this session';
         if (template.mOwner === 'supervisor') return 'With your supervisor';
         if (template.mOwner === 'coordinator') return 'With the EE Coordinator';
@@ -819,10 +913,33 @@
             const taskId = card && card.dataset.taskId;
             if (!taskId) return;
             button.disabled = true;
-            runMutation('setActionItemStatus', [taskId, button.dataset.setStatus, '', home.cohort || ''], { key: 'action-item:' + taskId }).then(function() {
+            const studentEmail = home.staffView ? home.email : '';
+            const viewAs = home.staffView ? state.actingAs : '';
+            runMutation('setActionItemStatus', [taskId, button.dataset.setStatus, studentEmail, home.cohort || '', viewAs], { key: 'action-item:' + taskId }).then(function() {
               patchJourneyItem(taskId, { Status: button.dataset.setStatus });
-              paintStudentJourney(state.studentHome || home);
+              paintStudentJourney(activeJourneyRecord() || home);
               showSuccess(button.dataset.setStatus === 'Completed' ? 'Marked done.' : 'Progress saved.');
+            }).catch(function(error) { button.disabled = false; showError(error); });
+          });
+        });
+        main.querySelectorAll('[data-decide]').forEach(function(button) {
+          button.addEventListener('click', function() {
+            const card = button.closest('[data-task-id]');
+            const taskId = card && card.dataset.taskId;
+            if (!taskId || !home.staffView) return;
+            const action = button.dataset.decide;
+            const comment = action === 'approve' ? '' : window.prompt(action === 'return' ? 'Comments for the student' : 'Session summary');
+            if (action !== 'approve' && !comment) return;
+            button.disabled = true;
+            runMutation('recordMilestoneDecision', [taskId, action, comment || '', home.email, home.cohort || '', state.actingAs], {
+              key: 'milestone:' + taskId
+            }).then(function() {
+              return callServer('getStaffStudentHome', home.email, home.cohort || '', state.actingAs);
+            }).then(function(fresh) {
+              state.staffStudentHome = fresh;
+              paintStudentJourney(fresh);
+              if (state.section === 'students') paintStaffAsStudent(fresh);
+              showSuccess(action === 'return' ? 'Returned to the student.' : 'Milestone updated.');
             }).catch(function(error) { button.disabled = false; showError(error); });
           });
         });
@@ -839,7 +956,7 @@
               if (state.studentHome) state.studentHome.actionItems = (state.studentHome.actionItems || []).concat([created]);
               else home.actionItems = (home.actionItems || []).concat([created]);
               state.journeyFilters.showStudent = true;
-              paintStudentJourney(state.studentHome || home);
+              paintStudentJourney(activeJourneyRecord() || home);
               const fresh = document.querySelector('.add-todo input');
               if (fresh) fresh.focus();
               showSuccess('To-do added.');
@@ -866,16 +983,22 @@
             }).then(function() {
               patchJourneyItem(button.dataset.saveTodo, { Title: title, Description: description, DueDate: date });
               state.editingTodo = '';
-              paintStudentJourney(state.studentHome || home);
+              paintStudentJourney(activeJourneyRecord() || home);
               showSuccess('To-do saved.');
             }).catch(function(error) { button.disabled = false; showError(error, card); });
           });
         });
       }
 
+      function activeJourneyRecord() {
+        if (state.user && state.user.role !== 'student' && state.staffStudentHome) return state.staffStudentHome;
+        return state.studentHome;
+      }
+
       function patchJourneyItem(taskId, changes) {
-        if (!state.studentHome || !state.studentHome.actionItems) return;
-        const item = state.studentHome.actionItems.filter(function(entry) { return entry.TaskId === taskId; })[0];
+        const home = activeJourneyRecord();
+        if (!home || !home.actionItems) return;
+        const item = home.actionItems.filter(function(entry) { return entry.TaskId === taskId; })[0];
         if (!item) return;
         Object.keys(changes).forEach(function(key) { item[key] = changes[key]; });
       }
@@ -888,11 +1011,19 @@
           ['Poster', home.links.poster]
         ];
         const main = document.getElementById('main');
-        main.innerHTML = `<h2>My documents</h2><div class="doc-grid">${links.map(function(link) {
+        main.innerHTML = `${staffStudentBar(home)}<h2>My documents</h2><div class="doc-grid">${links.map(function(link) {
           const url = safeUrl(link[1]);
           return `<article class="doc-card"><h3>${escapeHtml(link[0])}</h3><p class="muted">${url ? 'Shared with your supervisor.' : 'Not created yet.'}</p>${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">Open</a>` : ''}</article>`;
-        }).join('')}</div><section class="section-gap" id="my-activity" aria-label="Your activity"></section>`;
-        loadActivityDashboard(document.getElementById('my-activity'), callServer('getMyActivity'), {
+        }).join('')}</div><section class="section-gap" id="my-activity" aria-label="${home.staffView ? 'Student activity' : 'Your activity'}"></section>`;
+        bindStaffStudentChrome();
+        const activity = home.staffView
+          ? callServer('getStudentActivity', home.email, home.cohort || '')
+          : callServer('getMyActivity');
+        loadActivityDashboard(document.getElementById('my-activity'), activity, home.staffView ? {
+          heading: 'Activity',
+          lede: 'Actions ' + (home.displayName || 'this student') + ' took in the EE Hub.',
+          empty: 'Nothing here yet. Actions this student takes will show up in this list.'
+        } : {
           heading: 'Your activity',
           lede: 'Actions you took in the EE Hub.',
           empty: 'Nothing here yet. Signing in, forms, to-dos, and questions you send will show up in this list.'
@@ -1191,19 +1322,71 @@
         main.querySelectorAll('[data-open-form]').forEach(function(button) {
           button.addEventListener('click', function() { openStudentForm(button.dataset.openForm); });
         });
+        main.querySelectorAll('[data-view-response]').forEach(function(button) {
+          button.addEventListener('click', function() { viewStudentForm(button.dataset.viewResponse); });
+        });
         const journey = main.querySelector('[data-go-journey]');
         if (journey) journey.addEventListener('click', function() { setJourneyOpen(true); });
       }
 
+      function viewStudentForm(milestoneId) {
+        const email = state.staffStudentHome ? state.staffStudentHome.email : '';
+        callServer('getFormResponse', milestoneId, email).then(function(form) {
+          const answers = form.response ? form.response.values : null;
+          const body = (form.fields || []).map(function(field) {
+            return `<p><strong>${escapeHtml(field.label)}</strong><br>${escapeHtml(answers ? answers[field.name] || '—' : 'No response yet')}</p>`;
+          }).join('');
+          openFormShell(form.title || 'Form', body, '', null);
+        }).catch(showError);
+      }
+
       function renderStaffHome() {
         const main = document.getElementById('main');
-        if (state.staffStudent) { paintStaffStudent(state.staffStudent); return; }
+        if (state.staffStudentHome) { paintStaffAsStudent(state.staffStudentHome); return; }
         main.innerHTML = '<p class="muted">Loading students...</p>';
         callServer('getStaffHome', state.cohortId || '', state.actingAs).then(function(home) {
           state.staffHome = home;
           state.cohortId = home.cohortId || '';
+          state.staffTicketUnread = home.unreadTicketCount || 0;
+          paintTabDot('tickets', state.staffTicketUnread, 'Tickets');
           paintStaffCards(home);
         }).catch(showError);
+      }
+
+      function paintStaffAsStudent(home) {
+        if (state.staffPane === 'mywork') paintStudentWork(home);
+        else paintStudentHome(home);
+      }
+
+      function staffSortValue(student, sort) {
+        if (sort === 'displayName') return student.displayName || '';
+        if (sort === 'hrm') return student.hrm || '';
+        return student.surname || student.displayName || '';
+      }
+
+      function visibleStaffStudents(home) {
+        let students = (home.students || []).slice();
+        if (state.staffTrack === 'on') students = students.filter(function(student) { return !student.behind; });
+        if (state.staffTrack === 'off') students = students.filter(function(student) { return !!student.behind; });
+        if (state.staffMine) students = students.filter(function(student) { return student.supervisorId === state.user.email; });
+        if (state.staffSupervisor) {
+          students = students.filter(function(student) {
+            return (student.supervisorId || '__unassigned__') === state.staffSupervisor;
+          });
+        }
+        const query = state.staffQuery.trim().toLowerCase();
+        if (query) {
+          students = students.filter(function(student) {
+            return (student.displayName + ' ' + student.surname + ' ' + student.subject + ' ' + student.hrm).toLowerCase().indexOf(query) >= 0;
+          });
+        }
+        const sort = state.staffSort || 'surname';
+        students.sort(function(left, right) {
+          const primary = textCompare(staffSortValue(left, sort), staffSortValue(right, sort));
+          if (primary) return primary;
+          return textCompare(left.displayName, right.displayName);
+        });
+        return students;
       }
 
       function paintStaffCards(home) {
@@ -1212,28 +1395,49 @@
         if (state.user.permissions.canAdmin) roles.push(['coordinator', 'Coordinator']);
         if (state.user.permissions.isSupervisor) roles.push(['supervisor', 'Supervisor']);
         roles.push(['staff', 'Staff browse']);
-        const students = home.students || [];
+        const students = visibleStaffStudents(home);
+        const total = (home.students || []).length;
         const phaseName = {};
         (home.phases || []).forEach(function(phase) { phaseName[phase.phaseId] = phase.phaseTitle; });
-        main.innerHTML = `<div class="toolbar">
+        const supervisors = home.supervisors || [];
+        main.innerHTML = `${renderUnreadNotices(home.unreadTickets)}<div class="toolbar">
             <label for="staff-cohort">Cohort</label><select id="staff-cohort">${(home.cohorts || []).map(function(cohort) {
               return `<option value="${escapeHtml(cohort.id)}" ${cohort.id === home.cohortId ? 'selected' : ''}>${escapeHtml(cohort.name)}</option>`;
             }).join('')}</select>
             <label for="acting-as">Acting as</label><select id="acting-as">${roles.map(function(role) {
               return `<option value="${role[0]}" ${state.actingAs === role[0] ? 'selected' : ''}>${role[1]}</option>`;
             }).join('')}</select>
+            <label for="staff-sort">Sort</label><select id="staff-sort" aria-label="Sort students">
+              <option value="surname" ${state.staffSort === 'surname' ? 'selected' : ''}>Last name</option>
+              <option value="displayName" ${state.staffSort === 'displayName' ? 'selected' : ''}>Display name</option>
+              <option value="hrm" ${state.staffSort === 'hrm' ? 'selected' : ''}>Homeroom</option>
+            </select>
+            <label for="staff-track">Progress</label><select id="staff-track" aria-label="Filter by progress">
+              <option value="all" ${state.staffTrack === 'all' ? 'selected' : ''}>All students</option>
+              <option value="on" ${state.staffTrack === 'on' ? 'selected' : ''}>On track</option>
+              <option value="off" ${state.staffTrack === 'off' ? 'selected' : ''}>Not on track</option>
+            </select>
+            <label for="staff-supervisor">Supervisor</label><select id="staff-supervisor" aria-label="Filter by supervisor">
+              <option value="">All supervisors</option>
+              ${supervisors.map(function(supervisor) {
+                return `<option value="${escapeHtml(supervisor.id)}" ${state.staffSupervisor === supervisor.id ? 'selected' : ''}>${escapeHtml(supervisor.name)}</option>`;
+              }).join('')}
+            </select>
+            <label><input type="checkbox" id="staff-mine" ${state.staffMine ? 'checked' : ''}> My students</label>
             <input id="staff-search" type="search" placeholder="Search students" value="${escapeHtml(state.staffQuery)}" aria-label="Search students">
-            <span class="muted">${students.length} students</span>
+            <span class="muted">${students.length}${students.length === total ? '' : ' of ' + total} students</span>
           </div>
           ${students.length ? `<div class="sgrid">${students.map(function(student) {
-              return `<article class="scard" data-search="${escapeHtml((student.displayName + ' ' + student.subject + ' ' + student.hrm).toLowerCase())}"><button type="button" class="name" data-open-student="${escapeHtml(student.email)}">${escapeHtml(student.displayName)}</button>
-              <div class="muted">${escapeHtml(student.subject || 'No subject yet')}${student.hrm ? ' · ' + escapeHtml(student.hrm) : ''}</div>
+              return `<article class="scard"><button type="button" class="name" data-open-student="${escapeHtml(student.email)}">${escapeHtml(student.displayName)}</button>
+              <div class="muted">${escapeHtml(student.subject || 'No subject yet')}${student.hrm ? ' · ' + escapeHtml(student.hrm) : ''}${student.surname ? ' · ' + escapeHtml(student.surname) : ''}</div>
               <div class="segs" aria-label="${student.done} of ${student.total} milestones">${student.segments.split('').map(function(segment) { return `<i class="${segment === 'o' ? '' : segment}"></i>`; }).join('')}</div>
               <div class="chips"><span class="chip">${escapeHtml(phaseName[student.phaseId] || student.phaseId || 'Phase')}</span><span class="chip ${student.behind ? 'bad' : 'ok'}">${student.behind ? student.behind + ' overdue' : 'On track'}</span>${student.waiting.length ? `<span class="chip bad">${student.waiting.length} waiting</span>` : ''}${student.returned ? `<span class="chip bad">Returned</span>` : ''}</div>
               <div class="muted">Latest: ${escapeHtml(student.latestTitle || '—')}</div></article>`;
-          }).join('')}</div>` : '<div class="empty">No students in this view. Supervisors only see their own advisees. Coordinators see the cohort.</div>'}`;
+          }).join('')}</div>` : '<div class="empty">No students match this view.</div>'}`;
+        bindUnreadNotices(main, true);
         document.getElementById('staff-cohort').addEventListener('change', function(event) {
           state.cohortId = event.target.value;
+          state.staffSupervisor = '';
           state.staffHome = null;
           renderStaffHome();
         });
@@ -1241,92 +1445,46 @@
           state.actingAs = event.target.value;
           state.staffHome = null;
           state.staffStudent = null;
+          state.staffStudentHome = null;
           state.ticketBadgeFor = '';
           renderShell();
         });
+        function repaintFilters() { paintStaffCards(home); }
+        document.getElementById('staff-sort').addEventListener('change', function(event) {
+          state.staffSort = event.target.value;
+          repaintFilters();
+        });
+        document.getElementById('staff-track').addEventListener('change', function(event) {
+          state.staffTrack = event.target.value;
+          repaintFilters();
+        });
+        document.getElementById('staff-supervisor').addEventListener('change', function(event) {
+          state.staffSupervisor = event.target.value;
+          repaintFilters();
+        });
+        document.getElementById('staff-mine').addEventListener('change', function(event) {
+          state.staffMine = event.target.checked;
+          repaintFilters();
+        });
         document.getElementById('staff-search').addEventListener('input', function(event) {
           state.staffQuery = event.target.value;
-          const query = state.staffQuery.trim().toLowerCase();
-          main.querySelectorAll('[data-search]').forEach(function(card) {
-            card.classList.toggle('hidden', query && card.dataset.search.indexOf(query) < 0);
-          });
+          repaintFilters();
+          const search = document.getElementById('staff-search');
+          if (search) {
+            const end = search.value.length;
+            search.focus();
+            search.setSelectionRange(end, end);
+          }
         });
         main.querySelectorAll('[data-open-student]').forEach(function(button) {
           button.addEventListener('click', function() {
-            callServer('getStaffStudent', button.dataset.openStudent, state.cohortId).then(function(detail) {
-              state.staffStudent = detail;
-              paintStaffStudent(detail);
-            }).catch(showError);
-          });
-        });
-      }
-
-      function paintStaffStudent(detail) {
-        const main = document.getElementById('main');
-        const student = detail.student;
-        const phases = {};
-        (detail.phases || []).forEach(function(phase) { phases[phase.phaseId] = phase.phaseTitle; });
-        let html = `<button type="button" class="link-button back" id="staff-back">← My Students</button>
-          <div class="page-head"><div><p class="eyebrow">${escapeHtml(student.subject || 'Extended Essay')}</p><h1>${escapeHtml(student.displayName)}</h1>
-          <p class="muted">${escapeHtml(student.hrm || '')} ${student.studentNumber ? '· ' + escapeHtml(student.studentNumber) : ''}</p></div></div>`;
-        if (detail.showDocs) {
-          html += `<div class="doc-grid">${[['Folder', detail.links.folder], ['EE Doc', detail.links.doc], ['RPPF', detail.links.rppf], ['Poster', detail.links.poster]].map(function(link) {
-            const url = safeUrl(link[1]);
-            return `<article class="doc-card"><strong>${link[0]}</strong><div>${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener">Open</a>` : '<span class="muted">Not created yet</span>'}</div></article>`;
-          }).join('')}</div>`;
-        }
-        let lastPhase = '';
-        detail.milestones.forEach(function(milestone) {
-          if (milestone.phase !== lastPhase) {
-            if (lastPhase) html += '</section>';
-            lastPhase = milestone.phase;
-            html += `<section class="strip"><h2>${escapeHtml(phases[milestone.phase] || milestone.phase)}</h2>`;
-          }
-          html += `<div class="milestone-row"><div><strong>${escapeHtml(milestone.title)}</strong><div class="muted">${escapeHtml(milestone.type)} · ${escapeHtml(milestone.owner)} · ${escapeHtml(milestone.status)}${milestone.due ? ' · ' + escapeHtml(milestone.due) : ''}</div>${milestone.returnedComment ? `<div class="notice">${escapeHtml(milestone.returnedComment)}</div>` : ''}</div><div class="actions">`;
-          if (milestone.canAct && milestone.type === 'approval') {
-            html += `<button type="button" class="button" data-decide="approve" data-task="${escapeHtml(milestone.taskId)}">Approve</button><button type="button" class="button secondary" data-decide="return" data-task="${escapeHtml(milestone.taskId)}">Return</button>`;
-          } else if (milestone.canAct && milestone.type === 'meeting') {
-            html += `<button type="button" class="button" data-decide="session" data-task="${escapeHtml(milestone.taskId)}">Log session</button>`;
-          } else if (milestone.type === 'form') {
-            html += `<button type="button" class="button secondary" data-view-response="${escapeHtml(milestone.milestoneId)}">View form</button>`;
-          }
-          html += '</div></div>';
-        });
-        if (lastPhase) html += '</section>';
-        html += '<section class="section-gap" id="student-activity" aria-label="Student activity"></section>';
-        main.innerHTML = html;
-        document.getElementById('staff-back').addEventListener('click', function() { state.staffStudent = null; renderStaffHome(); });
-        loadActivityDashboard(document.getElementById('student-activity'), callServer('getStudentActivity', student.email, state.cohortId), {
-          heading: 'Activity',
-          lede: 'Actions ' + (student.displayName || 'this student') + ' took in the EE Hub.',
-          empty: 'Nothing here yet. Actions this student takes will show up in this list.'
-        });
-        main.querySelectorAll('[data-decide]').forEach(function(button) {
-          button.addEventListener('click', function() {
-            const action = button.dataset.decide;
-            const comment = action === 'approve' ? '' : window.prompt(action === 'return' ? 'Comments for the student' : 'Session summary');
-            if (action !== 'approve' && !comment) return;
-            button.disabled = true;
-            runMutation('recordMilestoneDecision', [button.dataset.task, action, comment || '', student.email, state.cohortId], {
-              key: 'milestone:' + button.dataset.task
-            }).then(function() {
-              state.staffHome = null;
-              return callServer('getStaffStudent', student.email, state.cohortId);
-            }).then(function(fresh) {
-              state.staffStudent = fresh;
-              paintStaffStudent(fresh);
-              showSuccess(action === 'return' ? 'Returned to the student.' : 'Milestone updated.');
-            }).catch(function(error) { button.disabled = false; showError(error); });
-          });
-        });
-        main.querySelectorAll('[data-view-response]').forEach(function(button) {
-          button.addEventListener('click', function() {
-            callServer('getFormResponse', button.dataset.viewResponse, student.email).then(function(form) {
-              const answers = form.response ? form.response.values : null;
-              const body = (form.fields || []).map(function(field) {
-                return `<p><strong>${escapeHtml(field.label)}</strong><br>${escapeHtml(answers ? answers[field.name] || '—' : 'No response yet')}</p>`;
-              }).join('');
-              openFormShell(form.title || 'Form', body, '', null);
+            callServer('getStaffStudentHome', button.dataset.openStudent, state.cohortId, state.actingAs).then(function(detail) {
+              state.staffStudentHome = detail;
+              state.staffPane = 'home';
+              state.journeyOpen = true;
+              state.journeyFilters = { phaseId: 'all', showSystem: true, showStudent: true };
+              state.editingTodo = '';
+              renderShell();
             }).catch(showError);
           });
         });
@@ -1445,6 +1603,9 @@
           if (state.studentHome) {
             state.studentHome.unreadTicketCount = hub.unreadCount || 0;
             state.studentHome.unreadTicketTitle = hub.unreadTitle || '';
+            state.studentHome.unreadTickets = (hub.tickets || []).filter(function(ticket) { return ticket.studentUnread; }).map(function(ticket) {
+              return { ticketId: ticket.ticketId, title: ticket.title, category: ticket.category, lastUpdated: ticket.lastUpdated };
+            });
           }
           paintTabDot('help', hub.unreadCount, 'Help');
           paintStudentHelp(hub);
@@ -1467,6 +1628,7 @@
         });
         document.getElementById('new-ticket').addEventListener('click', function() { openTicketDialog(hub.categories || []); });
         bindTicketList(main, tickets, false);
+        openFocusedTicket(main);
       }
 
       function renderFaq(faq) {
@@ -1522,8 +1684,15 @@
                 paintTabDot('tickets', state.staffTicketUnread, 'Tickets');
               } else {
                 ticket.studentUnread = false;
-                if (state.studentHome) state.studentHome.unreadTicketCount = Math.max(0, (state.studentHome.unreadTicketCount || 0) - 1);
+                if (state.studentHome) {
+                  state.studentHome.unreadTicketCount = Math.max(0, (state.studentHome.unreadTicketCount || 0) - 1);
+                  state.studentHome.unreadTickets = (state.studentHome.unreadTickets || []).filter(function(item) { return item.ticketId !== ticket.ticketId; });
+                }
                 paintTabDot('help', state.studentHome ? state.studentHome.unreadTicketCount : 0, 'Help');
+              }
+              if (staff && state.staffHome && state.staffHome.unreadTickets) {
+                state.staffHome.unreadTickets = state.staffHome.unreadTickets.filter(function(item) { return item.ticketId !== ticket.ticketId; });
+                state.staffHome.unreadTicketCount = Math.max(0, (state.staffHome.unreadTicketCount || 0) - 1);
               }
               const dot = details.querySelector('summary .dot');
               if (dot) dot.remove();
@@ -1645,6 +1814,15 @@
           renderShell();
         });
         bindTicketList(main, tickets, true);
+        openFocusedTicket(main);
+      }
+
+      function openFocusedTicket(main) {
+        if (!state.focusTicket || !main) return;
+        const id = state.focusTicket;
+        state.focusTicket = '';
+        const details = main.querySelector('details[data-ticket="' + id.replace(/"/g, '') + '"]');
+        if (details) details.open = true;
       }
 
       function renderResources() {
@@ -1796,7 +1974,7 @@
         ['cohorts', 'Cohorts'], ['cohortMembers', 'Students in cohorts'], ['phases', 'Phases'], ['milestoneTemplates', 'Milestone templates'],
         ['templateDesigner', 'Template designer'], ['assignments', 'Assignments'],
         ['studentUsers', 'Student users'], ['staffUsers', 'Staff users'], ['subjects', 'Subjects'], ['formDesigner', 'Milestone forms'],
-        ['resources', 'Resources'], ['faqs', 'FAQs']
+        ['resources', 'Resources'], ['faqs', 'FAQs'], ['ticketCategories', 'Ticket categories']
       ];
 
       function renderAdmin() {
@@ -2121,10 +2299,11 @@
         const columns = schemaFields.filter(function(field) { return field.table !== false; });
         if (entity === 'cohortMembers') state.selectedMemberIds = [];
         const isCohortMembers = entity === 'cohortMembers';
-        target.innerHTML = `<div class="toolbar"><button type="button" class="button" id="new-record">Add ${escapeHtml(sectionLabel(entity).replace(/s$/, ''))}</button>${isCohortMembers ? '<button type="button" class="button secondary" id="open-roster-import">Import CSV / paste</button><button type="button" class="button secondary" id="create-selected-users" disabled>Add selected as users</button><label><input type="checkbox" id="select-all-members"> Select all</label><span id="selected-count" class="muted">0 selected</span>' : ''}<span class="muted">${records.length} record${records.length === 1 ? '' : 's'}</span></div>
+        const addLabel = singularSection(sectionLabel(entity));
+        target.innerHTML = `${entity === 'ticketCategories' ? '<p class="lede">These names are the choices a student sees when they ask a question. Who they message sends it to that student\'s supervisor or to the EE Coordinator.</p>' : ''}<div class="toolbar"><button type="button" class="button" id="new-record">Add ${escapeHtml(addLabel)}</button>${isCohortMembers ? '<button type="button" class="button secondary" id="open-roster-import">Import CSV / paste</button><button type="button" class="button secondary" id="create-selected-users" disabled>Add selected as users</button><label><input type="checkbox" id="select-all-members"> Select all</label><span id="selected-count" class="muted">0 selected</span>' : ''}<span class="muted">${records.length} record${records.length === 1 ? '' : 's'}</span></div>
           ${state.status ? `<p class="status">${escapeHtml(state.status)}</p>` : ''}
           ${records.length ? `<div class="table-wrap"><table><thead><tr>${isCohortMembers ? '<th><span class="sr-only">Select</span></th>' : ''}${columns.map(function(field) { return `<th>${escapeHtml(field.label || field.name)}</th>`; }).join('')}<th>Actions</th></tr></thead><tbody>${records.map(function(record, index) {
-            return `<tr>${isCohortMembers ? `<td><input type="checkbox" data-select-member value="${escapeHtml(record.StudentId)}" ${record.hasStudentIdConflict ? 'disabled title="Resolve Student ID conflicts first"' : ''}></td>` : ''}${columns.map(function(field) { return `<td>${escapeHtml(formatValue(record[field.name]))}</td>`; }).join('')}<td><div class="actions"><button type="button" class="link-button" data-edit="${index}" ${record.hasStudentIdConflict ? 'disabled title="Reconcile duplicate Student ID values first"' : ''}>Edit</button><button type="button" class="link-button" data-delete="${index}">Delete</button></div>${record.hasStudentIdConflict ? '<div class="notice">Duplicate Student ID values disagree.</div>' : ''}</td></tr>`;
+            return `<tr>${isCohortMembers ? `<td><input type="checkbox" data-select-member value="${escapeHtml(record.StudentId)}" ${record.hasStudentIdConflict ? 'disabled title="Resolve Student ID conflicts first"' : ''}></td>` : ''}${columns.map(function(field) { return `<td>${escapeHtml(displayField(field, record))}</td>`; }).join('')}<td><div class="actions"><button type="button" class="link-button" data-edit="${index}" ${record.hasStudentIdConflict ? 'disabled title="Reconcile duplicate Student ID values first"' : ''}>Edit</button><button type="button" class="link-button" data-delete="${index}">Delete</button></div>${record.hasStudentIdConflict ? '<div class="notice">Duplicate Student ID values disagree.</div>' : ''}</td></tr>`;
           }).join('')}</tbody></table></div>` : '<div class="empty">No records yet.</div>'}
           <div id="roster-import-panel"></div><div id="record-editor"></div>`;
         document.getElementById('new-record').addEventListener('click', function() { openEditor(null); });
@@ -2740,6 +2919,24 @@
       function sectionLabel(entity) {
         const item = adminSections.filter(function(section) { return section[0] === entity; })[0];
         return item ? item[1] : entity;
+      }
+
+      function singularSection(label) {
+        if (/ies$/.test(label)) return label.replace(/ies$/, 'y');
+        if (/s$/.test(label) && !/ss$/.test(label)) return label.replace(/s$/, '');
+        return label;
+      }
+
+      function displayField(field, record) {
+        const value = record[field.name];
+        if (field.options && field.options.length) {
+          const match = field.options.filter(function(option) {
+            const item = typeof option === 'string' ? { value: option, label: option } : option;
+            return String(item.value) === String(value);
+          })[0];
+          if (match) return typeof match === 'string' ? match : (match.label || match.value);
+        }
+        return formatValue(value);
       }
 
       function formatValue(value) {
