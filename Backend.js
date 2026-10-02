@@ -4,7 +4,10 @@ var APP_TABLES = {
     fields: [
       { name: 'Cohort', type: 'text', required: true, key: true },
       { name: 'SheetName', type: 'text', editable: false },
-      { name: 'Status', type: 'select', options: ['Active', 'Inactive'] }
+      { name: 'Status', type: 'select', options: ['Active', 'Inactive'] },
+      { name: 'DriveRootFolderId', type: 'text', editable: false, table: false, form: false },
+      { name: 'FolderPrefix', type: 'text', editable: false, table: false, form: false },
+      { name: 'FolderSuffix', type: 'text', editable: false, table: false, form: false }
     ]
   },
   milestoneTemplates: {
@@ -259,6 +262,7 @@ function getAdminSchema_(entity) {
 }
 
 function getTableSchemaReport() {
+  ensureCohortDriveColumns_();
   var spreadsheet = getSpreadsheet_();
   var sheets = [];
   Object.keys(APP_TABLES).forEach(function(entity) {
@@ -939,11 +943,23 @@ function getSpreadsheet_() {
   return spreadsheet;
 }
 
+function ensureCohortDriveColumns_() {
+  var sheet = getSpreadsheet_().getSheetByName(APP_TABLES.cohorts.sheet);
+  if (!sheet || sheet.getLastRow() < 1) return [];
+  var expected = ['DriveRootFolderId', 'FolderPrefix', 'FolderSuffix'];
+  var actual = getHeaders_(sheet);
+  var missing = expected.filter(function(header) { return actual.indexOf(header) < 0; });
+  if (!missing.length) return [];
+  sheet.getRange(1, actual.length + 1, 1, missing.length).setValues([missing]);
+  return missing;
+}
+
 function listCohorts_(includeInactive) {
   var spreadsheet = getSpreadsheet_();
   var registry = spreadsheet.getSheetByName('COHORTS');
   var entries = {};
   if (registry) {
+    ensureCohortDriveColumns_();
     assertSheetSchema_(registry, 'cohorts');
   }
   if (registry && registry.getLastRow() > 1) {
@@ -980,6 +996,7 @@ function getCohortSheet_(cohortId) {
 
 function saveCohort_(user, values, originalKey) {
   var cohortId = text_(values.Cohort);
+  ensureCohortDriveColumns_();
   var existingRegistry = getSpreadsheet_().getSheetByName(APP_TABLES.cohorts.sheet);
   if (existingRegistry) assertSheetSchema_(existingRegistry, 'cohorts');
   validateRecordFields_('cohorts', values, originalKey);
@@ -993,8 +1010,18 @@ function saveCohort_(user, values, originalKey) {
     var rowNumber = findRowNumber_(sheet, getTableKey_('cohorts'), cohortId);
     if (!originalKey && rowNumber > 0) throw new Error('This cohort already exists.');
     ensureCohortSheet_(cohortId);
-    var rowValues = { Cohort: cohortId, SheetName: sheetName, Status: text_(values.Status) || 'Active' };
-    var row = headers.map(function(header) { return rowValues[header] || ''; });
+    var existing = rowNumber > 0 ? findRecordByValue_(sheet, 'Cohort', cohortId) : null;
+    var rowValues = {
+      Cohort: cohortId,
+      SheetName: sheetName,
+      Status: text_(values.Status) || 'Active',
+      DriveRootFolderId: existing ? text_(existing.DriveRootFolderId) : '',
+      FolderPrefix: existing ? preservedDriveText_(existing.FolderPrefix) : '',
+      FolderSuffix: existing ? preservedDriveText_(existing.FolderSuffix) : ''
+    };
+    var row = headers.map(function(header) {
+      return Object.prototype.hasOwnProperty.call(rowValues, header) ? rowValues[header] : '';
+    });
     if (rowNumber > 0) sheet.getRange(rowNumber, 1, 1, row.length).setValues([row]);
     else sheet.getRange(sheet.getLastRow() + 1, 1, 1, row.length).setValues([row]);
     return { key: cohortId };
@@ -1153,6 +1180,11 @@ function toBoolean_(value) {
 function safeCell_(value) {
   if (typeof value === 'boolean' || typeof value === 'number' || value instanceof Date) return value;
   var stringValue = text_(value);
+  return /^[=+@-]/.test(stringValue) ? "'" + stringValue : stringValue;
+}
+function preservedDriveText_(value) {
+  var stringValue = String(value === null || value === undefined ? '' : value);
+  if (stringValue.charAt(0) === "'" && stringValue.length > 1 && /^[=+@-]/.test(stringValue.charAt(1))) stringValue = stringValue.slice(1);
   return /^[=+@-]/.test(stringValue) ? "'" + stringValue : stringValue;
 }
 function validateEmail_(value, label) {
