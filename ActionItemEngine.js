@@ -15,10 +15,12 @@ function getStudentActionItems_(studentEmail, user) {
   }
 
   var templateOwners = {};
+  var templateTypes = {};
   var templateSheet = getSpreadsheet_().getSheetByName(APP_TABLES.milestoneTemplates.sheet);
   if (templateSheet && templateSheet.getLastRow() > 1) {
     readRecords_(templateSheet).forEach(function(template) {
       templateOwners[text_(template.milestoneId)] = text_(template.mOwner).toLowerCase();
+      templateTypes[text_(template.milestoneId)] = text_(template.type).toLowerCase();
     });
   }
 
@@ -28,8 +30,10 @@ function getStudentActionItems_(studentEmail, user) {
     item.CreatorType = text_(item.CreatorType);
     item.Status = text_(item.Status) || 'Pending';
     item.DueDate = item.DueDate ? serializable_(item.DueDate) : '';
+    item.templateType = templateTypes[text_(item.TemplateId)] || '';
+    item.mOwner = templateOwners[text_(item.TemplateId)] || '';
     item.canEdit = item.CreatorType === 'Student' && user && user.role === 'student' && normalizeEmail_(item.StudentId) === user.email;
-    item.canUpdate = item.canEdit || (item.CreatorType === 'System' && !!user && canCompleteMilestone_(user, item.StudentId, templateOwners[text_(item.TemplateId)] || ''));
+    item.canUpdate = item.canEdit || (item.CreatorType === 'System' && !!user && canCompleteMilestone_(user, item.StudentId, item.mOwner, item.templateType));
     return item;
   }).sort(function(left, right) {
     var leftDate = left.DueDate ? Date.parse(left.DueDate) : Number.MAX_SAFE_INTEGER;
@@ -387,9 +391,27 @@ function requireActionItemStatusPermission_(user, item) {
   }
   if (item.CreatorType !== 'System') throw new Error('Unsupported action-item creator type.');
   var template = findRecordByValue_(getRequiredActionSheet_('milestoneTemplates'), 'milestoneId', item.TemplateId);
-  if (!template || !canCompleteMilestone_(user, item.StudentId, text_(template.mOwner).toLowerCase())) {
+  if (!template || !canCompleteMilestone_(user, item.StudentId, text_(template.mOwner).toLowerCase(), text_(template.type).toLowerCase())) {
     denyAccess_(user, 'SET_ACTION_ITEM_STATUS', 'Only the milestone owner can change this status.');
   }
+}
+
+function findSystemActionItem_(studentEmail, templateId) {
+  var sheet = getRequiredActionItemsSheet_();
+  var headers = getHeaders_(sheet);
+  var studentColumn = requireColumn_(headers, 'StudentId', sheet.getName());
+  var templateColumn = requireColumn_(headers, 'TemplateId', sheet.getName());
+  var creatorColumn = requireColumn_(headers, 'CreatorType', sheet.getName());
+  var data = sheet.getDataRange().getValues();
+  for (var index = 1; index < data.length; index++) {
+    if (normalizeEmail_(data[index][studentColumn]) !== normalizeEmail_(studentEmail)) continue;
+    if (text_(data[index][templateColumn]) !== text_(templateId)) continue;
+    if (text_(data[index][creatorColumn]) !== 'System') continue;
+    var record = {};
+    headers.forEach(function(header, column) { record[header] = data[index][column]; });
+    return { sheet: sheet, headers: headers, rowNumber: index + 1, record: record };
+  }
+  return null;
 }
 
 function createActionItemId_() {

@@ -140,6 +140,58 @@
       .milestone-meta { color: var(--muted); font-size: 12px; text-align: right; }
       .milestone-type { color: var(--coral); font-size: 11px; font-weight: 750; text-transform: uppercase; }
       .section-gap { margin-top: 38px; }
+      .hidden { display: none !important; }
+      .dot { display: inline-block; width: 7px; height: 7px; margin-left: 6px; border-radius: 50%; background: var(--gold); vertical-align: 1px; }
+      .faq-list, .ticket-list { display: grid; gap: 8px; max-width: 860px; }
+      .faq, .ticket { background: white; border: 1px solid var(--line); border-left: 3px solid var(--ink); }
+      .faq { padding: 10px 12px; }
+      .faq p, .msg p { margin: 4px 0 0; white-space: pre-wrap; }
+      .ticket summary { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 10px 12px; cursor: pointer; }
+      .ticket .body { display: grid; gap: 8px; padding: 0 12px 12px; }
+      .msg { padding: 8px 10px; background: #f8fafb; border-left: 3px solid var(--line); }
+      .msg.staff { border-left-color: var(--ink); }
+      .msg.mine { border-left-color: var(--gold); }
+      .cats { display: flex; flex-wrap: wrap; gap: 6px; }
+      .cats button, .chip.c-sm, .chip.c-cit, .chip.c-eth, .chip.c-ext, .chip.c-tech { border: 1px solid transparent; border-radius: 999px; }
+      .cats button { padding: 4px 10px; }
+      .cats button[aria-pressed="false"] { background: white; color: #3d4d5c; border-color: var(--line); }
+      .cats button[aria-pressed="true"] { font-weight: 700; }
+      .c-sm { background: #e7f1f8; color: var(--ink); }
+      .c-cit { background: var(--green-soft); color: #0d7a5f; }
+      .c-eth { background: #fff1e8; color: #8a3b12; }
+      .c-ext { background: #fde8ea; color: var(--coral); }
+      .c-tech { background: #eef3f6; color: #3d4d5c; }
+      .staff-pill { margin-left: 6px; padding: 1px 6px; border-radius: 5px; background: rgba(255,255,255,.16); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+      .tabs { display: flex; gap: 2px; align-self: stretch; min-width: 0; overflow-x: auto; }
+      .tabs button { border: 0; border-bottom: 3px solid transparent; padding: 8px 12px; color: #d5e4ef; background: transparent; font-weight: 700; white-space: nowrap; }
+      .tabs button[aria-current="page"] { color: white; border-bottom-color: var(--gold); }
+      .topbar { min-height: 40px; padding: 0 12px; }
+      main { max-width: 1180px; margin: 0 auto; padding: 10px; }
+      .hero { display: flex; justify-content: space-between; gap: 16px; align-items: center; flex-wrap: wrap; padding: 14px 16px; color: white; background: var(--ink); border-left: 5px solid var(--gold); }
+      .hero p { margin: 0; color: #d5e4ef; }
+      .hero h2 { margin: 2px 0 4px; color: white; }
+      .tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
+      .tile, .scard, .strip, .doc-card { padding: 10px 12px; background: white; border: 1px solid var(--line); }
+      .tile .val { font-size: 20px; font-weight: 700; color: var(--ink); }
+      .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; list-style: none; margin: 8px 0 0; padding: 0; }
+      .step { text-align: center; color: var(--muted); font-size: 12px; font-weight: 700; }
+      .step.current { color: var(--ink); }
+      .step.done { color: var(--green); }
+      .segs { display: grid; grid-template-columns: repeat(16, 1fr); gap: 2px; }
+      .segs i { display: block; height: 7px; border-radius: 2px; background: var(--line); }
+      .segs i.d { background: var(--ink); } .segs i.p { background: var(--gold); } .segs i.l { background: var(--coral); }
+      .sgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+      .scard button.name { border: 0; padding: 0; background: none; color: var(--ink); font-weight: 700; font-size: 16px; }
+      .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+      .chip { display: inline-flex; align-items: center; padding: 1px 8px; border-radius: 999px; background: #eef3f6; color: #3d4d5c; font-size: 12px; font-weight: 700; }
+      .chip.bad { background: #fde8ea; color: var(--coral); }
+      .chip.ok { background: var(--green-soft); color: #0d7a5f; }
+      .form-dialog { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: 12px; background: rgba(0, 30, 50, .45); }
+      .form-dialog[hidden] { display: none; }
+      .form-panel { width: min(720px, 100%); max-height: calc(100vh - 24px); overflow: auto; padding: 14px; background: white; border-top: 4px solid var(--gold); }
+      .doc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+      .milestone-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
+      @media (max-width: 800px) { .tiles, .steps, .doc-grid { grid-template-columns: 1fr 1fr; } .topbar { flex-wrap: wrap; } }
       @media (max-width: 700px) {
         .topbar { align-items: flex-start; padding: 14px 16px; }
         .shell { padding: 16px 14px 36px; }
@@ -182,6 +234,14 @@
         importRecords: null,
         journeyFilters: { phaseId: 'all', showSystem: true, showStudent: true },
         journeyControlsOpen: true,
+        section: '',
+        actingAs: '',
+        studentHome: null,
+        staffHome: null,
+        staffStudent: null,
+        staffQuery: '',
+        staffTicketUnread: 0,
+        ticketBadgeFor: '',
         requests: { active: 0, nextId: 0 },
         mutationQueues: {}
       };
@@ -195,7 +255,11 @@
             return;
           }
           state.user = result.user;
-          state.view = state.user.role === 'student' ? 'student' : 'staff';
+          state.view = state.user.role === 'student' ? 'home' : 'students';
+          state.section = state.view;
+          if (state.user.permissions && state.user.permissions.canAdmin) state.actingAs = 'coordinator';
+          else if (state.user.permissions && state.user.permissions.isSupervisor) state.actingAs = 'supervisor';
+          else state.actingAs = 'staff';
           renderShell();
         }).catch(function(error) {
           showFatal('Unable to start', error.message || 'The application could not reach the EE workbook.');
@@ -284,49 +348,167 @@
       }
 
       function renderShell() {
-        const tabs = state.user.role === 'student'
-          ? [['student', 'My EE'], ['resources', 'Resources']]
-          : [['staff', 'Cohorts'], ['resources', 'Resources']];
-        if (state.user.permissions && state.user.permissions.canAdmin) tabs.push(['admin', 'Admin']);
+        const student = state.user.role === 'student';
+        const permissions = state.user.permissions || {};
+        const tabs = student
+          ? [['home', 'Home'], ['journey', 'Journey'], ['mywork', 'My Work'], ['resources', 'Resources'], ['help', 'Help']]
+          : [['students', 'My Students'], ['resources', 'Resources']];
+        if (!student && (state.actingAs === 'supervisor' || state.actingAs === 'coordinator') && (permissions.isSupervisor || permissions.canAdmin)) {
+          tabs.splice(1, 0, ['tickets', 'Tickets']);
+        }
+        if (permissions.canAdmin) tabs.push(['admin', 'Admin']);
+        if (!tabs.some(function(tab) { return tab[0] === state.section; })) state.section = tabs[0][0];
+        state.view = state.section;
         document.getElementById('app').innerHTML = `
           <header class="topbar">
-            <div class="brand"><span class="brand-mark">EE</span><span>VSA EE HUB</span></div>
-            <div class="account"><span id="request-indicator" class="request-indicator" aria-live="polite" aria-busy="false"></span><br>${escapeHtml(state.user.displayName)}<br>${escapeHtml(state.user.email)}</div>
-          </header>
-          <div class="shell">
-            <nav class="nav" aria-label="Main navigation">${tabs.map(function(tab) {
-              return `<button type="button" data-view="${tab[0]}" aria-current="${state.view === tab[0] ? 'page' : 'false'}">${tab[1]}</button>`;
+            <div class="brand"><span class="brand-mark">EE</span><span>EE Hub</span>${student ? '' : '<span class="staff-pill">Staff</span>'}</div>
+            <nav class="tabs" aria-label="Sections">${tabs.map(function(tab) {
+              return `<button type="button" data-view="${tab[0]}" aria-current="${state.section === tab[0] ? 'page' : 'false'}">${tabLabel(tab)}</button>`;
             }).join('')}</nav>
-            <div id="feedback-region" aria-live="polite"></div>
-            <main id="main" aria-live="polite"></main>
-          </div>`;
+            <div class="account"><span id="request-indicator" class="request-indicator" aria-live="polite" aria-busy="false"></span><div>${escapeHtml(state.user.displayName)}</div></div>
+          </header>
+          <div id="feedback-region" aria-live="polite"></div>
+          <main id="main"></main>
+          <div id="form-dialog" class="form-dialog" hidden></div>`;
         document.querySelectorAll('[data-view]').forEach(function(button) {
           button.addEventListener('click', function() {
-            state.view = button.dataset.view;
+            state.section = button.dataset.view;
+            state.view = state.section;
             state.selectedStudent = null;
+            state.staffStudent = null;
             state.status = '';
             renderShell();
           });
         });
-        if (state.view === 'student') renderStudentView();
-        else if (state.view === 'staff') renderStaffView();
-        else if (state.view === 'resources') renderResources();
-        else renderAdmin();
+        if (state.section === 'admin') renderAdmin();
+        else if (state.section === 'resources') renderResources();
+        else if (state.section === 'help') renderStudentHelp();
+        else if (state.section === 'tickets') renderStaffTickets();
+        else if (student) renderStudentSection();
+        else renderStaffHome();
+        if (!student && tabs.some(function(tab) { return tab[0] === 'tickets'; }) && state.ticketBadgeFor !== state.actingAs) {
+          const requested = state.actingAs;
+          state.ticketBadgeFor = requested;
+          callServer('getStaffTicketBadge', requested).then(function(badge) {
+            if (state.actingAs !== requested) return;
+            state.staffTicketUnread = badge.unreadCount || 0;
+            paintTabDot('tickets', state.staffTicketUnread, 'Tickets');
+          }).catch(function() { state.ticketBadgeFor = ''; });
+        }
+      }
+
+      function tabLabel(tab) {
+        if (tab[0] === 'help' && state.studentHome && state.studentHome.unreadTicketCount) return 'Help<span class="dot" aria-label="Unread reply"></span>';
+        if (tab[0] === 'tickets' && state.staffTicketUnread) return 'Tickets<span class="dot" aria-label="Unread tickets"></span>';
+        return tab[1];
+      }
+
+      function paintTabDot(view, count, label) {
+        const button = document.querySelector('[data-view="' + view + '"]');
+        if (!button) return;
+        button.innerHTML = label + (count ? '<span class="dot" aria-label="Unread"></span>' : '');
+      }
+
+      function renderStudentSection() {
+        const main = document.getElementById('main');
+        main.innerHTML = '<p class="muted">Loading your EE...</p>';
+        const request = state.studentHome ? Promise.resolve(state.studentHome) : callServer('getStudentHome');
+        request.then(function(home) {
+          state.studentHome = home;
+          if (state.section === 'journey') paintStudentJourney(home);
+          else if (state.section === 'mywork') paintStudentWork(home);
+          else paintStudentHome(home);
+        }).catch(showError);
       }
 
       function renderStudentView() {
+        state.section = 'journey';
+        renderStudentSection();
+      }
+
+      function nextIncomplete(home) {
+        const byTemplate = {};
+        (home.actionItems || []).forEach(function(item) {
+          if (item.CreatorType === 'System') byTemplate[item.TemplateId] = item;
+        });
+        for (let index = 0; index < home.templates.length; index++) {
+          const template = home.templates[index];
+          const item = byTemplate[template.milestoneId];
+          if (!item || item.Status !== 'Completed') return { template: template, item: item || null };
+        }
+        return null;
+      }
+
+      function paintStudentHome(home) {
         const main = document.getElementById('main');
-        main.innerHTML = '<p class="muted">Loading student view...</p>';
-        const email = state.selectedStudent ? state.selectedStudent.email : '';
-        const cohort = state.selectedStudent ? state.selectedStudent.cohortId : '';
-        callServer('getStudentView', email, cohort).then(function(student) {
-          main.innerHTML = `${state.selectedStudent ? '<button type="button" class="link-button back" id="back-to-roster">← Back to cohort</button>' : ''}
-            <section class="student-greeting"><p class="eyebrow">Extended Essay</p><h1>Hello, ${escapeHtml(student.displayName)}</h1></section>
-            ${renderActionTimeline(student.actionItems || [], email, cohort)}`;
-          const back = document.getElementById('back-to-roster');
-          if (back) back.addEventListener('click', function() { state.selectedStudent = null; renderStaffView(); });
-          bindActionTimeline(main, email, cohort);
-        }).catch(showError);
+        const next = nextIncomplete(home);
+        const returned = (home.actionItems || []).filter(function(item) { return item.returnedComment && item.Status !== 'Completed'; })[0];
+        const meetings = home.templates.filter(function(template) { return template.type === 'meeting'; });
+        const meetingDone = meetings.filter(function(template) {
+          return (home.actionItems || []).some(function(item) { return item.TemplateId === template.milestoneId && item.Status === 'Completed'; });
+        }).length;
+        const done = (home.actionItems || []).filter(function(item) { return item.CreatorType === 'System' && item.Status === 'Completed'; }).length;
+        const currentPhase = next ? (home.phases.filter(function(phase) { return phase.phaseId === next.template.phase; })[0] || {}).phaseTitle : 'Complete';
+        const hero = next ? `<section class="hero"><div><p class="eyebrow">Your next step</p><h2>${escapeHtml(next.template.title)}</h2><p>${escapeHtml(next.template.description || 'Complete this milestone before the due date.')}</p></div><div>${next.item && next.item.DueDate ? `<div class="chip">${escapeHtml(String(next.item.DueDate).slice(0, 10))}</div>` : ''}${formButton(home, next)}</div></section>` : '<section class="hero"><div><p class="eyebrow">All caught up</p><h2>No action needed right now</h2><p>Check Journey for what is coming.</p></div></section>';
+        main.innerHTML = `${hero}
+          ${home.unreadTicketCount ? `<div class="notice">Reply received${home.unreadTicketTitle ? ': ' + escapeHtml(home.unreadTicketTitle) : ''}. <button type="button" class="link-button" id="open-help">Open Help</button></div>` : ''}
+          ${returned ? `<div class="notice">Returned: ${escapeHtml(returned.Title)}. ${escapeHtml(returned.returnedComment)}</div>` : ''}
+          <section class="strip"><h2>Your EE journey</h2><p class="muted">${escapeHtml(currentPhase || '')}${home.cohort ? ' · Cohort ' + escapeHtml(home.cohort) : ''}</p>
+            <ol class="steps">${home.phases.map(function(phase) {
+              const phaseItems = home.templates.filter(function(template) { return template.phase === phase.phaseId; });
+              const phaseDone = phaseItems.every(function(template) {
+                return (home.actionItems || []).some(function(item) { return item.TemplateId === template.milestoneId && item.Status === 'Completed'; });
+              });
+              const current = next && next.template.phase === phase.phaseId;
+              return `<li class="step ${phaseDone ? 'done' : ''} ${current ? 'current' : ''}">${escapeHtml(phase.phaseTitle)}</li>`;
+            }).join('')}</ol></section>
+          <div class="tiles">
+            <div class="tile"><div class="muted">Milestones</div><div class="val">${done} <small>/ ${home.templates.length}</small></div></div>
+            <div class="tile"><div class="muted">Sessions</div><div class="val">${meetingDone} <small>/ ${meetings.length}</small></div></div>
+            <div class="tile"><div class="muted">Subject</div><div class="val" style="font-size:16px">${escapeHtml(home.subject || 'Not chosen')}</div></div>
+            <div class="tile"><div class="muted">Anchor</div><div class="val" style="font-size:16px">${escapeHtml(home.anchor || '—')}</div></div>
+          </div>`;
+        bindFormButtons(main);
+        const help = document.getElementById('open-help');
+        if (help) help.addEventListener('click', function() { state.section = 'help'; renderShell(); });
+        paintTabDot('help', home.unreadTicketCount, 'Help');
+      }
+
+      function formButton(home, next) {
+        if (!next || !next.item || next.template.mOwner !== 'student') return next && next.template ? '<p>Waiting on ' + escapeHtml(next.template.mOwner) + '.</p>' : '';
+        if (next.template.type === 'form') {
+          if (home.publishedForms && home.publishedForms[next.template.milestoneId]) return `<button type="button" class="button" data-open-form="${escapeHtml(next.template.milestoneId)}">Open form</button>`;
+          return '<p>Your coordinator has not published this form yet.</p>';
+        }
+        return '<button type="button" class="button secondary" data-go-journey>Open journey</button>';
+      }
+
+      function paintStudentJourney(home) {
+        const main = document.getElementById('main');
+        main.innerHTML = renderActionTimeline(home.actionItems || []);
+        bindActionTimeline(main, '', home.cohort || '');
+        bindFormButtons(main);
+      }
+
+      function paintStudentWork(home) {
+        const links = [
+          ['Drive folder', home.links.folder],
+          ['Extended Essay', home.links.doc],
+          ['RPPF', home.links.rppf],
+          ['Poster', home.links.poster]
+        ];
+        document.getElementById('main').innerHTML = `<h2>My documents</h2><div class="doc-grid">${links.map(function(link) {
+          const url = safeUrl(link[1]);
+          return `<article class="doc-card"><h3>${escapeHtml(link[0])}</h3><p class="muted">${url ? 'Shared with your supervisor.' : 'Not created yet.'}</p>${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">Open</a>` : ''}</article>`;
+        }).join('')}</div>`;
+      }
+
+      function bindFormButtons(main) {
+        main.querySelectorAll('[data-open-form]').forEach(function(button) {
+          button.addEventListener('click', function() { openStudentForm(button.dataset.openForm); });
+        });
+        const journey = main.querySelector('[data-go-journey]');
+        if (journey) journey.addEventListener('click', function() { state.section = 'journey'; renderShell(); });
       }
 
       function renderActionTimeline(items) {
@@ -353,7 +535,7 @@
             return `<option value="${status}" ${item.Status === status ? 'selected' : ''}>${status}</option>`;
           }).join('')}</select></div>
           <div class="task-content"><span class="task-kind">${systemTask ? 'Official milestone' : 'My To-Do'}</span>
-            ${item.canEdit ? `<div class="todo-editor"><input data-todo-title="${escapeHtml(item.TaskId)}" value="${escapeHtml(item.Title)}" maxlength="240" aria-label="To-Do title"><textarea data-todo-description="${escapeHtml(item.TaskId)}" aria-label="To-Do description">${escapeHtml(item.Description || '')}</textarea><button type="button" class="link-button" data-save-todo="${escapeHtml(item.TaskId)}">Save</button></div>` : `<h3>${escapeHtml(item.Title)}</h3><p>${escapeHtml(item.Description || '')}</p>`}
+            ${item.canEdit ? `<div class="todo-editor"><input data-todo-title="${escapeHtml(item.TaskId)}" value="${escapeHtml(item.Title)}" maxlength="240" aria-label="To-Do title"><textarea data-todo-description="${escapeHtml(item.TaskId)}" aria-label="To-Do description">${escapeHtml(item.Description || '')}</textarea><button type="button" class="link-button" data-save-todo="${escapeHtml(item.TaskId)}">Save</button></div>` : `<h3>${escapeHtml(item.Title)}</h3><p>${escapeHtml(item.Description || '')}</p>${item.templateType === 'form' && state.studentHome && state.studentHome.publishedForms && state.studentHome.publishedForms[item.TemplateId] ? `<button type="button" class="button" data-open-form="${escapeHtml(item.TemplateId)}">Open form</button>` : ''}${item.returnedComment ? `<p class="notice">Returned: ${escapeHtml(item.returnedComment)}</p>` : ''}`}
             ${item.canEdit ? '<span class="drop-hint">Drop to place this To-Do beside this date</span>' : ''}
           </div>
           <div class="task-meta"><strong>${escapeHtml(item.PhaseId || 'To-Do')}</strong>${dateValue ? `<time datetime="${escapeHtml(dateValue)}">${escapeHtml(dateValue)}</time>` : '<span>No due date</span>'}${item.canEdit ? `<input type="date" data-task-date="${escapeHtml(item.TaskId)}" data-current-date="${escapeHtml(dateValue)}" value="${escapeHtml(dateValue)}" aria-label="To-Do due date">` : ''}</div>
@@ -364,7 +546,7 @@
         const toggle = document.getElementById('toggle-journey-controls');
         toggle.addEventListener('click', function() {
           state.journeyControlsOpen = !state.journeyControlsOpen;
-          renderStudentView();
+          renderStudentSection();
         });
         const quickTodo = document.getElementById('quick-todo');
         if (quickTodo) quickTodo.addEventListener('submit', function(event) {
@@ -537,48 +719,449 @@
         });
       }
 
-      function renderStaffView() {
+      function renderStaffHome() {
         const main = document.getElementById('main');
-        if (state.selectedStudent) {
-          renderStudentView();
-          return;
-        }
-        if (state.cohortId) {
-          main.innerHTML = `<button type="button" class="link-button back" id="back-to-cohorts">← All cohorts</button>
-            <div class="page-head"><div><p class="eyebrow">Staff workspace</p><h1>Cohort ${escapeHtml(state.cohortId)}</h1><p class="lede">Select a student to open their view.</p></div></div>
-            <div id="staff-list" class="list"><p class="muted">Loading students...</p></div>`;
-          document.getElementById('back-to-cohorts').addEventListener('click', function() { state.cohortId = ''; renderStaffView(); });
-          callServer('getCohortStudents', state.cohortId).then(function(students) {
-            const list = document.getElementById('staff-list');
-            if (!students.length) { list.innerHTML = '<div class="empty">No student records are listed in this cohort.</div>'; return; }
-            list.innerHTML = students.map(function(student, index) {
-              return `<div class="list-row"><button type="button" data-student-index="${index}"><strong>${escapeHtml(student.displayName)}</strong><small>${escapeHtml(student.email)}${student.studentId ? ' · ' + escapeHtml(student.studentId) : ''}</small></button>${student.hasStudentIdConflict ? '<span class="notice">Student ID columns differ</span>' : ''}</div>`;
-            }).join('');
-            list.querySelectorAll('[data-student-index]').forEach(function(button) {
-              button.addEventListener('click', function() {
-                const student = students[Number(button.dataset.studentIndex)];
-                state.selectedStudent = { email: student.email, cohortId: state.cohortId };
-                renderStaffView();
-              });
-            });
-          }).catch(showError);
-          return;
-        }
+        if (state.staffStudent) { paintStaffStudent(state.staffStudent); return; }
+        main.innerHTML = '<p class="muted">Loading students...</p>';
+        callServer('getStaffHome', state.cohortId || '', state.actingAs).then(function(home) {
+          state.staffHome = home;
+          state.cohortId = home.cohortId || '';
+          paintStaffCards(home);
+        }).catch(showError);
+      }
 
-        main.innerHTML = `<div class="page-head"><div><p class="eyebrow">Staff workspace</p><h1>Cohorts</h1><p class="lede">Choose a cohort to view its student list.</p></div></div><div id="staff-list" class="list"><p class="muted">Loading cohorts...</p></div>`;
-        callServer('getCohorts').then(function(cohorts) {
-          const list = document.getElementById('staff-list');
-          if (!cohorts.length) { list.innerHTML = '<div class="empty">No active cohort sheets were found.</div>'; return; }
-          list.innerHTML = cohorts.map(function(cohort, index) {
-            return `<div class="list-row"><button type="button" data-cohort-index="${index}"><strong>${escapeHtml(cohort.name)}</strong><small>${escapeHtml(cohort.sheetName)}</small></button><span aria-hidden="true">›</span></div>`;
-          }).join('');
-          list.querySelectorAll('[data-cohort-index]').forEach(function(button) {
-            button.addEventListener('click', function() {
-              state.cohortId = cohorts[Number(button.dataset.cohortIndex)].id;
-              renderStaffView();
+      function paintStaffCards(home) {
+        const main = document.getElementById('main');
+        const roles = [];
+        if (state.user.permissions.canAdmin) roles.push(['coordinator', 'Coordinator']);
+        if (state.user.permissions.isSupervisor) roles.push(['supervisor', 'Supervisor']);
+        roles.push(['staff', 'Staff browse']);
+        const students = home.students || [];
+        const phaseName = {};
+        (home.phases || []).forEach(function(phase) { phaseName[phase.phaseId] = phase.phaseTitle; });
+        main.innerHTML = `<div class="toolbar">
+            <label for="staff-cohort">Cohort</label><select id="staff-cohort">${(home.cohorts || []).map(function(cohort) {
+              return `<option value="${escapeHtml(cohort.id)}" ${cohort.id === home.cohortId ? 'selected' : ''}>${escapeHtml(cohort.name)}</option>`;
+            }).join('')}</select>
+            <label for="acting-as">Acting as</label><select id="acting-as">${roles.map(function(role) {
+              return `<option value="${role[0]}" ${state.actingAs === role[0] ? 'selected' : ''}>${role[1]}</option>`;
+            }).join('')}</select>
+            <input id="staff-search" type="search" placeholder="Search students" value="${escapeHtml(state.staffQuery)}" aria-label="Search students">
+            <span class="muted">${students.length} students</span>
+          </div>
+          ${students.length ? `<div class="sgrid">${students.map(function(student) {
+              return `<article class="scard" data-search="${escapeHtml((student.displayName + ' ' + student.subject + ' ' + student.hrm).toLowerCase())}"><button type="button" class="name" data-open-student="${escapeHtml(student.email)}">${escapeHtml(student.displayName)}</button>
+              <div class="muted">${escapeHtml(student.subject || 'No subject yet')}${student.hrm ? ' · ' + escapeHtml(student.hrm) : ''}</div>
+              <div class="segs" aria-label="${student.done} of ${student.total} milestones">${student.segments.split('').map(function(segment) { return `<i class="${segment === 'o' ? '' : segment}"></i>`; }).join('')}</div>
+              <div class="chips"><span class="chip">${escapeHtml(phaseName[student.phaseId] || student.phaseId || 'Phase')}</span><span class="chip ${student.behind ? 'bad' : 'ok'}">${student.behind ? student.behind + ' overdue' : 'On track'}</span>${student.waiting.length ? `<span class="chip bad">${student.waiting.length} waiting</span>` : ''}${student.returned ? `<span class="chip bad">Returned</span>` : ''}</div>
+              <div class="muted">Latest: ${escapeHtml(student.latestTitle || '—')}</div></article>`;
+          }).join('')}</div>` : '<div class="empty">No students in this view. Supervisors only see their own advisees. Coordinators see the cohort.</div>'}`;
+        document.getElementById('staff-cohort').addEventListener('change', function(event) {
+          state.cohortId = event.target.value;
+          state.staffHome = null;
+          renderStaffHome();
+        });
+        document.getElementById('acting-as').addEventListener('change', function(event) {
+          state.actingAs = event.target.value;
+          state.staffHome = null;
+          state.staffStudent = null;
+          state.ticketBadgeFor = '';
+          renderShell();
+        });
+        document.getElementById('staff-search').addEventListener('input', function(event) {
+          state.staffQuery = event.target.value;
+          const query = state.staffQuery.trim().toLowerCase();
+          main.querySelectorAll('[data-search]').forEach(function(card) {
+            card.classList.toggle('hidden', query && card.dataset.search.indexOf(query) < 0);
+          });
+        });
+        main.querySelectorAll('[data-open-student]').forEach(function(button) {
+          button.addEventListener('click', function() {
+            callServer('getStaffStudent', button.dataset.openStudent, state.cohortId).then(function(detail) {
+              state.staffStudent = detail;
+              paintStaffStudent(detail);
+            }).catch(showError);
+          });
+        });
+      }
+
+      function paintStaffStudent(detail) {
+        const main = document.getElementById('main');
+        const student = detail.student;
+        const phases = {};
+        (detail.phases || []).forEach(function(phase) { phases[phase.phaseId] = phase.phaseTitle; });
+        let html = `<button type="button" class="link-button back" id="staff-back">← My Students</button>
+          <div class="page-head"><div><p class="eyebrow">${escapeHtml(student.subject || 'Extended Essay')}</p><h1>${escapeHtml(student.displayName)}</h1>
+          <p class="muted">${escapeHtml(student.hrm || '')} ${student.studentNumber ? '· ' + escapeHtml(student.studentNumber) : ''}</p></div></div>`;
+        if (detail.showDocs) {
+          html += `<div class="doc-grid">${[['Folder', detail.links.folder], ['EE Doc', detail.links.doc], ['RPPF', detail.links.rppf], ['Poster', detail.links.poster]].map(function(link) {
+            const url = safeUrl(link[1]);
+            return `<article class="doc-card"><strong>${link[0]}</strong><div>${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener">Open</a>` : '<span class="muted">Not created yet</span>'}</div></article>`;
+          }).join('')}</div>`;
+        }
+        let lastPhase = '';
+        detail.milestones.forEach(function(milestone) {
+          if (milestone.phase !== lastPhase) {
+            if (lastPhase) html += '</section>';
+            lastPhase = milestone.phase;
+            html += `<section class="strip"><h2>${escapeHtml(phases[milestone.phase] || milestone.phase)}</h2>`;
+          }
+          html += `<div class="milestone-row"><div><strong>${escapeHtml(milestone.title)}</strong><div class="muted">${escapeHtml(milestone.type)} · ${escapeHtml(milestone.owner)} · ${escapeHtml(milestone.status)}${milestone.due ? ' · ' + escapeHtml(milestone.due) : ''}</div>${milestone.returnedComment ? `<div class="notice">${escapeHtml(milestone.returnedComment)}</div>` : ''}</div><div class="actions">`;
+          if (milestone.canAct && milestone.type === 'approval') {
+            html += `<button type="button" class="button" data-decide="approve" data-task="${escapeHtml(milestone.taskId)}">Approve</button><button type="button" class="button secondary" data-decide="return" data-task="${escapeHtml(milestone.taskId)}">Return</button>`;
+          } else if (milestone.canAct && milestone.type === 'meeting') {
+            html += `<button type="button" class="button" data-decide="session" data-task="${escapeHtml(milestone.taskId)}">Log session</button>`;
+          } else if (milestone.type === 'form') {
+            html += `<button type="button" class="button secondary" data-view-response="${escapeHtml(milestone.milestoneId)}">View form</button>`;
+          }
+          html += '</div></div>';
+        });
+        if (lastPhase) html += '</section>';
+        main.innerHTML = html;
+        document.getElementById('staff-back').addEventListener('click', function() { state.staffStudent = null; renderStaffHome(); });
+        main.querySelectorAll('[data-decide]').forEach(function(button) {
+          button.addEventListener('click', function() {
+            const action = button.dataset.decide;
+            const comment = action === 'approve' ? '' : window.prompt(action === 'return' ? 'Comments for the student' : 'Session summary');
+            if (action !== 'approve' && !comment) return;
+            button.disabled = true;
+            runMutation('recordMilestoneDecision', [button.dataset.task, action, comment || '', student.email, state.cohortId], {
+              key: 'milestone:' + button.dataset.task
+            }).then(function() {
+              state.staffHome = null;
+              return callServer('getStaffStudent', student.email, state.cohortId);
+            }).then(function(fresh) {
+              state.staffStudent = fresh;
+              paintStaffStudent(fresh);
+              showSuccess(action === 'return' ? 'Returned to the student.' : 'Milestone updated.');
+            }).catch(function(error) { button.disabled = false; showError(error); });
+          });
+        });
+        main.querySelectorAll('[data-view-response]').forEach(function(button) {
+          button.addEventListener('click', function() {
+            callServer('getFormResponse', button.dataset.viewResponse, student.email).then(function(form) {
+              const answers = form.response ? form.response.values : null;
+              const body = (form.fields || []).map(function(field) {
+                return `<p><strong>${escapeHtml(field.label)}</strong><br>${escapeHtml(answers ? answers[field.name] || '—' : 'No response yet')}</p>`;
+              }).join('');
+              openFormShell(form.title || 'Form', body, '', null);
+            }).catch(showError);
+          });
+        });
+      }
+
+      function openStudentForm(milestoneId) {
+        callServer('getStudentForm', milestoneId).then(function(form) { paintLiveForm(form); }).catch(showError);
+      }
+
+      function paintLiveForm(form) {
+        const values = form.response ? form.response.values : {};
+        openFormShell(form.title, form.html, form.js, {
+          fields: form.fields,
+          values: values,
+          student: form.student,
+          onSubmit: function(collected, submit) {
+            return runMutation('saveStudentForm', [form.milestoneId, {
+              values: collected,
+              lastUpdated: form.response ? form.response.lastUpdated : '',
+              submit: submit
+            }], { key: 'form:' + form.milestoneId }).then(function() {
+              state.studentHome = null;
+              closeForm();
+              showSuccess(submit ? 'Form submitted.' : 'Draft saved.');
+              renderStudentSection();
+            });
+          }
+        });
+      }
+
+      function openFormShell(title, html, js, binding) {
+        const dialog = document.getElementById('form-dialog');
+        dialog.hidden = false;
+        dialog.innerHTML = `<div class="form-panel" role="dialog" aria-modal="true" aria-label="${escapeHtml(title)}"><div class="toolbar"><h2>${escapeHtml(title)}</h2><button type="button" class="button secondary" id="close-form">Close</button></div><div id="ee-form-root">${html || ''}</div><p class="notice error" id="form-error" hidden></p><div class="toolbar"><button type="button" class="button secondary" id="save-form-draft">Save draft</button><button type="button" class="button" id="submit-form">Submit</button></div></div>`;
+        document.getElementById('close-form').addEventListener('click', closeForm);
+        const root = document.getElementById('ee-form-root');
+        if (binding && binding.fields) fillFormControls(root, binding.fields, binding.values || {});
+        if (js) {
+          try { runFormScript(js, { root: root, fields: binding ? binding.fields : [], student: binding ? binding.student : {}, draft: binding ? binding.values : {} }); }
+          catch (error) {
+            const formError = document.getElementById('form-error');
+            formError.hidden = false;
+            formError.textContent = error.message || String(error);
+          }
+        }
+        const submit = function(isSubmit) {
+          if (!binding || !binding.onSubmit) { closeForm(); return; }
+          const error = document.getElementById('form-error');
+          error.hidden = true;
+          binding.onSubmit(collectFormValues(root, binding.fields), isSubmit).catch(function(err) {
+            error.hidden = false;
+            error.textContent = err.message || String(err);
+          });
+        };
+        if (!binding || !binding.onSubmit) {
+          document.getElementById('save-form-draft').hidden = true;
+          document.getElementById('submit-form').hidden = true;
+        } else {
+          document.getElementById('save-form-draft').addEventListener('click', function() { submit(false); });
+          document.getElementById('submit-form').addEventListener('click', function() { submit(true); });
+        }
+      }
+
+      function closeForm() {
+        const dialog = document.getElementById('form-dialog');
+        if (!dialog) return;
+        dialog.hidden = true;
+        dialog.innerHTML = '';
+      }
+
+      function fillFormControls(root, fields, values) {
+        fields.forEach(function(field) {
+          let input = root.querySelector('[name="' + field.name + '"]');
+          if (!input) {
+            const label = document.createElement('label');
+            label.className = 'field';
+            label.appendChild(document.createTextNode(field.label));
+            input = field.type === 'textarea' ? document.createElement('textarea') : (field.type === 'select' ? document.createElement('select') : document.createElement('input'));
+            if (field.type === 'checkbox') input.type = 'checkbox';
+            input.name = field.name;
+            label.appendChild(input);
+            root.appendChild(label);
+          }
+          if (input.tagName === 'SELECT') {
+            const current = values[field.name] || '';
+            input.innerHTML = '<option value="">Select…</option>' + (field.options || []).map(function(option) {
+              return `<option ${option === current ? 'selected' : ''}>${escapeHtml(option)}</option>`;
+            }).join('');
+          } else if (input.type === 'checkbox') input.checked = values[field.name] === 'Yes' || values[field.name] === true;
+          else if (values[field.name]) input.value = values[field.name];
+        });
+      }
+
+      function collectFormValues(root, fields) {
+        const values = {};
+        fields.forEach(function(field) {
+          const input = root.querySelector('[name="' + field.name + '"]');
+          if (!input) return;
+          values[field.name] = input.type === 'checkbox' ? input.checked : input.value;
+        });
+        return values;
+      }
+
+      function runFormScript(js, api) {
+        if (!js || !String(js).trim()) return;
+        const runner = new Function('EEForm', 'google', 'window', 'parent', 'top', 'document', 'fetch', 'XMLHttpRequest', 'eval', 'Function', js);
+        runner(api, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
+      }
+
+      function renderStudentHelp() {
+        const main = document.getElementById('main');
+        main.innerHTML = '<p class="muted">Loading questions...</p>';
+        callServer('getTicketHub').then(function(hub) {
+          state.ticketHub = hub;
+          if (state.studentHome) {
+            state.studentHome.unreadTicketCount = hub.unreadCount || 0;
+            state.studentHome.unreadTicketTitle = hub.unreadTitle || '';
+          }
+          paintTabDot('help', hub.unreadCount, 'Help');
+          paintStudentHelp(hub);
+        }).catch(showError);
+      }
+
+      function paintStudentHelp(hub) {
+        const main = document.getElementById('main');
+        const faqs = hub.faqs || [];
+        const tickets = hub.tickets || [];
+        main.innerHTML = `<div class="page-head"><div><p class="eyebrow">Help</p><h1>Questions</h1><p class="lede">Search common answers, or ask your supervisor or the EE Coordinator.</p></div><button type="button" class="button" id="new-ticket">Ask a question</button></div>
+          <section><h2>Quick answers</h2><div class="toolbar"><input id="faq-search" type="search" placeholder="Search common questions" aria-label="Search common questions"></div>
+          <div class="faq-list" id="faq-list">${faqs.length ? faqs.map(renderFaq).join('') : '<div class="empty">No published answers yet.</div>'}</div></section>
+          <section class="section-gap"><h2>My questions</h2><div class="ticket-list" id="ticket-list">${tickets.length ? tickets.map(function(ticket) { return renderTicket(ticket, false); }).join('') : '<div class="empty">You have not asked a question yet.</div>'}</div></section>`;
+        document.getElementById('faq-search').addEventListener('input', function(event) {
+          const query = event.target.value.trim().toLowerCase();
+          main.querySelectorAll('[data-faq]').forEach(function(card) {
+            card.classList.toggle('hidden', query && card.dataset.faq.indexOf(query) < 0);
+          });
+        });
+        document.getElementById('new-ticket').addEventListener('click', function() { openTicketDialog(hub.categories || []); });
+        bindTicketList(main, tickets, false);
+      }
+
+      function renderFaq(faq) {
+        return `<article class="faq" data-faq="${escapeHtml((faq.question + ' ' + faq.answer).toLowerCase())}"><strong>${escapeHtml(faq.question)}</strong><p>${escapeHtml(faq.answer)}</p></article>`;
+      }
+
+      function categoryChip(name, categories) {
+        const match = (categories || []).filter(function(item) { return item.name === name; })[0];
+        return `<span class="chip ${match ? match.chip : ''}">${escapeHtml(name)}</span>`;
+      }
+
+      function messageLabel(message, ticket) {
+        if (state.user.role === 'student') {
+          if (message.authorRole === 'student') return 'You';
+          return ticket.route === 'coordinator' ? 'EE Coordinator' : 'Supervisor';
+        }
+        if (message.authorEmail === state.user.email) return 'You';
+        if (message.authorRole === 'student') return ticket.displayName || 'Student';
+        return 'Staff';
+      }
+
+      function renderTicket(ticket, staff) {
+        const mine = function(message) {
+          return state.user.role === 'student' ? message.authorRole === 'student' : message.authorEmail === state.user.email;
+        };
+        const unread = staff ? ticket.staffUnread : ticket.studentUnread;
+        return `<details class="ticket" data-ticket="${escapeHtml(ticket.ticketId)}" data-updated="${escapeHtml(ticket.lastUpdated || '')}">
+          <summary>${categoryChip(ticket.category, (state.ticketHub && state.ticketHub.categories) || [])}<strong>${escapeHtml(ticket.title)}</strong><span class="chip">${escapeHtml(ticket.status)}</span><span class="muted">${escapeHtml(ticket.routeLabel || '')}</span>${staff ? `<span class="muted">${escapeHtml(ticket.displayName || '')}</span>` : ''}${unread ? '<span class="dot" aria-label="Unread"></span>' : ''}</summary>
+          <div class="body"><div class="thread">${(ticket.messages || []).map(function(message) {
+            return `<article class="msg ${mine(message) ? 'mine' : 'staff'}"><strong>${escapeHtml(messageLabel(message, ticket))}</strong> <span class="muted">${escapeHtml(String(message.createdAt || '').replace('T', ' ').slice(0, 16))}</span><p>${escapeHtml(message.body)}</p></article>`;
+          }).join('')}</div>
+          ${staff ? `<label class="field">Status<select data-ticket-status>${['Open', 'In Progress', 'Resolved', 'Closed'].map(function(status) {
+            return `<option ${ticket.status === status ? 'selected' : ''}>${status}</option>`;
+          }).join('')}</select></label>` : ''}
+          <label class="field">Reply<textarea data-ticket-reply maxlength="2000" placeholder="Write a reply"></textarea></label>
+          <div><button type="button" class="button" data-send-ticket="${escapeHtml(ticket.ticketId)}">Send</button></div></div></details>`;
+      }
+
+      function bindTicketList(main, tickets, staff) {
+        const byId = {};
+        tickets.forEach(function(ticket) { byId[ticket.ticketId] = ticket; });
+        main.querySelectorAll('details.ticket').forEach(function(details) {
+          details.addEventListener('toggle', function() {
+            const ticket = byId[details.dataset.ticket];
+            if (!details.open || !ticket) return;
+            const unread = staff ? ticket.staffUnread : ticket.studentUnread;
+            if (!unread) return;
+            callServer('markTicketRead', ticket.ticketId, details.dataset.updated, staff ? state.actingAs : '').then(function(result) {
+              details.dataset.updated = result.lastUpdated || details.dataset.updated;
+              if (staff) {
+                ticket.staffUnread = false;
+                state.staffTicketUnread = Math.max(0, (state.staffTicketUnread || 0) - 1);
+                paintTabDot('tickets', state.staffTicketUnread, 'Tickets');
+              } else {
+                ticket.studentUnread = false;
+                if (state.studentHome) state.studentHome.unreadTicketCount = Math.max(0, (state.studentHome.unreadTicketCount || 0) - 1);
+                paintTabDot('help', state.studentHome ? state.studentHome.unreadTicketCount : 0, 'Help');
+              }
+              const dot = details.querySelector('summary .dot');
+              if (dot) dot.remove();
+            }).catch(function(error) {
+              showError(error);
+              if (staff) renderStaffTickets();
+              else renderStudentHelp();
             });
           });
+        });
+        main.querySelectorAll('[data-send-ticket]').forEach(function(button) {
+          button.addEventListener('click', function() {
+            const ticket = byId[button.dataset.sendTicket];
+            const details = button.closest('details');
+            const body = details.querySelector('[data-ticket-reply]').value.trim();
+            const statusSelect = details.querySelector('[data-ticket-status]');
+            const status = statusSelect ? statusSelect.value : ticket.status;
+            const statusChanged = !!(statusSelect && status !== ticket.status);
+            if (!body && !statusChanged) return;
+            button.disabled = true;
+            const token = details.dataset.updated || ticket.lastUpdated;
+            const viewAs = staff ? state.actingAs : '';
+            const reply = body ? callServer('replyTicket', ticket.ticketId, body, token, viewAs) : Promise.resolve({ lastUpdated: token, status: ticket.status });
+            reply.then(function(result) {
+              if (!statusChanged) return result;
+              return callServer('setTicketStatus', ticket.ticketId, status, result.lastUpdated, viewAs);
+            }).then(function() {
+              showSuccess(body ? 'Reply sent.' : 'Status updated.');
+              if (staff) renderStaffTickets();
+              else {
+                state.studentHome = null;
+                renderStudentHelp();
+              }
+            }).catch(function(error) {
+              button.disabled = false;
+              showError(error);
+            });
+          });
+        });
+      }
+
+      function openTicketDialog(categories) {
+        const dialog = document.getElementById('form-dialog');
+        let selected = categories[0] || null;
+        dialog.hidden = false;
+        dialog.innerHTML = `<div class="form-panel" role="dialog" aria-modal="true" aria-label="New question"><div class="toolbar"><h2>New question</h2><button type="button" class="button secondary" id="close-ticket">Close</button></div>
+          <p class="muted">Choose who should see this.</p>
+          <div class="cats" id="ticket-cats">${categories.map(function(category, index) {
+            return `<button type="button" class="${category.chip}" data-category="${escapeHtml(category.name)}" aria-pressed="${index === 0 ? 'true' : 'false'}">${escapeHtml(category.name)}</button>`;
+          }).join('')}</div>
+          <p class="notice" id="ticket-route">${selected ? escapeHtml(routeNote(selected.route)) : ''}</p>
+          <label class="field">Subject<input id="ticket-title" maxlength="90"></label>
+          <label class="field">Question<textarea id="ticket-body" maxlength="2000"></textarea></label>
+          <p class="notice error" id="ticket-error" hidden></p>
+          <div class="toolbar"><button type="button" class="button" id="send-ticket">Send question</button></div></div>`;
+        document.getElementById('close-ticket').addEventListener('click', function() { dialog.hidden = true; dialog.innerHTML = ''; });
+        dialog.querySelectorAll('[data-category]').forEach(function(button) {
+          button.addEventListener('click', function() {
+            selected = categories.filter(function(category) { return category.name === button.dataset.category; })[0] || selected;
+            dialog.querySelectorAll('[data-category]').forEach(function(item) { item.setAttribute('aria-pressed', item === button ? 'true' : 'false'); });
+            document.getElementById('ticket-route').textContent = selected ? routeNote(selected.route) : '';
+          });
+        });
+        document.getElementById('send-ticket').addEventListener('click', function() {
+          const button = document.getElementById('send-ticket');
+          const error = document.getElementById('ticket-error');
+          button.disabled = true;
+          error.hidden = true;
+          callServer('createTicket', {
+            category: selected ? selected.name : '',
+            title: document.getElementById('ticket-title').value,
+            body: document.getElementById('ticket-body').value
+          }).then(function() {
+            dialog.hidden = true;
+            dialog.innerHTML = '';
+            showSuccess('Question sent.');
+            renderStudentHelp();
+          }).catch(function(failure) {
+            button.disabled = false;
+            error.hidden = false;
+            error.textContent = failure.message || String(failure);
+          });
+        });
+      }
+
+      function routeNote(route) {
+        return route === 'coordinator' ? 'This question goes to the EE Coordinator.' : 'This question goes to your supervisor.';
+      }
+
+      function renderStaffTickets() {
+        const main = document.getElementById('main');
+        main.innerHTML = '<p class="muted">Loading tickets...</p>';
+        callServer('getStaffTickets', state.actingAs).then(function(hub) {
+          state.ticketHub = hub;
+          state.staffTicketUnread = hub.unreadCount || 0;
+          state.ticketBadgeFor = state.actingAs;
+          paintTabDot('tickets', state.staffTicketUnread, 'Tickets');
+          paintStaffTickets(hub);
         }).catch(showError);
+      }
+
+      function paintStaffTickets(hub) {
+        const main = document.getElementById('main');
+        const roles = [];
+        if (state.user.permissions.canAdmin) roles.push(['coordinator', 'Coordinator']);
+        if (state.user.permissions.isSupervisor) roles.push(['supervisor', 'Supervisor']);
+        roles.push(['staff', 'Staff browse']);
+        const tickets = hub.tickets || [];
+        main.innerHTML = `<div class="page-head"><div><p class="eyebrow">Help</p><h1>Tickets</h1><p class="lede">${hub.viewAs === 'supervisor' ? 'Questions from your advisees.' : 'Questions routed to the EE Coordinator, plus supervisor questions that have no assignee yet.'}</p></div></div>
+          <div class="toolbar"><label for="ticket-acting-as">Acting as</label><select id="ticket-acting-as">${roles.map(function(role) {
+            return `<option value="${role[0]}" ${state.actingAs === role[0] ? 'selected' : ''}>${role[1]}</option>`;
+          }).join('')}</select><span class="muted">${tickets.length} questions</span></div>
+          <div class="ticket-list">${tickets.length ? tickets.map(function(ticket) { return renderTicket(ticket, true); }).join('') : '<div class="empty">No questions in this queue.</div>'}</div>`;
+        document.getElementById('ticket-acting-as').addEventListener('change', function(event) {
+          state.actingAs = event.target.value;
+          state.staffHome = null;
+          state.staffStudent = null;
+          state.ticketBadgeFor = '';
+          renderShell();
+        });
+        bindTicketList(main, tickets, true);
       }
 
       function renderResources() {
@@ -605,8 +1188,8 @@
       const adminSections = [
         ['cohorts', 'Cohorts'], ['cohortMembers', 'Students in cohorts'], ['phases', 'Phases'], ['milestoneTemplates', 'Milestone templates'],
         ['templateDesigner', 'Template designer'], ['assignments', 'Assignments'],
-        ['studentUsers', 'Student users'], ['staffUsers', 'Staff users'], ['subjects', 'Subjects'],
-        ['pages', 'Website pages'], ['resources', 'Resources']
+        ['studentUsers', 'Student users'], ['staffUsers', 'Staff users'], ['subjects', 'Subjects'], ['formDesigner', 'Milestone forms'],
+        ['pages', 'Website pages'], ['resources', 'Resources'], ['faqs', 'FAQs']
       ];
 
       function renderAdmin() {
@@ -631,6 +1214,10 @@
         if (!target) return;
         if (state.adminEntity === 'templateDesigner') {
           renderTemplateDesigner(target);
+          return;
+        }
+        if (state.adminEntity === 'formDesigner') {
+          renderFormDesigner(target);
           return;
         }
         if (state.adminEntity === 'assignments') {
@@ -668,6 +1255,88 @@
           return;
         }
         callServer('getAdminRecords', state.adminEntity).then(renderAdminData).catch(showError);
+      }
+
+      function renderFormDesigner(target) {
+        target.innerHTML = '<p class="muted">Loading form milestones...</p>';
+        callServer('listFormMilestones').then(function(forms) {
+          if (!forms.length) { target.innerHTML = '<div class="empty">No milestones use the form type.</div>'; return; }
+          const current = forms.some(function(form) { return form.milestoneId === state.formMilestoneId; }) ? state.formMilestoneId : forms[0].milestoneId;
+          state.formMilestoneId = current;
+          target.innerHTML = `<div class="toolbar"><label for="form-milestone">Milestone</label><select id="form-milestone">${forms.map(function(form) {
+            return `<option value="${escapeHtml(form.milestoneId)}" ${form.milestoneId === current ? 'selected' : ''}>${escapeHtml(form.title)} · ${escapeHtml(form.status)}</option>`;
+          }).join('')}</select></div><div id="form-designer"><p class="muted">Loading design...</p></div>`;
+          document.getElementById('form-milestone').addEventListener('change', function(event) {
+            state.formMilestoneId = event.target.value;
+            renderFormDesigner(target);
+          });
+          callServer('getFormDesigner', current).then(paintFormDesigner).catch(showError);
+        }).catch(showError);
+      }
+
+      function paintFormDesigner(design) {
+        const target = document.getElementById('form-designer');
+        if (!target) return;
+        const definition = design.definition;
+        target.innerHTML = `<p class="muted">${escapeHtml(design.sheetName)} · version ${definition.version || 0} · ${escapeHtml(definition.status)} · ${design.responseCount} responses</p>
+          <p class="notice">Custom JavaScript can use EEForm only. It cannot call google.script, the network, or the rest of the page. Publish is what creates the response columns.</p>
+          <div id="field-editor">${definition.fields.map(function(field, index) { return fieldEditorRow(field, index); }).join('')}</div>
+          <div class="toolbar"><button type="button" class="button secondary" id="add-form-field">Add field</button></div>
+          <div class="field wide"><label for="form-html">HTML</label><textarea id="form-html">${escapeHtml(definition.html || '')}</textarea></div>
+          <div class="field wide"><label for="form-js">JavaScript</label><textarea id="form-js">${escapeHtml(definition.js || '')}</textarea></div>
+          <label class="field check"><input type="checkbox" id="form-completes" ${definition.submitCompletes ? 'checked' : ''}> Submitting completes this milestone</label>
+          <div class="toolbar"><button type="button" class="button secondary" id="save-form-design">Save draft</button><button type="button" class="button" id="publish-form-design">Publish</button><button type="button" class="button secondary" id="preview-form-design">Preview</button></div>`;
+        document.getElementById('add-form-field').addEventListener('click', function() {
+          document.getElementById('field-editor').insertAdjacentHTML('beforeend', fieldEditorRow({ name: '', label: '', type: 'text', required: false, options: [], optionsFrom: '' }, Date.now()));
+        });
+        document.getElementById('save-form-design').addEventListener('click', function() { storeFormDesign(false); });
+        document.getElementById('publish-form-design').addEventListener('click', function() { storeFormDesign(true); });
+        document.getElementById('preview-form-design').addEventListener('click', function() {
+          const payload = readFormDesignPayload();
+          openFormShell(design.title + ' preview', payload.html, payload.js, { fields: payload.fields, values: {}, student: { displayName: 'Preview student', subject: '' }, onSubmit: function() { closeForm(); showSuccess('Preview only. Nothing was saved.'); return Promise.resolve(); } });
+        });
+      }
+
+      function fieldEditorRow(field, index) {
+        const options = field.optionsFrom === 'subjects' ? 'subjects' : (field.options || []).join(', ');
+        return `<div class="form-grid" data-field-row="${index}"><div class="field"><label>Name</label><input data-part="name" value="${escapeHtml(field.name)}"></div>
+          <div class="field"><label>Label</label><input data-part="label" value="${escapeHtml(field.label)}"></div>
+          <div class="field"><label>Type</label><select data-part="type">${['text', 'textarea', 'number', 'date', 'select', 'checkbox'].map(function(type) {
+            return `<option ${field.type === type ? 'selected' : ''}>${type}</option>`;
+          }).join('')}</select></div>
+          <div class="field"><label>Options</label><input data-part="options" value="${escapeHtml(options)}" placeholder="subjects, or comma-separated choices"></div>
+          <label class="field check"><input type="checkbox" data-part="required" ${field.required ? 'checked' : ''}> Required</label></div>`;
+      }
+
+      function readFormDesignPayload() {
+        const fields = Array.from(document.querySelectorAll('[data-field-row]')).map(function(row) {
+          const optionsText = row.querySelector('[data-part="options"]').value.trim();
+          const optionsFrom = optionsText === 'subjects' ? 'subjects' : '';
+          return {
+            name: row.querySelector('[data-part="name"]').value.trim(),
+            label: row.querySelector('[data-part="label"]').value.trim(),
+            type: row.querySelector('[data-part="type"]').value,
+            required: row.querySelector('[data-part="required"]').checked,
+            optionsFrom: optionsFrom,
+            options: optionsFrom ? [] : optionsText.split(',').map(function(option) { return option.trim(); }).filter(Boolean)
+          };
+        }).filter(function(field) { return field.name; });
+        return {
+          fields: fields,
+          html: document.getElementById('form-html').value,
+          js: document.getElementById('form-js').value,
+          submitCompletes: document.getElementById('form-completes').checked
+        };
+      }
+
+      function storeFormDesign(publish) {
+        const payload = readFormDesignPayload();
+        const button = document.getElementById(publish ? 'publish-form-design' : 'save-form-design');
+        button.disabled = true;
+        runMutation(publish ? 'publishForm' : 'saveFormDraft', [state.formMilestoneId, payload], { key: 'form-design:' + state.formMilestoneId }).then(function(result) {
+          showSuccess(publish ? 'Published ' + result.sheetName + ' version ' + result.version + '.' : 'Draft saved.');
+          renderFormDesigner(document.getElementById('admin-content'));
+        }).catch(function(error) { button.disabled = false; showError(error); });
       }
 
       function renderTemplateDesigner(target) {
