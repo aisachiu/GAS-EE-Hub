@@ -23,7 +23,7 @@
       .topbar { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 8px clamp(12px, 2.5vw, 32px); background: var(--ink); color: white; }
       .brand { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; letter-spacing: .04em; }
       .brand-mark { width: 22px; height: 22px; display: grid; place-items: center; color: var(--ink); background: white; font: 700 11px Helvetica, Arial, sans-serif; }
-      .account { color: #e8f0f5; text-align: right; font-size: 11px; line-height: 1.25; }
+      .account { display: flex; align-items: center; gap: 8px; color: #e8f0f5; text-align: right; font-size: 11px; line-height: 1.25; }
       .request-indicator { display: inline-flex; align-items: center; gap: 6px; min-height: 16px; color: #e8f0f5; font-size: 10px; opacity: 0; transition: opacity .18s ease; }
       .request-indicator.active { opacity: 1; }
       .request-indicator::before { width: 8px; height: 8px; border: 2px solid rgba(232, 240, 245, .35); border-top-color: var(--green); border-radius: 50%; content: ''; animation: request-spin .8s linear infinite; }
@@ -107,15 +107,15 @@
       .timeline-toolbar { display: flex; gap: 7px; align-items: center; flex-wrap: wrap; }
       .timeline-toolbar select { padding: 6px 8px; border: 1px solid var(--line); background: white; }
       .journey { display: grid; gap: 12px; }
-      .journey-head { display: flex; justify-content: space-between; gap: 12px; align-items: end; }
+      .journey-head { display: flex; justify-content: space-between; gap: 8px 12px; align-items: end; flex-wrap: wrap; }
       .journey-head h1 { margin-bottom: 0; }
       .journey-score { margin: 0; text-align: right; color: var(--muted); }
       .journey-score strong { display: block; color: var(--ink); font-size: 22px; line-height: 1; }
       .journey-bar { height: 6px; border-radius: 999px; background: #e7eef3; overflow: hidden; }
       .journey-bar span { display: block; height: 100%; background: var(--green); }
       .journey-path { display: flex; gap: 0; margin: 0; padding: 4px 0 0; list-style: none; overflow-x: auto; position: relative; }
-      .journey-path > li { flex: 1; min-width: 92px; }
-      .journey-path::before { content: ''; position: absolute; left: 36px; right: 36px; top: 16px; height: 2px; background: #d5e0e8; }
+      .journey-path > li { flex: 1 1 0; min-width: 0; }
+      .journey-path::before { content: ''; position: absolute; left: 12%; right: 12%; top: 16px; height: 2px; background: #d5e0e8; }
       .phase-stop { position: relative; z-index: 1; display: grid; justify-items: center; gap: 3px; width: 100%; border: 0; padding: 0 6px 4px; background: transparent; color: var(--muted); }
       .phase-mark { width: 16px; height: 16px; border: 2px solid #c5d3de; border-radius: 50%; background: white; }
       .phase-stop.done { color: #0d7a5f; }
@@ -123,7 +123,7 @@
       .phase-stop.here { color: var(--ink); font-weight: 700; }
       .phase-stop.here .phase-mark { border-color: var(--ink); background: var(--ink); box-shadow: 0 0 0 4px rgba(0, 76, 128, .16); }
       .phase-stop[aria-pressed="true"] .phase-name { color: var(--gold); }
-      .phase-name { font-size: 13px; }
+      .phase-name { font-size: 12px; line-height: 1.15; }
       .phase-count { font-size: 11px; }
       .journey-filters { display: flex; flex-wrap: wrap; gap: 6px; }
       .journey-filters button { border: 1px solid var(--line); border-radius: 999px; padding: 5px 10px; background: white; color: var(--muted); font-weight: 700; }
@@ -136,16 +136,33 @@
       .journey-phase header { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; padding: 10px 12px 0; }
       .journey-phase h2 { margin: 0; font-size: 18px; }
       .steps-rail { list-style: none; margin: 0; padding: 8px 12px 12px; }
-      .step { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 10px; padding: 8px 0; }
-      .step + .step { border-top: 1px solid var(--line); }
+      .journey .step { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 10px; padding: 8px 0; text-align: left; font-size: 14px; font-weight: 400; color: inherit; }
+      .journey .step + .step { border-top: 1px solid var(--line); }
       .rail { width: 12px; height: 12px; margin-top: 4px; border: 2px solid #c5d3de; border-radius: 50%; background: white; }
-      .step.done .rail { border-color: var(--green); background: var(--green); }
-      .step.here .rail { border-color: var(--ink); background: var(--ink); }
-      .step.todo .rail { border-color: var(--gold); }
-      .step.done h3 { color: var(--muted); font-weight: 600; }
-      .step-top { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+      .journey .step.done .rail { border-color: var(--green); background: var(--green); }
+      .journey .step.here .rail { border-color: var(--ink); background: var(--ink); }
+      .journey .step.todo .rail { border-color: var(--gold); }
+      .journey .step.done h3 { color: var(--muted); font-weight: 600; }
+      .step-top { display: flex; justify-content: space-between; gap: 6px 10px; align-items: baseline; flex-wrap: wrap; }
       .step-top h3 { margin: 0; font-size: 15px; }
-      .step p { margin: 3px 0 0; }
+      .journey .step p { margin: 3px 0 0; }
+      .journey-panel { position: fixed; top: 0; right: 0; z-index: 25; height: 100vh; width: 36px; overflow: hidden; background: var(--ink); transition: width .2s ease; }
+      .journey-panel.open { width: clamp(300px, 34vw, 420px); background: #f6f8f9; border-left: 1px solid var(--line); box-shadow: -8px 0 24px rgba(0, 30, 50, .12); }
+      .journey-peek { position: absolute; top: 40px; right: auto; bottom: 0; left: 0; width: 36px; border: 0; color: white; background: transparent; writing-mode: vertical-rl; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+      .journey-panel.open .journey-peek { display: none; }
+      .journey-panel:not(.open) .journey-drawer { visibility: hidden; }
+      .journey-drawer { width: clamp(300px, 34vw, 420px); height: 100%; display: flex; flex-direction: column; background: #f6f8f9; }
+      .journey-panel-bar { display: flex; align-items: center; justify-content: space-between; height: 40px; padding: 0 10px; color: white; background: var(--ink); flex: none; }
+      .journey-panel-bar button { border: 0; color: white; background: transparent; font-weight: 700; }
+      .journey-scroll { flex: 1; overflow: auto; padding: 10px; }
+      .journey-panel h1 { font-size: 20px; }
+      .journey-panel .here-card h2 { font-size: 16px; }
+      .journey-panel .journey-filters button { padding: 4px 8px; font-size: 12px; }
+      .journey-toggle { border: 1px solid rgba(255,255,255,.5); border-radius: 999px; padding: 3px 10px; color: white; background: transparent; font-weight: 700; }
+      .journey-toggle[aria-expanded="true"] { color: var(--ink); background: white; }
+      body.has-journey { padding-right: 36px; transition: padding-right .2s ease; }
+      body.has-journey.journey-open { padding-right: clamp(300px, 34vw, 420px); }
+      .topbar { position: sticky; top: 0; z-index: 30; }
       .step-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; }
       .add-todo { display: flex; gap: 6px; padding: 0 12px 12px; }
       .add-todo input { min-width: 0; flex: 1; padding: 7px 9px; border: 1px solid var(--line); border-radius: 3px; }
@@ -211,7 +228,11 @@
       .tabs button { border: 0; border-bottom: 3px solid transparent; padding: 8px 12px; color: #d5e4ef; background: transparent; font-weight: 700; white-space: nowrap; }
       .tabs button[aria-current="page"] { color: white; border-bottom-color: var(--gold); }
       .topbar { min-height: 40px; padding: 0 12px; }
-      main { max-width: 1180px; margin: 0 auto; padding: 10px; }
+      main { max-width: 1180px; margin: 0 auto; padding: 10px; container-type: inline-size; }
+      @container (max-width: 760px) {
+        .tiles, .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .doc-grid { grid-template-columns: 1fr; }
+      }
       .hero { display: flex; justify-content: space-between; gap: 16px; align-items: center; flex-wrap: wrap; padding: 14px 16px; color: white; background: var(--ink); border-left: 5px solid var(--gold); }
       .hero p { margin: 0; color: #d5e4ef; }
       .hero h2 { margin: 2px 0 4px; color: white; }
@@ -219,9 +240,9 @@
       .tile, .scard, .strip, .doc-card { padding: 10px 12px; background: white; border: 1px solid var(--line); }
       .tile .val { font-size: 20px; font-weight: 700; color: var(--ink); }
       .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; list-style: none; margin: 8px 0 0; padding: 0; }
-      .step { text-align: center; color: var(--muted); font-size: 12px; font-weight: 700; }
-      .step.current { color: var(--ink); }
-      .step.done { color: var(--green); }
+      .steps .step { text-align: center; color: var(--muted); font-size: 12px; font-weight: 700; }
+      .steps .step.current { color: var(--ink); }
+      .steps .step.done { color: var(--green); }
       .segs { display: grid; grid-template-columns: repeat(16, 1fr); gap: 2px; }
       .segs i { display: block; height: 7px; border-radius: 2px; background: var(--line); }
       .segs i.d { background: var(--ink); } .segs i.p { background: var(--gold); } .segs i.l { background: var(--coral); }
@@ -231,7 +252,7 @@
       .chip { display: inline-flex; align-items: center; padding: 1px 8px; border-radius: 999px; background: #eef3f6; color: #3d4d5c; font-size: 12px; font-weight: 700; }
       .chip.bad { background: #fde8ea; color: var(--coral); }
       .chip.ok { background: var(--green-soft); color: #0d7a5f; }
-      .form-dialog { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: 12px; background: rgba(0, 30, 50, .45); }
+      .form-dialog { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 12px; background: rgba(0, 30, 50, .45); }
       .form-dialog[hidden] { display: none; }
       .form-panel { width: min(720px, 100%); max-height: calc(100vh - 24px); overflow: auto; padding: 14px; background: white; border-top: 4px solid var(--gold); }
       .doc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -259,6 +280,11 @@
         .task-card { grid-template-columns: 24px minmax(0, 1fr); padding: 14px; }
         .task-meta { grid-column: 2; justify-items: start; grid-template-columns: repeat(2, max-content); align-items: center; }
       }
+      @media (max-width: 720px) {
+        .journey-panel.open { z-index: 40; width: min(100vw - 12px, 420px); }
+        .journey-panel.open .journey-drawer { width: min(100vw - 12px, 420px); }
+        body.has-journey.journey-open { padding-right: 0; }
+      }
     </style>
   </head>
   <body>
@@ -277,6 +303,8 @@
         selectedMemberIds: [],
         assignmentStudentIds: [],
         importRecords: null,
+        journeyOpen: false,
+        studentHomeRequest: null,
         journeyFilters: { phaseId: 'all', showSystem: true, showStudent: true },
         journeyControlsOpen: true,
         editingTodo: '',
@@ -397,7 +425,7 @@
         const student = state.user.role === 'student';
         const permissions = state.user.permissions || {};
         const tabs = student
-          ? [['home', 'Home'], ['journey', 'Journey'], ['mywork', 'My Work'], ['resources', 'Resources'], ['help', 'Help']]
+          ? [['home', 'Home'], ['mywork', 'My Work'], ['resources', 'Resources'], ['help', 'Help']]
           : [['students', 'My Students'], ['resources', 'Resources']];
         if (!student && (state.actingAs === 'supervisor' || state.actingAs === 'coordinator') && (permissions.isSupervisor || permissions.canAdmin)) {
           tabs.splice(1, 0, ['tickets', 'Tickets']);
@@ -405,16 +433,25 @@
         if (permissions.canAdmin) tabs.push(['admin', 'Admin']);
         if (!tabs.some(function(tab) { return tab[0] === state.section; })) state.section = tabs[0][0];
         state.view = state.section;
+        document.body.classList.toggle('has-journey', student);
+        document.body.classList.toggle('journey-open', student && state.journeyOpen);
         document.getElementById('app').innerHTML = `
           <header class="topbar">
             <div class="brand"><span class="brand-mark">EE</span><span>EE Hub</span>${student ? '' : '<span class="staff-pill">Staff</span>'}</div>
             <nav class="tabs" aria-label="Sections">${tabs.map(function(tab) {
               return `<button type="button" data-view="${tab[0]}" aria-current="${state.section === tab[0] ? 'page' : 'false'}">${tabLabel(tab)}</button>`;
             }).join('')}</nav>
-            <div class="account"><span id="request-indicator" class="request-indicator" aria-live="polite" aria-busy="false"></span><div>${escapeHtml(state.user.displayName)}</div></div>
+            <div class="account">${student ? `<button type="button" class="journey-toggle" id="journey-toggle" aria-expanded="${state.journeyOpen ? 'true' : 'false'}" aria-controls="journey-panel">Journey</button>` : ''}<span id="request-indicator" class="request-indicator" aria-live="polite" aria-busy="false"></span><div>${escapeHtml(state.user.displayName)}</div></div>
           </header>
           <div id="feedback-region" aria-live="polite"></div>
           <main id="main"></main>
+          ${student ? `<aside id="journey-panel" class="journey-panel${state.journeyOpen ? ' open' : ''}" aria-label="Journey and to-dos">
+            <button type="button" class="journey-peek" id="journey-peek" aria-expanded="${state.journeyOpen ? 'true' : 'false'}" aria-controls="journey-drawer">Journey</button>
+            <div class="journey-drawer" id="journey-drawer"${state.journeyOpen ? '' : ' inert'} aria-hidden="${state.journeyOpen ? 'false' : 'true'}">
+              <div class="journey-panel-bar"><strong>Journey</strong><button type="button" id="journey-close">Close</button></div>
+              <div id="journey-body" class="journey-scroll"></div>
+            </div>
+          </aside>` : ''}
           <div id="form-dialog" class="form-dialog" hidden></div>`;
         document.querySelectorAll('[data-view]').forEach(function(button) {
           button.addEventListener('click', function() {
@@ -432,6 +469,23 @@
         else if (state.section === 'tickets') renderStaffTickets();
         else if (student) renderStudentSection();
         else renderStaffHome();
+        if (student) {
+          const journeyToggle = document.getElementById('journey-toggle');
+          const journeyPeek = document.getElementById('journey-peek');
+          const journeyClose = document.getElementById('journey-close');
+          if (journeyToggle) journeyToggle.addEventListener('click', function() { setJourneyOpen(!state.journeyOpen); });
+          if (journeyPeek) journeyPeek.addEventListener('click', function() {
+            setJourneyOpen(true);
+            const closeButton = document.getElementById('journey-close');
+            if (closeButton) closeButton.focus();
+          });
+          if (journeyClose) journeyClose.addEventListener('click', function() {
+            setJourneyOpen(false);
+            const peek = document.getElementById('journey-peek');
+            if (peek) peek.focus();
+          });
+          mountJourneyPanel();
+        }
         if (!student && tabs.some(function(tab) { return tab[0] === 'tickets'; }) && state.ticketBadgeFor !== state.actingAs) {
           const requested = state.actingAs;
           state.ticketBadgeFor = requested;
@@ -455,21 +509,59 @@
         button.innerHTML = label + (count ? '<span class="dot" aria-label="Unread"></span>' : '');
       }
 
+      function loadStudentHome() {
+        if (state.studentHome) return Promise.resolve(state.studentHome);
+        if (!state.studentHomeRequest) {
+          state.studentHomeRequest = callServer('getStudentHome').then(function(home) {
+            state.studentHome = home;
+            return home;
+          }).finally(function() {
+            state.studentHomeRequest = null;
+          });
+        }
+        return state.studentHomeRequest;
+      }
+
+      function setJourneyOpen(open) {
+        state.journeyOpen = !!open;
+        document.body.classList.toggle('journey-open', state.journeyOpen);
+        const panel = document.getElementById('journey-panel');
+        if (panel) panel.classList.toggle('open', state.journeyOpen);
+        const toggle = document.getElementById('journey-toggle');
+        const peek = document.getElementById('journey-peek');
+        if (toggle) toggle.setAttribute('aria-expanded', state.journeyOpen ? 'true' : 'false');
+        if (peek) peek.setAttribute('aria-expanded', state.journeyOpen ? 'true' : 'false');
+        const drawer = document.getElementById('journey-drawer');
+        if (drawer) {
+          drawer.setAttribute('aria-hidden', state.journeyOpen ? 'false' : 'true');
+          if (state.journeyOpen) drawer.removeAttribute('inert');
+          else drawer.setAttribute('inert', '');
+        }
+      }
+
+      function mountJourneyPanel() {
+        const body = document.getElementById('journey-body');
+        if (!body) return;
+        if (!state.studentHome) body.innerHTML = '<p class="muted">Loading your journey...</p>';
+        loadStudentHome().then(function(home) {
+          paintStudentJourney(home);
+        }).catch(function(error) {
+          const target = document.getElementById('journey-body');
+          if (target) target.innerHTML = '<p class="notice error">' + escapeHtml(error && error.message ? error.message : error) + '</p>';
+        });
+      }
+
       function renderStudentSection() {
         const main = document.getElementById('main');
         main.innerHTML = '<p class="muted">Loading your EE...</p>';
-        const request = state.studentHome ? Promise.resolve(state.studentHome) : callServer('getStudentHome');
-        request.then(function(home) {
-          state.studentHome = home;
-          if (state.section === 'journey') paintStudentJourney(home);
-          else if (state.section === 'mywork') paintStudentWork(home);
+        loadStudentHome().then(function(home) {
+          if (state.section === 'mywork') paintStudentWork(home);
           else paintStudentHome(home);
         }).catch(showError);
       }
 
       function renderStudentView() {
-        state.section = 'journey';
-        renderStudentSection();
+        setJourneyOpen(true);
       }
 
       function nextIncomplete(home) {
@@ -495,7 +587,7 @@
         }).length;
         const done = (home.actionItems || []).filter(function(item) { return item.CreatorType === 'System' && item.Status === 'Completed'; }).length;
         const currentPhase = next ? (home.phases.filter(function(phase) { return phase.phaseId === next.template.phase; })[0] || {}).phaseTitle : 'Complete';
-        const hero = next ? `<section class="hero"><div><p class="eyebrow">Your next step</p><h2>${escapeHtml(next.template.title)}</h2><p>${escapeHtml(next.template.description || 'Complete this milestone before the due date.')}</p></div><div>${next.item && next.item.DueDate ? `<div class="chip">${escapeHtml(String(next.item.DueDate).slice(0, 10))}</div>` : ''}${formButton(home, next)}</div></section>` : '<section class="hero"><div><p class="eyebrow">All caught up</p><h2>No action needed right now</h2><p>Check Journey for what is coming.</p></div></section>';
+        const hero = next ? `<section class="hero"><div><p class="eyebrow">Your next step</p><h2>${escapeHtml(next.template.title)}</h2><p>${escapeHtml(next.template.description || 'Complete this milestone before the due date.')}</p></div><div>${next.item && next.item.DueDate ? `<div class="chip">${escapeHtml(String(next.item.DueDate).slice(0, 10))}</div>` : ''}${formButton(home, next)}</div></section>` : '<section class="hero"><div><p class="eyebrow">All caught up</p><h2>No action needed right now</h2><p>Open Journey to see what is coming.</p></div></section>';
         main.innerHTML = `${hero}
           ${home.unreadTicketCount ? `<div class="notice">Reply received${home.unreadTicketTitle ? ': ' + escapeHtml(home.unreadTicketTitle) : ''}. <button type="button" class="link-button" id="open-help">Open Help</button></div>` : ''}
           ${returned ? `<div class="notice">Returned: ${escapeHtml(returned.Title)}. ${escapeHtml(returned.returnedComment)}</div>` : ''}
@@ -530,7 +622,8 @@
       }
 
       function paintStudentJourney(home) {
-        const main = document.getElementById('main');
+        const main = document.getElementById('journey-body');
+        if (!main) return;
         const phases = home.phases || [];
         const items = home.actionItems || [];
         const templates = home.templates || [];
@@ -758,7 +851,7 @@
           button.addEventListener('click', function() { openStudentForm(button.dataset.openForm); });
         });
         const journey = main.querySelector('[data-go-journey]');
-        if (journey) journey.addEventListener('click', function() { state.section = 'journey'; renderShell(); });
+        if (journey) journey.addEventListener('click', function() { setJourneyOpen(true); });
       }
 
 
