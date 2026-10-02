@@ -157,7 +157,8 @@ function getStudentHome() {
     actionItems: items,
     publishedForms: published,
     unreadTicketCount: ticketNotice.count,
-    unreadTicketTitle: ticketNotice.title
+    unreadTicketTitle: ticketNotice.title,
+    unreadTickets: ticketNotice.tickets || []
   };
 }
 
@@ -200,14 +201,19 @@ function getStaffHome(cohortId, viewAs) {
   var students = roster.map(function(student) {
     return summarizeStudent_(student, items[student.email] || [], templates, returned, today, user, view);
   }).sort(function(left, right) { return right.urgency - left.urgency || left.displayName.localeCompare(right.displayName); });
+  var notices = staffUnreadNotices_(user, view);
   return {
     cohorts: cohorts,
     cohortId: selected,
     viewAs: view,
+    viewerEmail: user.email,
     canAct: view !== 'staff',
     phases: phases,
     templates: templates,
-    students: students
+    supervisors: supervisorChoices_(roster),
+    students: students,
+    unreadTicketCount: notices.count,
+    unreadTickets: notices.tickets
   };
 }
 
@@ -220,6 +226,8 @@ function readCohortRoster_(cohortId) {
     return {
       email: normalizeEmail_(record.StudentId),
       displayName: text_(record['Display Name']) || normalizeEmail_(record.StudentId),
+      surname: text_(record.Surname),
+      firstName: text_(record['First Name']),
       studentNumber: text_(record['Student ID']),
       hrm: text_(record.HRM),
       subject: text_(record.subject),
@@ -285,6 +293,8 @@ function summarizeStudent_(student, items, templates, returned, today, user, vie
   return {
     email: student.email,
     displayName: student.displayName,
+    surname: student.surname || '',
+    firstName: student.firstName || '',
     studentNumber: student.studentNumber,
     hrm: student.hrm,
     subject: student.subject,
@@ -313,16 +323,121 @@ function getStudentActivity(studentEmail, cohortId) {
   return activityFeedForActor_(context.email);
 }
 
-function staffStudentContext_(user, studentEmail, cohortId, operation) {
+function staffDirectory_() {
+  var sheet = getSpreadsheet_().getSheetByName(APP_TABLES.staffUsers.sheet);
+  var names = {};
+  if (!sheet || sheet.getLastRow() < 2) return names;
+  readRecords_(sheet).forEach(function(staff) {
+    var email = normalizeEmail_(staff.EMAIL);
+    if (email) names[email] = text_(staff.DisplayName) || email;
+  });
+  return names;
+}
+
+function supervisorChoices_(roster) {
+  var names = staffDirectory_();
+  var seen = {};
+  var choices = [];
+  roster.forEach(function(student) {
+    var id = student.supervisorId || '';
+    var key = id || '__unassigned__';
+    if (seen[key]) return;
+    seen[key] = true;
+    choices.push({ id: key, name: id ? (names[id] || id) : 'Unassigned' });
+  });
+  choices.sort(function(left, right) { return left.name.localeCompare(right.name); });
+  return choices;
+}
+
+function staffStudentContext_(user, studentEmail, cohortId, operation, viewAs) {
   var email = normalizeEmail_(studentEmail);
   staffMaySeeCohort_(user, cohortId);
   var roster = readCohortRoster_(cohortId).filter(function(student) { return student.email === email; })[0];
   if (!roster) throw new Error('Student is not in the selected cohort.');
-  var view = normalizeStaffView_(user, user.permissions.canAdmin ? 'coordinator' : (user.permissions.isSupervisor ? 'supervisor' : 'staff'));
+  var requested = viewAs === undefined
+    ? (user.permissions.canAdmin ? 'coordinator' : (user.permissions.isSupervisor ? 'supervisor' : 'staff'))
+    : viewAs;
+  var view = normalizeStaffView_(user, requested);
   if (view === 'supervisor' && roster.supervisorId && roster.supervisorId !== user.email && !user.permissions.canAdmin) {
     denyAccess_(user, operation, 'This student is assigned to another supervisor.');
   }
   return { email: email, roster: roster, view: view };
+}
+
+function staffMayUpdateAllMilestones_(user, roster, view) {
+  if (!user || user.role !== 'staff' || view === 'staff' || !roster) return false;
+  if (user.permissions.canAdmin && (view === 'coordinator' || view === 'supervisor')) return true;
+  return view === 'supervisor' && !!user.permissions.isSupervisor && normalizeEmail_(roster.supervisorId) === user.email;
+}
+
+function staffMayUpdateSystemItem_(user, context, record) {
+  if (!context || text_(record.CreatorType) !== 'System') return false;
+  if (staffMayUpdateAllMilestones_(user, context.roster, context.view)) return true;
+  if (context.view === 'staff') return false;
+  var template = findRecordByValue_(getRequiredActionSheet_('milestoneTemplates'), 'milestoneId', record.TemplateId);
+  if (!template) return false;
+  return canCompleteMilestone_(user, record.StudentId, text_(template.mOwner).toLowerCase(), text_(template.type).toLowerCase());
+}
+
+function staffViewLabel_(view, canUpdate) {
+  if (view === 'coordinator') return canUpdate ? 'Coordinator · you can update milestones' : 'Coordinator';
+  if (view === 'supervisor') return canUpdate ? 'Supervisor · you can update milestones' : 'Supervisor';
+  return 'Staff browse · read only';
+}
+
+function getStaffStudentHome(studentEmail, cohortId, viewAs) {
+  var user = requireStaff_('VIEW_STAFF_STUDENT');
+  var context = staffStudentContext_(user, studentEmail, cohortId, 'VIEW_STAFF_STUDENT', viewAs);
+  var email = context.email;
+  var roster = context.roster;
+  var view = context.view;
+  var phases = readPhases_();
+  var templates = orderTemplates_(readTemplates_(), phases);
+  var items = getStudentActionItems_(email, user);
+  var events = readEventsForStudents_([email]);
+  var returned = latestReturnedByTask_(events);
+  var canUpdateAll = staffMayUpdateAllMilestones_(user, roster, view);
+  items.forEach(function(item) {
+    item.returnedComment = returned[item.TaskId] ? returned[item.TaskId].comment : '';
+    if (item.CreatorType === 'Student') {
+      item.canEdit = false;
+      item.canUpdate = false;
+    } else if (item.CreatorType === 'System') {
+      var allowed = !!canUpdateAll || (view !== 'staff' && canCompleteMilestone_(user, email, item.mOwner, item.templateType));
+      item.canUpdate = allowed;
+      item.staffUpdate = allowed;
+    }
+  });
+  var published = {};
+  try { publishedFormIds_().forEach(function(id) { published[id] = true; }); } catch (error) { /* definitions may not exist yet */ }
+  return {
+    staffView: true,
+    viewAs: view,
+    canUpdateMilestones: canUpdateAll,
+    canWriteTodos: false,
+    viewLabel: staffViewLabel_(view, canUpdateAll),
+    displayName: roster.displayName,
+    email: email,
+    cohort: text_(cohortId),
+    subject: roster.subject || '',
+    supervisorId: roster.supervisorId || '',
+    hrm: roster.hrm || '',
+    anchor: roster.anchor || '',
+    surname: roster.surname || '',
+    studentNumber: roster.studentNumber || '',
+    links: {
+      folder: roster.folder || '',
+      doc: roster.doc || '',
+      rppf: roster.rppf || '',
+      poster: roster.poster || ''
+    },
+    phases: phases,
+    templates: templates,
+    actionItems: items,
+    publishedForms: published,
+    unreadTicketCount: 0,
+    unreadTickets: []
+  };
 }
 
 function getStaffStudent(studentEmail, cohortId) {
@@ -367,7 +482,7 @@ function getStaffStudent(studentEmail, cohortId) {
   };
 }
 
-function recordMilestoneDecision(taskId, action, comment, studentEmail, cohortId) {
+function recordMilestoneDecision(taskId, action, comment, studentEmail, cohortId, viewAs) {
   var user = requireStaff_('MILESTONE_DECISION');
   var email = normalizeEmail_(studentEmail);
   var decision = text_(action);
@@ -375,11 +490,7 @@ function recordMilestoneDecision(taskId, action, comment, studentEmail, cohortId
   var note = text_(comment);
   if ((decision === 'return' || decision === 'session') && !note) throw new Error('A comment is required.');
   if (note.length > 2000) throw new Error('Comments must be 2,000 characters or fewer.');
-  staffMaySeeCohort_(user, cohortId);
-  var roster = readCohortRoster_(cohortId);
-  if (!roster.some(function(student) { return student.email === email; })) {
-    denyAccess_(user, 'MILESTONE_DECISION', 'Student is not in the selected cohort.');
-  }
+  var context = staffStudentContext_(user, email, cohortId, 'MILESTONE_DECISION', viewAs);
 
   return runAuditedMutation_(user, 'MILESTONE_' + decision.toUpperCase(), {
     taskId: text_(taskId), studentId: email, cohort: text_(cohortId)
@@ -390,7 +501,7 @@ function recordMilestoneDecision(taskId, action, comment, studentEmail, cohortId
     if (!template) throw new Error('Milestone template not found.');
     var owner = text_(template.mOwner).toLowerCase();
     var type = text_(template.type).toLowerCase();
-    if (!canCompleteMilestone_(user, email, owner, type)) {
+    if (!staffMayUpdateSystemItem_(user, context, item.record)) {
       throw new Error('You cannot update this milestone.');
     }
     if (decision === 'return' && type !== 'approval' && owner === 'student') throw new Error('Only a review milestone can be returned.');

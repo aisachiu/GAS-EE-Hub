@@ -81,6 +81,8 @@ function createMissingSheets() {
   var cohortRegistry = spreadsheet.getSheetByName(APP_TABLES.cohorts.sheet);
   if (cohortRegistry && cohortRegistry.getLastRow() > 1) {
     try {
+      var addedDriveColumns = ensureCohortDriveColumns_();
+      if (addedDriveColumns.length) migrated.push('COHORTS columns: ' + addedDriveColumns.join(', '));
       assertSheetSchema_(cohortRegistry, 'cohorts');
       readRecords_(cohortRegistry).forEach(function(record) {
         var cohortId = text_(record.Cohort);
