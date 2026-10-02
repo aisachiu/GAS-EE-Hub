@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 import { randomUUID } from 'node:crypto';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { fileURLToPath } from 'node:url';
 
 function resolveRoot() {
@@ -29,6 +30,20 @@ const root = resolveRoot();
 const port = Number(process.env.EE_HUB_PORT || 8787);
 const host = process.env.EE_HUB_HOST || '0.0.0.0';
 const activeEmail = process.env.EE_HUB_USER || 'dev@vsa.local';
+const requestUser = new AsyncLocalStorage();
+
+function currentEmail() {
+  return requestUser.getStore() || activeEmail;
+}
+
+function requestedEmail(request, url) {
+  const header = request.headers['x-ee-hub-user'];
+  const query = url.searchParams.get('eeUser');
+  const cookie = String(request.headers.cookie || '').match(/(?:^|;\s*)ee-hub-user=([^;]+)/);
+  const candidate = header || query || (cookie ? decodeURIComponent(cookie[1]) : '');
+  const email = String(candidate || activeEmail).trim().toLowerCase();
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : activeEmail;
+}
 
 function createSheet(name) {
   const rows = [];
@@ -143,7 +158,7 @@ function createRuntime() {
     },
     Session: {
       getActiveUser() {
-        return { getEmail() { return activeEmail; } };
+        return { getEmail() { return currentEmail(); } };
       }
     },
     Utilities: {
@@ -222,11 +237,13 @@ window.google.script.run = {
     }
   });
 
-  ['Backend.js', 'Audit.js', 'PhaseRules.js', 'ActionItemEngine.js', 'Code.js'].forEach((fileName) => {
+  ['Backend.js', 'Audit.js', 'PhaseRules.js', 'ActionItemEngine.js', 'Hub.js', 'Forms.js', 'Tickets.js', 'Code.js'].forEach((fileName) => {
     vm.runInContext(fs.readFileSync(path.join(root, fileName), 'utf8'), context, { filename: fileName });
   });
 
   seedWorkbook(spreadsheet);
+  vm.runInContext('seedPublishedSubjectForm_()', context);
+  vm.runInContext('seedDefaultFaqs_()', context);
   return context;
 }
 
@@ -323,7 +340,9 @@ function seedWorkbook(spreadsheet) {
     staff.getRange(1, 1, 1, staffHeaders.length).setValues([staffHeaders]);
     staff.setFrozenRows(1);
   }
-  if (!sheetHasEmail(staff, activeEmail)) {
+  const students = spreadsheet.getSheetByName('USERS-STUDENTS');
+  const signingInAsStudent = students && sheetHasEmail(students, activeEmail);
+  if (!sheetHasEmail(staff, activeEmail) && !signingInAsStudent) {
     staff.getRange(staff.getLastRow() + 1, 1, 1, staffHeaders.length).setValues([[
       activeEmail, 'Dev Admin', 'Extended Essay', 'DEV', true, true, true, true, true, '', ''
     ]]);
@@ -348,44 +367,51 @@ function sendJson(response, status, body) {
 
 const server = http.createServer((request, response) => {
   const url = new URL(request.url || '/', `http://${request.headers.host || 'localhost'}`);
-  if (request.method === 'GET' && (url.pathname === '/' || url.pathname === '/Index.html')) {
-    try {
-      const html = vm.runInContext('doGet().getContent()', context);
-      response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      response.end(html);
-    } catch (error) {
-      response.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
-      response.end(error.message || String(error));
-    }
-    return;
-  }
-
-  if (request.method === 'GET' && url.pathname === '/health') {
-    try {
-      sendJson(response, 200, { ok: true, user: callServer('getAppBootstrap', []).user });
-    } catch (error) {
-      sendJson(response, 500, { ok: false, error: error.message || String(error) });
-    }
-    return;
-  }
-
-  if (request.method === 'POST' && url.pathname === '/rpc') {
-    const chunks = [];
-    request.on('data', (chunk) => chunks.push(chunk));
-    request.on('end', () => {
+  const email = requestedEmail(request, url);
+  requestUser.run(email, () => {
+    if (request.method === 'GET' && (url.pathname === '/' || url.pathname === '/Index.html')) {
       try {
-        const body = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
-        const result = callServer(body.method, body.args);
-        sendJson(response, 200, { ok: true, result });
+        const html = vm.runInContext('doGet().getContent()', context);
+        const headers = { 'Content-Type': 'text/html; charset=utf-8' };
+        if (url.searchParams.has('eeUser')) headers['Set-Cookie'] = `ee-hub-user=${encodeURIComponent(email)}; Path=/; SameSite=Lax`;
+        response.writeHead(200, headers);
+        response.end(html);
       } catch (error) {
-        sendJson(response, 200, { ok: false, error: error.message || String(error) });
+        response.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
+        response.end(error.message || String(error));
       }
-    });
-    return;
-  }
+      return;
+    }
 
-  response.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
-  response.end('Not found');
+    if (request.method === 'GET' && url.pathname === '/health') {
+      try {
+        sendJson(response, 200, { ok: true, user: callServer('getAppBootstrap', []).user });
+      } catch (error) {
+        sendJson(response, 500, { ok: false, error: error.message || String(error) });
+      }
+      return;
+    }
+
+    if (request.method === 'POST' && url.pathname === '/rpc') {
+      const chunks = [];
+      request.on('data', (chunk) => chunks.push(chunk));
+      request.on('end', () => {
+        requestUser.run(email, () => {
+          try {
+            const body = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
+            const result = callServer(body.method, body.args);
+            sendJson(response, 200, { ok: true, result });
+          } catch (error) {
+            sendJson(response, 200, { ok: false, error: error.message || String(error) });
+          }
+        });
+      });
+      return;
+    }
+
+    response.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+    response.end('Not found');
+  });
 });
 
 server.listen(port, host, () => {

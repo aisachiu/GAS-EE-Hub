@@ -9,4 +9,7 @@ node --check Backend.js
 node --check ActionItemEngine.js
 node --check Audit.js
 node --check PhaseRules.js
+node --check Hub.js
+node --check Forms.js
+node --check Tickets.js
 node --check .cursor/local-gas/server.mjs
