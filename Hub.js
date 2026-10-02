@@ -301,16 +301,36 @@ function summarizeStudent_(student, items, templates, returned, today, user, vie
   };
 }
 
-function getStaffStudent(studentEmail, cohortId) {
-  var user = requireStaff_('VIEW_STAFF_STUDENT');
+function getMyActivity() {
+  var user = requireUser_('VIEW_MY_ACTIVITY');
+  if (user.role !== 'student') denyAccess_(user, 'VIEW_MY_ACTIVITY', 'Student access required.');
+  return activityFeedForActor_(user.email);
+}
+
+function getStudentActivity(studentEmail, cohortId) {
+  var user = requireStaff_('VIEW_STUDENT_ACTIVITY');
+  var context = staffStudentContext_(user, studentEmail, cohortId, 'VIEW_STUDENT_ACTIVITY');
+  return activityFeedForActor_(context.email);
+}
+
+function staffStudentContext_(user, studentEmail, cohortId, operation) {
   var email = normalizeEmail_(studentEmail);
   staffMaySeeCohort_(user, cohortId);
   var roster = readCohortRoster_(cohortId).filter(function(student) { return student.email === email; })[0];
   if (!roster) throw new Error('Student is not in the selected cohort.');
   var view = normalizeStaffView_(user, user.permissions.canAdmin ? 'coordinator' : (user.permissions.isSupervisor ? 'supervisor' : 'staff'));
   if (view === 'supervisor' && roster.supervisorId && roster.supervisorId !== user.email && !user.permissions.canAdmin) {
-    denyAccess_(user, 'VIEW_STAFF_STUDENT', 'This student is assigned to another supervisor.');
+    denyAccess_(user, operation, 'This student is assigned to another supervisor.');
   }
+  return { email: email, roster: roster, view: view };
+}
+
+function getStaffStudent(studentEmail, cohortId) {
+  var user = requireStaff_('VIEW_STAFF_STUDENT');
+  var context = staffStudentContext_(user, studentEmail, cohortId, 'VIEW_STAFF_STUDENT');
+  var email = context.email;
+  var roster = context.roster;
+  var view = context.view;
   var phases = readPhases_();
   var templates = orderTemplates_(readTemplates_(), phases);
   var items = getStudentActionItems_(email, user);

@@ -65,18 +65,6 @@ var APP_TABLES = {
       { name: 'Active', type: 'checkbox', defaultValue: true }
     ]
   },
-  pages: {
-    sheet: 'CONTENT_PAGES',
-    fields: [
-      { name: 'Page ID', type: 'text', key: true, generated: true },
-      { name: 'Title', type: 'text', required: true },
-      { name: 'Slug', type: 'text', required: true },
-      { name: 'Body', type: 'textarea', table: false },
-      { name: 'Audience', type: 'select', options: ['all', 'student', 'staff'] },
-      { name: 'Published', type: 'checkbox' },
-      { name: 'Sort Order', type: 'number' }
-    ]
-  },
   resources: {
     sheet: 'RESOURCES',
     fields: [
@@ -87,7 +75,10 @@ var APP_TABLES = {
       { name: 'URL', type: 'url' },
       { name: 'Audience', type: 'select', options: ['all', 'student', 'staff'] },
       { name: 'Published', type: 'checkbox' },
-      { name: 'Sort Order', type: 'number' }
+      { name: 'Sort Order', type: 'number' },
+      { name: 'Slug', type: 'text', table: false },
+      { name: 'Body', type: 'textarea', table: false },
+      { name: 'Body Format', type: 'select', options: ['plain', 'markdown', 'html'], defaultValue: 'plain' }
     ]
   },
   faqs: {
@@ -443,10 +434,84 @@ function getStudentView(studentEmail, cohortId) {
 
 function getContentHub() {
   var user = requireUser_('GET_CONTENT_HUB');
+  migrateResourcesSheet_();
   return {
-    pages: getPublishedContent_('CONTENT_PAGES', user.role),
     resources: getPublishedContent_('RESOURCES', user.role)
   };
+}
+
+function migrateResourcesSheet_() {
+  var spreadsheet = getSpreadsheet_();
+  var sheetName = APP_TABLES.resources.sheet;
+  var sheet = spreadsheet.getSheetByName(sheetName);
+  var created = false;
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet(sheetName);
+    var headers = getTableHeaders_('resources');
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    sheet.setFrozenRows(1);
+    created = true;
+  }
+  var columnsAdded = appendMissingResourceColumns_(sheet);
+  var pagesCopied = copyContentPagesIntoResources_(spreadsheet, sheet);
+  return { created: created, columnsAdded: columnsAdded, pagesCopied: pagesCopied };
+}
+
+function appendMissingResourceColumns_(sheet) {
+  var expected = getTableHeaders_('resources');
+  var actual = getHeaders_(sheet);
+  if (!actual.length) {
+    sheet.getRange(1, 1, 1, expected.length).setValues([expected]);
+    sheet.setFrozenRows(1);
+    return expected.slice();
+  }
+  if (actual.join('\u0000') === expected.join('\u0000')) return [];
+  var matchesPrefix = actual.every(function(header, index) { return header === expected[index]; });
+  if (!matchesPrefix) return [];
+  var additions = expected.slice(actual.length);
+  var bodyColumns = { 'Slug': true, 'Body': true, 'Body Format': true };
+  if (!additions.length || additions.some(function(header) { return !bodyColumns[header]; })) return [];
+  sheet.getRange(1, actual.length + 1, 1, additions.length).setValues([additions]);
+  return additions;
+}
+
+function copyContentPagesIntoResources_(spreadsheet, resourceSheet) {
+  var pages = spreadsheet.getSheetByName('CONTENT_PAGES');
+  if (!pages || pages.getLastRow() < 2) return 0;
+  var headers = getHeaders_(resourceSheet);
+  if (headers.indexOf('Body') < 0 || headers.indexOf('Resource ID') < 0) return 0;
+  var copied = 0;
+  readRecords_(pages).forEach(function(page) {
+    var id = text_(page['Page ID']);
+    if (!id || findRowNumber_(resourceSheet, 'Resource ID', id) > -1) return;
+    var body = page.Body === null || page.Body === undefined ? '' : String(page.Body);
+    var record = {
+      'Resource ID': id,
+      'Title': text_(page.Title),
+      'Category': 'Guide',
+      'Description': '',
+      'URL': '',
+      'Audience': text_(page.Audience) || 'all',
+      'Published': toBoolean_(page.Published),
+      'Sort Order': page['Sort Order'] === '' || page['Sort Order'] === undefined || page['Sort Order'] === null ? '' : Number(page['Sort Order']),
+      'Slug': text_(page.Slug),
+      'Body': body,
+      'Body Format': /<[a-z!/][^>]*>/i.test(body) ? 'html' : 'plain'
+    };
+    var row = headers.map(function(header) {
+      return Object.prototype.hasOwnProperty.call(record, header) ? safeCell_(record[header]) : '';
+    });
+    resourceSheet.getRange(resourceSheet.getLastRow() + 1, 1, 1, headers.length).setValues([row]);
+    copied++;
+  });
+  return copied;
+}
+
+function assertSafeResourceHtml_(html) {
+  var text = String(html || '');
+  if (/<\s*script/i.test(text) || /javascript\s*:/i.test(text) || /\son[a-z]+\s*=/i.test(text)) {
+    throw new Error('Resource HTML cannot include scripts or event handlers.');
+  }
 }
 
 function getAdminRecords(entity) {
@@ -463,6 +528,7 @@ function getAdminRecords(entity) {
       return { 'Cohort': item.id, 'SheetName': item.sheetName, 'Status': item.status || 'Active' };
     })
   };
+  if (entity === 'resources') migrateResourcesSheet_();
   var sheet = getSpreadsheet_().getSheetByName(config.sheet);
   if (sheet) assertSheetSchema_(sheet, entity);
   return {
@@ -507,6 +573,7 @@ function saveAdminRecord(entity, record, originalKey) {
   if (config.internal) throw new Error('Internal sheets cannot be managed through Admin.');
   if (entity === 'cohorts') return saveCohort_(user, record || {}, originalKey);
   if (entity === 'cohortMembers') throw new Error('Use the cohort student editor.');
+  if (entity === 'resources') migrateResourcesSheet_();
   var existingSheet = getSpreadsheet_().getSheetByName(config.sheet);
   if (existingSheet) assertSheetSchema_(existingSheet, entity);
 
@@ -531,6 +598,14 @@ function saveAdminRecord(entity, record, originalKey) {
     validateEmail_(values.EMAIL, 'Staff email');
     if (!toBoolean_(values.isStaff) && !toBoolean_(values.isSupervisor) && !toBoolean_(values.isLead) && !toBoolean_(values.isCoordinator) && !toBoolean_(values.isAdmin)) {
       throw new Error('Select at least one staff role.');
+    }
+  }
+  if (entity === 'resources') {
+    if (text_(values.Body).length > 40000) throw new Error('Body must be 40,000 characters or fewer.');
+    values['Body Format'] = text_(values['Body Format']).toLowerCase() || 'plain';
+    if (values['Body Format'] === 'html') assertSafeResourceHtml_(values.Body);
+    if (toBoolean_(values.Published) && !text_(values.URL) && !text_(values.Body)) {
+      throw new Error('A published resource needs a URL or a body.');
     }
   }
 
