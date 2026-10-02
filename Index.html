@@ -2725,7 +2725,7 @@
         const editor = document.getElementById('record-editor');
         editor.innerHTML = `<section class="editor"><h2>${editing ? 'Edit record' : 'Add record'}</h2>
           ${entity === 'studentUsers' && !editing ? '<div id="cohort-import"></div>' : ''}
-          <form id="record-form"><div class="form-grid">${fields.filter(function(field) { return field.form !== false; }).map(function(field) { return fieldMarkup(field, record ? record[field.name] : '', editing); }).join('')}</div>
+          <form id="record-form"><div class="form-grid">${fields.filter(function(field) { return field.form !== false; }).map(function(field) { return fieldMarkup(field, record ? record[field.name] : undefined, editing); }).join('')}</div>
             <div class="toolbar"><button class="button" type="submit">Save</button><button class="button secondary" type="button" id="cancel-edit">Cancel</button></div></form></section>`;
         const form = document.getElementById('record-form');
         form.addEventListener('submit', saveForm);
