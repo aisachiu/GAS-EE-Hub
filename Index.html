@@ -191,6 +191,23 @@
       .form-panel { width: min(720px, 100%); max-height: calc(100vh - 24px); overflow: auto; padding: 14px; background: white; border-top: 4px solid var(--gold); }
       .doc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
       .milestone-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
+      .activity-panel { max-width: 860px; }
+      .activity-filters { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
+      .activity-filters button { border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; color: #3d4d5c; background: white; font-size: 12px; font-weight: 700; }
+      .activity-filters button[aria-pressed="true"] { color: var(--ink); background: #e7f1f8; border-color: transparent; }
+      .activity-list { display: grid; gap: 7px; }
+      .activity-item { background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--ink); }
+      .activity-item.done { border-left-color: var(--green); }
+      .activity-item.failed { border-left-color: var(--coral); }
+      .activity-item.started { border-left-color: var(--gold); }
+      .activity-toggle { display: grid; grid-template-columns: 118px minmax(0, 1fr) auto; gap: 10px; align-items: center; width: 100%; padding: 10px 12px; border: 0; background: transparent; color: inherit; text-align: left; }
+      .activity-when { color: var(--muted); font-size: 12px; font-weight: 700; }
+      .activity-toggle strong { display: block; font-size: 15px; }
+      .activity-toggle small { color: var(--muted); }
+      .activity-detail { margin: 0; padding: 0 12px 12px 140px; display: grid; gap: 6px; }
+      .activity-detail div { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 8px; }
+      .activity-detail dt { margin: 0; color: var(--muted); font-size: 12px; font-weight: 700; }
+      .activity-detail dd { margin: 0; }
       @media (max-width: 800px) { .tiles, .steps, .doc-grid { grid-template-columns: 1fr 1fr; } .topbar { flex-wrap: wrap; } }
       @media (max-width: 700px) {
         .topbar { align-items: flex-start; padding: 14px 16px; }
@@ -209,6 +226,10 @@
         .phase-heading { padding: 16px; }
         .phase-description { margin-inline: 16px; }
         .milestone-item { padding: 13px 16px; grid-template-columns: 24px minmax(0, 1fr); }
+        .activity-toggle { grid-template-columns: 1fr auto; }
+        .activity-when { grid-column: 1 / -1; }
+        .activity-detail { padding-left: 12px; }
+        .activity-detail div { grid-template-columns: 1fr; }
         .milestone-meta { grid-column: 2; text-align: left; }
         .journey-layout { grid-template-columns: 1fr; }
         .task-card { grid-template-columns: 24px minmax(0, 1fr); padding: 14px; }
@@ -497,10 +518,146 @@
           ['RPPF', home.links.rppf],
           ['Poster', home.links.poster]
         ];
-        document.getElementById('main').innerHTML = `<h2>My documents</h2><div class="doc-grid">${links.map(function(link) {
+        const main = document.getElementById('main');
+        main.innerHTML = `<h2>My documents</h2><div class="doc-grid">${links.map(function(link) {
           const url = safeUrl(link[1]);
           return `<article class="doc-card"><h3>${escapeHtml(link[0])}</h3><p class="muted">${url ? 'Shared with your supervisor.' : 'Not created yet.'}</p>${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">Open</a>` : ''}</article>`;
-        }).join('')}</div>`;
+        }).join('')}</div><section class="section-gap" id="my-activity" aria-label="Your activity"></section>`;
+        loadActivityDashboard(document.getElementById('my-activity'), callServer('getMyActivity'), {
+          heading: 'Your activity',
+          lede: 'Actions you took in the EE Hub.',
+          empty: 'Nothing here yet. Signing in, forms, to-dos, and questions you send will show up in this list.'
+        });
+      }
+
+      var ACTIVITY_PAGE_SIZE = 8;
+      var ACTIVITY_KINDS = [
+        ['all', 'All'],
+        ['sign-in', 'Sign-ins'],
+        ['form', 'Forms'],
+        ['task', 'Tasks'],
+        ['question', 'Questions'],
+        ['other', 'Other']
+      ];
+
+      function loadActivityDashboard(host, request, options) {
+        if (!host) return;
+        const copy = options || {};
+        host.innerHTML = '<p class="muted">Loading activity...</p>';
+        request.then(function(feed) {
+          if (!host.isConnected) return;
+          host.innerHTML = renderActivityDashboard(feed || {}, copy);
+          bindActivityDashboard(host);
+        }).catch(function(error) {
+          if (!host.isConnected) return;
+          host.innerHTML = '<p class="notice error">' + escapeHtml(error && error.message ? error.message : error) + '</p>';
+        });
+      }
+
+      function renderActivityDashboard(feed, options) {
+        const entries = feed.entries || [];
+        const counts = feed.counts || {};
+        const filters = ACTIVITY_KINDS.filter(function(kind) {
+          return kind[0] === 'all' ? entries.length : counts[kind[0]];
+        }).map(function(kind) {
+          const count = kind[0] === 'all' ? entries.length : counts[kind[0]];
+          return `<button type="button" data-activity-kind="${kind[0]}" aria-pressed="${kind[0] === 'all' ? 'true' : 'false'}">${kind[1]} <span>${count}</span></button>`;
+        }).join('');
+        const list = entries.map(function(entry) {
+          const details = entry.details && entry.details.length
+            ? entry.details.map(function(detail) {
+              return `<div><dt>${escapeHtml(detail.label)}</dt><dd>${escapeHtml(detail.value)}</dd></div>`;
+            }).join('')
+            : '<div><dt>Detail</dt><dd>No extra detail was recorded for this action.</dd></div>';
+          return `<article class="activity-item ${escapeHtml(entry.outcome || 'done')}" data-activity-item data-kind="${escapeHtml(entry.kind || 'other')}">
+            <button type="button" class="activity-toggle" aria-expanded="false">
+              <time class="activity-when" datetime="${escapeHtml(entry.at || '')}">${escapeHtml(formatActivityWhen(entry.at))}</time>
+              <span><strong>${escapeHtml(entry.title || 'Activity')}</strong><small>${escapeHtml(entry.summary || '')}</small></span>
+              <span class="chip ${entry.outcome === 'failed' ? 'bad' : (entry.outcome === 'done' ? 'ok' : '')}">${escapeHtml(activityOutcomeLabel(entry.outcome))}</span>
+            </button>
+            <dl class="activity-detail hidden">${details}</dl>
+          </article>`;
+        }).join('');
+        const truncated = feed.truncated ? `<p class="muted">Showing the latest ${entries.length} of ${feed.total}.</p>` : '';
+        return `<section class="activity-panel">
+          <p class="eyebrow">Activity</p>
+          <h2>${escapeHtml(options.heading || 'Activity')}</h2>
+          <p class="lede">${escapeHtml(options.lede || 'Actions this student took in the EE Hub.')}</p>
+          ${truncated}
+          ${entries.length ? `<div class="activity-filters" role="group" aria-label="Filter activity">${filters}</div>
+            <div class="activity-list">${list}</div>
+            <div class="empty hidden" data-activity-filter-empty>Nothing in this view.</div>
+            <button type="button" class="button secondary activity-more" data-activity-more>Show earlier activity</button>` : `<div class="empty">${escapeHtml(options.empty || 'Nothing here yet.')}</div>`}
+        </section>`;
+      }
+
+      function bindActivityDashboard(host) {
+        host.dataset.activityKind = 'all';
+        host.dataset.activityShown = String(ACTIVITY_PAGE_SIZE);
+        host.querySelectorAll('[data-activity-kind]').forEach(function(button) {
+          button.addEventListener('click', function() {
+            host.dataset.activityKind = button.dataset.activityKind;
+            host.dataset.activityShown = String(ACTIVITY_PAGE_SIZE);
+            host.querySelectorAll('[data-activity-kind]').forEach(function(other) {
+              other.setAttribute('aria-pressed', other === button ? 'true' : 'false');
+            });
+            applyActivityView(host);
+          });
+        });
+        host.querySelectorAll('.activity-toggle').forEach(function(button) {
+          button.addEventListener('click', function() {
+            const detail = button.parentElement.querySelector('.activity-detail');
+            const open = button.getAttribute('aria-expanded') === 'true';
+            button.setAttribute('aria-expanded', open ? 'false' : 'true');
+            if (detail) detail.classList.toggle('hidden', open);
+          });
+        });
+        const more = host.querySelector('[data-activity-more]');
+        if (more) more.addEventListener('click', function() {
+          host.dataset.activityShown = String(Number(host.dataset.activityShown || ACTIVITY_PAGE_SIZE) + ACTIVITY_PAGE_SIZE);
+          applyActivityView(host);
+        });
+        applyActivityView(host);
+      }
+
+      function applyActivityView(host) {
+        const kind = host.dataset.activityKind || 'all';
+        const shown = Number(host.dataset.activityShown || ACTIVITY_PAGE_SIZE);
+        let matches = 0;
+        host.querySelectorAll('[data-activity-item]').forEach(function(item) {
+          const include = kind === 'all' || item.dataset.kind === kind;
+          if (!include) {
+            item.classList.add('hidden');
+            return;
+          }
+          item.classList.toggle('hidden', matches >= shown);
+          matches += 1;
+        });
+        const more = host.querySelector('[data-activity-more]');
+        if (more) {
+          const left = matches - shown;
+          more.classList.toggle('hidden', left <= 0);
+          more.textContent = left > 0 ? 'Show earlier activity (' + left + ')' : 'Show earlier activity';
+        }
+        const empty = host.querySelector('[data-activity-filter-empty]');
+        if (empty) empty.classList.toggle('hidden', matches !== 0);
+      }
+
+      function activityOutcomeLabel(outcome) {
+        if (outcome === 'failed') return 'Not saved';
+        if (outcome === 'started') return 'Started';
+        if (outcome === 'info') return 'Recorded';
+        return 'Saved';
+      }
+
+      function formatActivityWhen(value) {
+        const text = String(value || '');
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
+        if (dateOnly) return Number(dateOnly[3]) + ' ' + months[Number(dateOnly[2]) - 1] + ' ' + dateOnly[1];
+        const stamp = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/.exec(text);
+        if (!stamp) return text || '—';
+        return Number(stamp[3]) + ' ' + months[Number(stamp[2]) - 1] + ' ' + stamp[1] + ', ' + stamp[4] + ':' + stamp[5];
       }
 
       function bindFormButtons(main) {
@@ -817,8 +974,14 @@
           html += '</div></div>';
         });
         if (lastPhase) html += '</section>';
+        html += '<section class="section-gap" id="student-activity" aria-label="Student activity"></section>';
         main.innerHTML = html;
         document.getElementById('staff-back').addEventListener('click', function() { state.staffStudent = null; renderStaffHome(); });
+        loadActivityDashboard(document.getElementById('student-activity'), callServer('getStudentActivity', student.email, state.cohortId), {
+          heading: 'Activity',
+          lede: 'Actions ' + (student.displayName || 'this student') + ' took in the EE Hub.',
+          empty: 'Nothing here yet. Actions this student takes will show up in this list.'
+        });
         main.querySelectorAll('[data-decide]').forEach(function(button) {
           button.addEventListener('click', function() {
             const action = button.dataset.decide;
