@@ -1,18 +1,89 @@
-var TICKET_CATEGORIES = [
-  { name: 'Subject & Methodology', route: 'supervisor', chip: 'c-sm' },
-  { name: 'Citations', route: 'supervisor', chip: 'c-cit' },
-  { name: 'Ethics', route: 'coordinator', chip: 'c-eth' },
-  { name: 'Extensions', route: 'coordinator', chip: 'c-ext' },
-  { name: 'Technical', route: 'coordinator', chip: 'c-tech' }
-];
 var TICKET_STATUSES = ['Open', 'In Progress', 'Resolved', 'Closed'];
+var TICKET_CATEGORY_CHIPS = ['c-sm', 'c-cit', 'c-eth', 'c-ext', 'c-tech'];
+var TICKET_CATEGORY_DEFAULTS = [
+  { name: 'Subject & Methodology', route: 'supervisor', sort: 1 },
+  { name: 'Citations', route: 'supervisor', sort: 2 },
+  { name: 'Ethics', route: 'coordinator', sort: 3 },
+  { name: 'Extensions', route: 'coordinator', sort: 4 },
+  { name: 'Technical', route: 'coordinator', sort: 5 }
+];
+
+function ticketChip_(name) {
+  var known = {
+    'Subject & Methodology': 'c-sm',
+    'Citations': 'c-cit',
+    'Ethics': 'c-eth',
+    'Extensions': 'c-ext',
+    'Technical': 'c-tech'
+  };
+  if (known[name]) return known[name];
+  var hash = 0;
+  var source = String(name || '');
+  for (var index = 0; index < source.length; index++) hash = ((hash << 5) - hash + source.charCodeAt(index)) | 0;
+  return TICKET_CATEGORY_CHIPS[Math.abs(hash) % TICKET_CATEGORY_CHIPS.length];
+}
+
+function seedDefaultTicketCategories_() {
+  var sheet = getOrCreateManagedSheet_(APP_TABLES.ticketCategories);
+  assertSheetSchema_(sheet, 'ticketCategories');
+  if (sheet.getLastRow() > 1) return;
+  var headers = getHeaders_(sheet);
+  var rows = TICKET_CATEGORY_DEFAULTS.map(function(category) {
+    var record = {
+      CategoryId: Utilities.getUuid(),
+      Name: category.name,
+      Route: category.route,
+      SortOrder: category.sort,
+      Active: true
+    };
+    return headers.map(function(header) {
+      var value = record[header];
+      return typeof value === 'string' ? safeCell_(value) : value;
+    });
+  });
+  sheet.getRange(2, 1, rows.length, headers.length).setValues(rows);
+}
+
+function readTicketCategories_() {
+  seedDefaultTicketCategories_();
+  var sheet = getSpreadsheet_().getSheetByName(APP_TABLES.ticketCategories.sheet);
+  if (!sheet || sheet.getLastRow() < 2) return [];
+  assertSheetSchema_(sheet, 'ticketCategories');
+  return readRecords_(sheet).map(function(record) {
+    return {
+      id: text_(record.CategoryId),
+      name: text_(record.Name),
+      route: text_(record.Route).toLowerCase(),
+      sortOrder: Number(record.SortOrder) || 0,
+      active: toBoolean_(record.Active)
+    };
+  }).filter(function(category) {
+    return category.name && (category.route === 'supervisor' || category.route === 'coordinator');
+  }).sort(function(left, right) {
+    return left.sortOrder - right.sortOrder || left.name.localeCompare(right.name);
+  });
+}
 
 function ticketCategory_(name) {
   var wanted = text_(name);
-  for (var index = 0; index < TICKET_CATEGORIES.length; index++) {
-    if (TICKET_CATEGORIES[index].name === wanted) return TICKET_CATEGORIES[index];
+  var categories = readTicketCategories_();
+  for (var index = 0; index < categories.length; index++) {
+    if (categories[index].active && categories[index].name === wanted) return categories[index];
   }
   return null;
+}
+
+function validateTicketCategory_(values, originalKey) {
+  values.Name = text_(values.Name);
+  values.Route = text_(values.Route).toLowerCase();
+  if (values.Name.length > 80) throw new Error('Category name must be 80 characters or fewer.');
+  if (values.Active === undefined || values.Active === '') values.Active = true;
+  else values.Active = toBoolean_(values.Active);
+  var key = text_(originalKey || values.CategoryId);
+  readTicketCategories_().forEach(function(category) {
+    if (key && category.id === key) return;
+    if (category.name.toLowerCase() === values.Name.toLowerCase()) throw new Error('A ticket category with this name already exists.');
+  });
 }
 
 function textHash_(value) {
@@ -66,8 +137,8 @@ function routeLabel_(ticket) {
 }
 
 function publicCategories_() {
-  return TICKET_CATEGORIES.map(function(item) {
-    return { name: item.name, route: item.route, chip: item.chip };
+  return readTicketCategories_().filter(function(item) { return item.active; }).map(function(item) {
+    return { name: item.name, route: item.route, chip: ticketChip_(item.name) };
   });
 }
 
@@ -146,10 +217,40 @@ function studentTicketNotice_(email) {
   var unread = readAllTickets_().filter(function(ticket) {
     return ticket.studentId === wanted && ticket.studentUnread;
   }).sort(function(left, right) { return right.lastUpdated.localeCompare(left.lastUpdated); });
-  return { count: unread.length, title: unread.length ? unread[0].title : '' };
+  return {
+    count: unread.length,
+    title: unread.length ? unread[0].title : '',
+    tickets: unread.slice(0, 20).map(function(ticket) {
+      return { ticketId: ticket.ticketId, title: ticket.title, category: ticket.category, lastUpdated: ticket.lastUpdated };
+    })
+  };
 }
 
-function staffCanSeeTicket_(user, view, ticket) {
+function placementForTicket_(studentId, placements) {
+  var email = normalizeEmail_(studentId);
+  if (placements) return placements[email] || null;
+  return findStudentPlacement_(email);
+}
+
+function staffUnreadNotices_(user, view, placements) {
+  var unread = queueTickets_(user, view, placements).filter(function(ticket) { return ticket.staffUnread; });
+  unread.sort(function(left, right) { return right.lastUpdated.localeCompare(left.lastUpdated); });
+  return {
+    count: unread.length,
+    tickets: unread.slice(0, 20).map(function(ticket) {
+      var placement = placementForTicket_(ticket.studentId, placements);
+      return {
+        ticketId: ticket.ticketId,
+        title: ticket.title,
+        category: ticket.category,
+        displayName: placement ? placement.displayName : ticket.studentId,
+        lastUpdated: ticket.lastUpdated
+      };
+    })
+  };
+}
+
+function staffCanSeeTicket_(user, view, ticket, placements) {
   if (view === 'coordinator') {
     if (!user.permissions.canAdmin) return false;
     if (ticket.route === 'coordinator') return true;
@@ -159,15 +260,15 @@ function staffCanSeeTicket_(user, view, ticket) {
     if (!user.permissions.isSupervisor) return false;
     if (ticket.route !== 'supervisor') return false;
     if (ticket.assignee && ticket.assignee === user.email) return true;
-    var placement = findStudentPlacement_(ticket.studentId);
+    var placement = placementForTicket_(ticket.studentId, placements);
     return !!(placement && placement.supervisorId === user.email);
   }
   return false;
 }
 
-function queueTickets_(user, view) {
+function queueTickets_(user, view, placements) {
   if (view !== 'supervisor' && view !== 'coordinator') return [];
-  return readAllTickets_().filter(function(ticket) { return staffCanSeeTicket_(user, view, ticket); });
+  return readAllTickets_().filter(function(ticket) { return staffCanSeeTicket_(user, view, ticket, placements); });
 }
 
 function sortTickets_(tickets, unreadKey) {

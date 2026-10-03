@@ -4,7 +4,10 @@ var APP_TABLES = {
     fields: [
       { name: 'Cohort', type: 'text', required: true, key: true },
       { name: 'SheetName', type: 'text', editable: false },
-      { name: 'Status', type: 'select', options: ['Active', 'Inactive'] }
+      { name: 'Status', type: 'select', options: ['Active', 'Inactive'] },
+      { name: 'DriveRootFolderId', type: 'text', editable: false, table: false, form: false },
+      { name: 'FolderPrefix', type: 'text', editable: false, table: false, form: false },
+      { name: 'FolderSuffix', type: 'text', editable: false, table: false, form: false }
     ]
   },
   milestoneTemplates: {
@@ -92,6 +95,16 @@ var APP_TABLES = {
       { name: 'SortOrder', type: 'number' }
     ]
   },
+  ticketCategories: {
+    sheet: 'TICKET_CATEGORIES',
+    fields: [
+      { name: 'CategoryId', type: 'text', key: true, generated: true },
+      { name: 'Name', type: 'text', required: true },
+      { name: 'Route', type: 'select', required: true, label: 'Who they message', options: ['supervisor', 'coordinator'], optionLabels: ["The student's supervisor", 'EE Coordinator'] },
+      { name: 'SortOrder', type: 'number', label: 'Sort order' },
+      { name: 'Active', type: 'checkbox', defaultValue: true }
+    ]
+  },
   cohortMembers: {
     sheetPattern: 'COHORT: [Cohort]',
     fields: [
@@ -132,7 +145,9 @@ var APP_TABLES = {
       { name: 'Description', type: 'textarea', table: false },
       { name: 'DueDate', type: 'date' },
       { name: 'Status', type: 'select', required: true, options: ['Pending', 'In Progress', 'Completed'] },
-      { name: 'LastUpdated', type: 'datetime', required: true }
+      { name: 'LastUpdated', type: 'datetime', required: true },
+      { name: 'CreatedBy', type: 'email', validator: 'email' },
+      { name: 'UpdatedBy', type: 'email', validator: 'email' }
     ]
   },
   auditLogs: {
@@ -243,7 +258,10 @@ function getAdminSchema_(entity) {
       if (key !== 'validator' && key !== 'generated' && key !== 'serverDerived') result[key] = field[key];
     });
     if (field.options) {
-      result.options = field.options.map(function(option) { return { value: option, label: option }; });
+      result.options = field.options.map(function(option, index) {
+        var label = field.optionLabels && field.optionLabels[index] ? field.optionLabels[index] : option;
+        return { value: option, label: label };
+      });
     }
     if (field.optionsFrom === 'phases') {
       var phaseSheet = getSpreadsheet_().getSheetByName(APP_TABLES.phases.sheet);
@@ -259,6 +277,7 @@ function getAdminSchema_(entity) {
 }
 
 function getTableSchemaReport() {
+  ensureCohortDriveColumns_();
   var spreadsheet = getSpreadsheet_();
   var sheets = [];
   Object.keys(APP_TABLES).forEach(function(entity) {
@@ -340,10 +359,11 @@ var AUDIT_LOG_HEADERS = getTableHeaders_('auditLogs');
 var ACTION_ITEM_STATUSES = ['Pending', 'In Progress', 'Completed'];
 
 function getAppBootstrap() {
+  var quotes = loadingQuotePayload_();
   try {
     var user = getCurrentUser_();
     AuditLog.record('LOGIN_SUCCESS', { role: user.role }, user.email);
-    return { user: user };
+    return { user: user, quote: quotes.quote, quotes: quotes.quotes };
   } catch (error) {
     var email = getActiveEmail_();
     try {
@@ -351,8 +371,120 @@ function getAppBootstrap() {
     } catch (auditError) {
       console.error('Unable to audit denied login', auditError);
     }
-    return { user: null };
+    return { user: null, quote: quotes.quote, quotes: quotes.quotes };
   }
+}
+
+var QUOTE_DAY_KEY = 'EE_QUOTE_DAY';
+var QUOTE_SET_KEY = 'EE_QUOTE_SET';
+
+function builtinQuotes_() {
+  return [
+    'A clear question is the start of a strong essay.',
+    'Write the next sentence. The essay grows one line at a time.',
+    'Revision is where good thinking becomes clear writing.',
+    'Small steady steps finish a long project.',
+    'Read closely, then write in your own words.',
+    'A draft is a place to think, not a final verdict.',
+    'Keep your sources close and your claims careful.',
+    'Progress is a page, a note, or a better question.',
+    'Perseverance turns a rough idea into a finished essay.',
+    'Ask for feedback, then make the work more precise.'
+  ];
+}
+
+function quoteDayStamp_() {
+  var now = new Date();
+  var month = now.getMonth() + 1;
+  var day = now.getDate();
+  return now.getFullYear() + '-' + (month < 10 ? '0' : '') + month + '-' + (day < 10 ? '0' : '') + day;
+}
+
+function parseStoredQuotes_(raw) {
+  if (!raw) return [];
+  try {
+    var parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map(function(line) { return text_(line); }).filter(Boolean);
+  } catch (error) {
+    return [];
+  }
+}
+
+function readQuotePool_() {
+  var fallback = builtinQuotes_();
+  var sheet = null;
+  try {
+    sheet = getSpreadsheet_().getSheetByName('Quotations');
+  } catch (error) {
+    return fallback;
+  }
+  if (!sheet || sheet.getLastRow() < 1) return fallback;
+  var data = sheet.getDataRange().getValues();
+  if (!data.length) return fallback;
+  var headers = data[0].map(function(header) { return text_(header).toLowerCase(); });
+  var named = ['quote', 'quotation', 'text', 'line'];
+  var column = 0;
+  var startRow = 0;
+  for (var index = 0; index < headers.length; index++) {
+    if (named.indexOf(headers[index]) >= 0) {
+      column = index;
+      startRow = 1;
+      break;
+    }
+  }
+  var pool = [];
+  for (var rowIndex = startRow; rowIndex < data.length; rowIndex++) {
+    var line = text_(data[rowIndex][column]);
+    if (line) pool.push(line);
+  }
+  return pool.length ? pool : fallback;
+}
+
+function sampleQuotes_(pool, count) {
+  var copy = pool.slice();
+  var sample = [];
+  var limit = Math.min(count, copy.length);
+  for (var index = 0; index < limit; index++) {
+    var pick = Math.floor(Math.random() * copy.length);
+    sample.push(copy.splice(pick, 1)[0]);
+  }
+  return sample;
+}
+
+function activeLoadingQuotes_() {
+  var today = quoteDayStamp_();
+  var props = null;
+  var storedDay = '';
+  var storedRaw = '';
+  try {
+    props = PropertiesService.getScriptProperties();
+    storedDay = text_(props.getProperty(QUOTE_DAY_KEY));
+    storedRaw = props.getProperty(QUOTE_SET_KEY) || '';
+  } catch (error) {
+    props = null;
+  }
+  var quotes = parseStoredQuotes_(storedRaw);
+  if (storedDay === today && quotes.length) return quotes;
+  quotes = sampleQuotes_(readQuotePool_(), 10);
+  if (props) {
+    try {
+      props.setProperty(QUOTE_DAY_KEY, today);
+      props.setProperty(QUOTE_SET_KEY, JSON.stringify(quotes));
+    } catch (writeError) { /* a quote can still be shown for this request */ }
+  }
+  return quotes.length ? quotes : builtinQuotes_();
+}
+
+function loadingQuotePayload_() {
+  var quotes = [];
+  try { quotes = activeLoadingQuotes_(); } catch (error) { quotes = builtinQuotes_(); }
+  if (!quotes.length) quotes = builtinQuotes_();
+  return { quote: quotes[Math.floor(Math.random() * quotes.length)], quotes: quotes };
+}
+
+function getLoadingQuote() {
+  return loadingQuotePayload_();
 }
 
 function getCohorts() {
@@ -529,6 +661,7 @@ function getAdminRecords(entity) {
     })
   };
   if (entity === 'resources') migrateResourcesSheet_();
+  if (entity === 'ticketCategories') seedDefaultTicketCategories_();
   var sheet = getSpreadsheet_().getSheetByName(config.sheet);
   if (sheet) assertSheetSchema_(sheet, entity);
   return {
@@ -608,6 +741,7 @@ function saveAdminRecord(entity, record, originalKey) {
       throw new Error('A published resource needs a URL or a body.');
     }
   }
+  if (entity === 'ticketCategories') validateTicketCategory_(values, originalKey);
 
   var key = getTableKey_(entity);
   var keyField = getFieldConfig_(entity, key);
@@ -939,11 +1073,23 @@ function getSpreadsheet_() {
   return spreadsheet;
 }
 
+function ensureCohortDriveColumns_() {
+  var sheet = getSpreadsheet_().getSheetByName(APP_TABLES.cohorts.sheet);
+  if (!sheet || sheet.getLastRow() < 1) return [];
+  var expected = ['DriveRootFolderId', 'FolderPrefix', 'FolderSuffix'];
+  var actual = getHeaders_(sheet);
+  var missing = expected.filter(function(header) { return actual.indexOf(header) < 0; });
+  if (!missing.length) return [];
+  sheet.getRange(1, actual.length + 1, 1, missing.length).setValues([missing]);
+  return missing;
+}
+
 function listCohorts_(includeInactive) {
   var spreadsheet = getSpreadsheet_();
   var registry = spreadsheet.getSheetByName('COHORTS');
   var entries = {};
   if (registry) {
+    ensureCohortDriveColumns_();
     assertSheetSchema_(registry, 'cohorts');
   }
   if (registry && registry.getLastRow() > 1) {
@@ -980,6 +1126,7 @@ function getCohortSheet_(cohortId) {
 
 function saveCohort_(user, values, originalKey) {
   var cohortId = text_(values.Cohort);
+  ensureCohortDriveColumns_();
   var existingRegistry = getSpreadsheet_().getSheetByName(APP_TABLES.cohorts.sheet);
   if (existingRegistry) assertSheetSchema_(existingRegistry, 'cohorts');
   validateRecordFields_('cohorts', values, originalKey);
@@ -993,8 +1140,18 @@ function saveCohort_(user, values, originalKey) {
     var rowNumber = findRowNumber_(sheet, getTableKey_('cohorts'), cohortId);
     if (!originalKey && rowNumber > 0) throw new Error('This cohort already exists.');
     ensureCohortSheet_(cohortId);
-    var rowValues = { Cohort: cohortId, SheetName: sheetName, Status: text_(values.Status) || 'Active' };
-    var row = headers.map(function(header) { return rowValues[header] || ''; });
+    var existing = rowNumber > 0 ? findRecordByValue_(sheet, 'Cohort', cohortId) : null;
+    var rowValues = {
+      Cohort: cohortId,
+      SheetName: sheetName,
+      Status: text_(values.Status) || 'Active',
+      DriveRootFolderId: existing ? text_(existing.DriveRootFolderId) : '',
+      FolderPrefix: existing ? preservedDriveText_(existing.FolderPrefix) : '',
+      FolderSuffix: existing ? preservedDriveText_(existing.FolderSuffix) : ''
+    };
+    var row = headers.map(function(header) {
+      return Object.prototype.hasOwnProperty.call(rowValues, header) ? rowValues[header] : '';
+    });
     if (rowNumber > 0) sheet.getRange(rowNumber, 1, 1, row.length).setValues([row]);
     else sheet.getRange(sheet.getLastRow() + 1, 1, 1, row.length).setValues([row]);
     return { key: cohortId };
@@ -1153,6 +1310,11 @@ function toBoolean_(value) {
 function safeCell_(value) {
   if (typeof value === 'boolean' || typeof value === 'number' || value instanceof Date) return value;
   var stringValue = text_(value);
+  return /^[=+@-]/.test(stringValue) ? "'" + stringValue : stringValue;
+}
+function preservedDriveText_(value) {
+  var stringValue = String(value === null || value === undefined ? '' : value);
+  if (stringValue.charAt(0) === "'" && stringValue.length > 1 && /^[=+@-]/.test(stringValue.charAt(1))) stringValue = stringValue.slice(1);
   return /^[=+@-]/.test(stringValue) ? "'" + stringValue : stringValue;
 }
 function validateEmail_(value, label) {

@@ -42,9 +42,14 @@ function getStudentActionItems_(studentEmail, user) {
   });
 }
 
-function addStudentTodo(title, phaseId) {
-  var user = requireUser_('ADD_STUDENT_TODO');
-  if (user.role !== 'student') denyAccess_(user, 'ADD_STUDENT_TODO', 'Student access required.');
+function stampActionItemActors_(record, actorEmail, creating) {
+  var email = normalizeEmail_(actorEmail);
+  if (creating) record.CreatedBy = email;
+  record.UpdatedBy = email;
+  return record;
+}
+
+function prepareStudentTodoInput_(title, phaseId) {
   var taskTitle = text_(title);
   if (!taskTitle) throw new Error('To-Do title is required.');
   if (taskTitle.length > 240) throw new Error('To-Do title must be 240 characters or fewer.');
@@ -53,24 +58,62 @@ function addStudentTodo(title, phaseId) {
     var knownPhase = findRecordByValue_(getSpreadsheet_().getSheetByName(APP_TABLES.phases.sheet), 'phaseId', phase);
     if (!knownPhase || !toBoolean_(knownPhase.active)) throw new Error('Choose an active phase for this to-do.');
   }
+  return { title: taskTitle, phase: phase };
+}
 
-  return runAuditedMutation_(user, 'ADD_STUDENT_TODO', { studentId: user.email, phaseId: phase }, function() {
+function addStudentTodo(title, phaseId) {
+  var user = requireUser_('ADD_STUDENT_TODO');
+  if (user.role !== 'student') denyAccess_(user, 'ADD_STUDENT_TODO', 'Student access required.');
+  var input = prepareStudentTodoInput_(title, phaseId);
+
+  return runAuditedMutation_(user, 'ADD_STUDENT_TODO', { studentId: user.email, phaseId: input.phase }, function() {
     var sheet = getRequiredActionItemsSheet_();
-    var values = {
+    var values = stampActionItemActors_({
       TaskId: createActionItemId_(),
       StudentId: user.email,
       CreatorType: 'Student',
       TemplateId: '',
-      PhaseId: phase,
-      Title: taskTitle,
+      PhaseId: input.phase,
+      Title: input.title,
       Description: '',
       DueDate: '',
       Status: 'Pending',
       LastUpdated: new Date()
-    };
+    }, user.email, true);
     appendActionItems_(sheet, [values]);
     invalidateActionItemCache_(user.email);
     return { TaskId: values.TaskId };
+  });
+}
+
+function addStaffStudentTodo(title, phaseId, studentEmail, cohortId, viewAs) {
+  var user = requireStaff_('ADD_STAFF_STUDENT_TODO');
+  var input = prepareStudentTodoInput_(title, phaseId);
+  var context = staffStudentContext_(user, studentEmail, cohortId, 'ADD_STAFF_STUDENT_TODO', viewAs);
+  if (!staffMayAddStudentTodo_(user, context)) {
+    denyAccess_(user, 'ADD_STAFF_STUDENT_TODO', 'You cannot add a to-do for this student.');
+  }
+  var studentId = context.email;
+
+  return runAuditedMutation_(user, 'ADD_STAFF_STUDENT_TODO', {
+    studentId: studentId, phaseId: input.phase, cohort: text_(cohortId)
+  }, function() {
+    var sheet = getRequiredActionItemsSheet_();
+    var values = stampActionItemActors_({
+      TaskId: createActionItemId_(),
+      StudentId: studentId,
+      CreatorType: 'Student',
+      TemplateId: '',
+      PhaseId: input.phase,
+      Title: input.title,
+      Description: '',
+      DueDate: '',
+      Status: 'Pending',
+      LastUpdated: new Date()
+    }, user.email, true);
+    appendActionItems_(sheet, [values]);
+    invalidateActionItemCache_(studentId);
+    return { TaskId: values.TaskId, StudentId: studentId };
   });
 }
 
@@ -136,6 +179,7 @@ function updateStudentTodo(taskId, title, description) {
     item.record.Title = nextTitle;
     item.record.Description = text_(description);
     item.record.LastUpdated = new Date();
+    stampActionItemActors_(item.record, user.email, false);
     writeActionItem_(item);
     invalidateActionItemCache_(user.email);
     return { saved: true };
@@ -153,6 +197,7 @@ function setActionItemDueDate(taskId, dueDate) {
     requireOwnedStudentTodo_(item, user);
     item.record.DueDate = parsedDate;
     item.record.LastUpdated = new Date();
+    stampActionItemActors_(item.record, user.email, false);
     writeActionItem_(item);
     invalidateActionItemCache_(user.email);
     return { updated: true };
@@ -176,22 +221,25 @@ function repositionStudentTodo(taskId, targetTaskId, position) {
     var dayOffset = position === 'before' ? -1 : 1;
     task.record.DueDate = addDays_(targetDate, dayOffset);
     task.record.LastUpdated = new Date();
+    stampActionItemActors_(task.record, user.email, false);
     writeActionItem_(task);
     invalidateActionItemCache_(user.email);
     return { dueDate: serializable_(task.record.DueDate) };
   });
 }
 
-function setActionItemStatus(taskId, status, studentEmail, cohortId) {
+function setActionItemStatus(taskId, status, studentEmail, cohortId, viewAs) {
   var user = requireUser_('SET_ACTION_ITEM_STATUS');
   var targetStudentId = user.role === 'student' ? user.email : normalizeEmail_(studentEmail);
   var item = findActionItem_(taskId);
   if (normalizeEmail_(item.record.StudentId) !== targetStudentId) {
     denyAccess_(user, 'SET_ACTION_ITEM_STATUS', 'Task belongs to another student.');
   }
+  var staffContext = null;
   if (user.role === 'staff') {
-    if (!cohortId || !getCohortStudents(cohortId).some(function(student) { return student.email === targetStudentId; })) {
-      denyAccess_(user, 'SET_ACTION_ITEM_STATUS', 'Student is not in the selected cohort.');
+    staffContext = staffStudentContext_(user, targetStudentId, cohortId, 'SET_ACTION_ITEM_STATUS', viewAs);
+    if (text_(item.record.CreatorType) === 'Student') {
+      denyAccess_(user, 'SET_ACTION_ITEM_STATUS', 'Staff can only read student to-dos.');
     }
   } else if (user.role !== 'student' || targetStudentId !== user.email) {
     denyAccess_(user, 'SET_ACTION_ITEM_STATUS', 'Student access required.');
@@ -199,13 +247,20 @@ function setActionItemStatus(taskId, status, studentEmail, cohortId) {
 
   var statusField = getFieldConfig_('studentActionItems', 'Status');
   if (!statusField.options.some(function(option) { return option === status; })) throw new Error('Choose a valid task status.');
-  requireActionItemStatusPermission_(user, item.record);
+  if (staffContext) {
+    if (!staffMayUpdateSystemItem_(user, staffContext, item.record)) {
+      denyAccess_(user, 'SET_ACTION_ITEM_STATUS', 'You cannot update this milestone.');
+    }
+  } else {
+    requireActionItemStatusPermission_(user, item.record);
+  }
 
   return runAuditedMutation_(user, 'UPDATE_ACTION_ITEM_STATUS', {
     taskId: text_(taskId), studentId: targetStudentId, status: status
   }, function() {
     item.record.Status = status;
     item.record.LastUpdated = new Date();
+    stampActionItemActors_(item.record, user.email, false);
     writeActionItem_(item);
     invalidateActionItemCache_(targetStudentId);
     return { status: status };
@@ -276,7 +331,9 @@ function assignMilestonesToStudents(cohortId, selectedStudentIds, baselineAnchor
           Description: text_(template.milestoneDescription),
           DueDate: dueDate,
           Status: 'Pending',
-          LastUpdated: now
+          LastUpdated: now,
+          CreatedBy: user.email,
+          UpdatedBy: user.email
         }));
         existing[pairKey] = true;
       });
@@ -347,6 +404,7 @@ function syncStudentActionItemDates(studentId, cohortId) {
       if (!template) continue;
       row[actionMap.DueDate] = addDays_(anchorDate, -Number(template.offsetDays || 0));
       row[actionMap.LastUpdated] = now;
+      if (typeof actionMap.UpdatedBy === 'number') row[actionMap.UpdatedBy] = user.email;
       updated++;
     }
     if (updated) actionSheet.getRange(1, 1, actionData.length, actionHeaders.length).setValues(actionData);
