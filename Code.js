@@ -78,6 +78,16 @@ function createMissingSheets() {
     issues.push(String(error.message || error));
   }
 
+  var ticketSheet = spreadsheet.getSheetByName(APP_TABLES.tickets.sheet);
+  if (ticketSheet) {
+    try {
+      var addedShared = ensureTicketSharedColumn_();
+      if (addedShared.length) migrated.push('TICKETS columns: ' + addedShared.join(', '));
+    } catch (error) {
+      issues.push(String(error.message || error));
+    }
+  }
+
   var cohortRegistry = spreadsheet.getSheetByName(APP_TABLES.cohorts.sheet);
   if (cohortRegistry && cohortRegistry.getLastRow() > 1) {
     try {
