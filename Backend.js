@@ -222,9 +222,11 @@ var APP_TABLES = {
   },
   quotations: {
     sheet: 'Quotations',
-    internal: true,
     fields: [
-      { name: 'Quote', type: 'text', required: true }
+      { name: 'QuoteId', type: 'text', required: true, key: true },
+      { name: 'Display', type: 'text', required: true },
+      { name: 'Quote', type: 'text' },
+      { name: 'Author', type: 'text' }
     ]
   }
 };
@@ -431,13 +433,15 @@ function readQuotePool_() {
   if (!data.length) return fallback;
   var headers = data[0].map(function(header) { return text_(header).toLowerCase(); });
   var named = ['quote', 'quotation', 'text', 'line'];
-  var column = 0;
-  var startRow = 0;
-  for (var index = 0; index < headers.length; index++) {
-    if (named.indexOf(headers[index]) >= 0) {
-      column = index;
-      startRow = 1;
-      break;
+  var column = headers.indexOf('display');
+  var startRow = column >= 0 ? 1 : 0;
+  if (column < 0) {
+    for (var index = 0; index < headers.length; index++) {
+      if (named.indexOf(headers[index]) >= 0) {
+        column = index;
+        startRow = 1;
+        break;
+      }
     }
   }
   var pool = [];
