@@ -219,6 +219,13 @@ var APP_TABLES = {
       { name: 'Body', type: 'textarea', required: true },
       { name: 'CreatedAt', type: 'datetime', required: true }
     ]
+  },
+  quotations: {
+    sheet: 'Quotations',
+    internal: true,
+    fields: [
+      { name: 'Quote', type: 'text', required: true }
+    ]
   }
 };
 
