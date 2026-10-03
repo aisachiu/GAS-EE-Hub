@@ -205,7 +205,21 @@ var APP_TABLES = {
       { name: 'LastUpdated', type: 'datetime', required: true },
       { name: 'LastActor', type: 'email', required: true },
       { name: 'StudentUnread', type: 'checkbox' },
-      { name: 'StaffUnread', type: 'checkbox' }
+      { name: 'StaffUnread', type: 'checkbox' },
+      { name: 'Shared', type: 'checkbox', defaultValue: true }
+    ]
+  },
+  todoTemplates: {
+    sheet: 'TODO_TEMPLATES',
+    internal: true,
+    fields: [
+      { name: 'TemplateId', type: 'text', required: true, key: true },
+      { name: 'Title', type: 'text', required: true },
+      { name: 'Description', type: 'textarea', table: false },
+      { name: 'PhaseId', type: 'text' },
+      { name: 'Owner', type: 'email', required: true, validator: 'email' },
+      { name: 'SortOrder', type: 'number' },
+      { name: 'Active', type: 'checkbox', defaultValue: true }
     ]
   },
   ticketMessages: {
@@ -287,6 +301,7 @@ function getAdminSchema_(entity) {
 
 function getTableSchemaReport() {
   ensureCohortDriveColumns_();
+  ensureTicketsReady_();
   var spreadsheet = getSpreadsheet_();
   var sheets = [];
   Object.keys(APP_TABLES).forEach(function(entity) {
@@ -1082,6 +1097,24 @@ function getSpreadsheet_() {
   var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   if (!spreadsheet) throw new Error('This Apps Script project must be bound to the EE master spreadsheet.');
   return spreadsheet;
+}
+
+function ensureTicketSharedColumn_() {
+  var sheet = getSpreadsheet_().getSheetByName(APP_TABLES.tickets.sheet);
+  if (!sheet || sheet.getLastRow() < 1) return [];
+  var actual = getHeaders_(sheet);
+  if (actual.indexOf('Shared') >= 0) return [];
+  sheet.getRange(1, actual.length + 1).setValue('Shared');
+  return ['Shared'];
+}
+
+function ensureTicketsReady_() {
+  var sheet = getSpreadsheet_().getSheetByName(APP_TABLES.tickets.sheet);
+  if (!sheet) {
+    getOrCreateManagedSheet_(APP_TABLES.tickets);
+    return [];
+  }
+  return ensureTicketSharedColumn_();
 }
 
 function ensureCohortDriveColumns_() {

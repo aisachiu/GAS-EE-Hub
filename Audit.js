@@ -55,10 +55,15 @@ var ACTIVITY_TITLES = {
   UPDATE_ACTION_ITEM_STATUS: 'Updated a task',
   FORM_SUBMIT: 'Submitted a form',
   FORM_DRAFT: 'Saved a form draft',
-  TICKET_CREATE: 'Asked a question',
+  TICKET_CREATE: 'Sent a message',
   TICKET_REPLY: 'Sent a reply',
-  TICKET_READ: 'Opened a reply',
-  TICKET_STATUS: 'Changed a question status',
+  TICKET_READ: 'Opened a message',
+  TICKET_STATUS: 'Changed a message status',
+  TICKET_SHARE: 'Changed who can see a message',
+  NOTE_CREATE: 'Saved a note',
+  SAVE_TODO_TEMPLATE: 'Saved a template task',
+  DELETE_TODO_TEMPLATE: 'Removed a template task',
+  APPLY_TODO_TEMPLATE: 'Added a template task to a student',
   SAVE_COHORT_DRIVE_SETTINGS: 'Saved cohort Drive settings',
   CHECK_COHORT_DRIVE_FOLDERS: 'Checked student Drive folders',
   SYNC_COHORT_DRIVE_FOLDERS: 'Updated student Drive folders'
@@ -186,7 +191,7 @@ function activityOutcome_(phase, action) {
 function activityKind_(action) {
   if (action === 'LOGIN_SUCCESS' || action === 'ACCESS_DENIED') return 'sign-in';
   if (action.indexOf('FORM_') === 0) return 'form';
-  if (action.indexOf('TICKET_') === 0) return 'question';
+  if (action.indexOf('TICKET_') === 0 || action === 'NOTE_CREATE') return 'question';
   if (action.indexOf('TODO') >= 0 || action === 'SET_ACTION_ITEM_DUE_DATE' || action === 'UPDATE_ACTION_ITEM_STATUS' || action === 'REPOSITION_STUDENT_TODO') return 'task';
   return 'other';
 }
@@ -211,7 +216,10 @@ function activitySummary_(action, unpacked, taskTitle, milestoneTitle, outcome) 
     return taskTitle || status || 'Task status';
   }
   if (action === 'FORM_SUBMIT' || action === 'FORM_DRAFT') return milestoneTitle || text_(payload.milestoneId) || 'Form';
-  if (action.indexOf('TICKET_') === 0) return text_(payload.category) || 'Help question';
+  if (action === 'NOTE_CREATE') return 'Private note';
+  if (action === 'TICKET_SHARE') return payload.shared ? 'Shared message' : 'Private note';
+  if (action.indexOf('TICKET_') === 0) return text_(payload.category) || 'Message';
+  if (action === 'APPLY_TODO_TEMPLATE' || action === 'SAVE_TODO_TEMPLATE' || action === 'DELETE_TODO_TEMPLATE') return text_(payload.title) || 'Template task';
   return milestoneTitle || taskTitle || '';
 }
 

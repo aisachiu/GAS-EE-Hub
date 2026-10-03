@@ -82,7 +82,7 @@ function validateTicketCategory_(values, originalKey) {
   var key = text_(originalKey || values.CategoryId);
   readTicketCategories_().forEach(function(category) {
     if (key && category.id === key) return;
-    if (category.name.toLowerCase() === values.Name.toLowerCase()) throw new Error('A ticket category with this name already exists.');
+    if (category.name.toLowerCase() === values.Name.toLowerCase()) throw new Error('A message category with this name already exists.');
   });
 }
 
@@ -99,10 +99,29 @@ function ticketStamp_(value) {
 }
 
 function readAllTickets_() {
+  ensureTicketsReady_();
   var sheet = getSpreadsheet_().getSheetByName(APP_TABLES.tickets.sheet);
   if (!sheet || sheet.getLastRow() < 2) return [];
   assertSheetSchema_(sheet, 'tickets');
   return readRecords_(sheet).map(ticketFromRecord_);
+}
+
+function ticketIsShared_(record) {
+  var value = record.Shared;
+  if (value === '' || value === null || typeof value === 'undefined') return true;
+  return toBoolean_(value);
+}
+
+function ticketAuthorEmail_(ticket) {
+  if (text_(ticket.category) === 'Note') return normalizeEmail_(ticket.assignee);
+  return normalizeEmail_(ticket.studentId);
+}
+
+function studentCanSeeTicket_(email, ticket) {
+  var wanted = normalizeEmail_(email);
+  if (ticket.studentId !== wanted) return false;
+  if (ticket.shared) return true;
+  return text_(ticket.category) !== 'Note' && ticketAuthorEmail_(ticket) === wanted;
 }
 
 function ticketFromRecord_(record) {
@@ -119,11 +138,13 @@ function ticketFromRecord_(record) {
     lastUpdated: ticketStamp_(record.LastUpdated),
     lastActor: normalizeEmail_(record.LastActor),
     studentUnread: toBoolean_(record.StudentUnread),
-    staffUnread: toBoolean_(record.StaffUnread)
+    staffUnread: toBoolean_(record.StaffUnread),
+    shared: ticketIsShared_(record)
   };
 }
 
 function loadTicketRaw_(ticketId) {
+  ensureTicketsReady_();
   var sheet = getSpreadsheet_().getSheetByName(APP_TABLES.tickets.sheet);
   if (!sheet) return null;
   assertSheetSchema_(sheet, 'tickets');
@@ -215,7 +236,7 @@ function attachMessages_(tickets, includeEmail) {
 function studentTicketNotice_(email) {
   var wanted = normalizeEmail_(email);
   var unread = readAllTickets_().filter(function(ticket) {
-    return ticket.studentId === wanted && ticket.studentUnread;
+    return ticket.studentId === wanted && ticket.shared && ticket.studentUnread;
   }).sort(function(left, right) { return right.lastUpdated.localeCompare(left.lastUpdated); });
   return {
     count: unread.length,
@@ -251,6 +272,7 @@ function staffUnreadNotices_(user, view, placements) {
 }
 
 function staffCanSeeTicket_(user, view, ticket, placements) {
+  if (!ticket.shared) return false;
   if (view === 'coordinator') {
     if (!user.permissions.canAdmin) return false;
     if (ticket.route === 'coordinator') return true;
@@ -280,30 +302,31 @@ function sortTickets_(tickets, unreadKey) {
 
 function assertTicketFresh_(record, clientToken) {
   if (ticketStamp_(record.LastUpdated) !== String(clientToken || '')) {
-    throw new Error('This ticket changed in another tab. Reload it and try again.');
+    throw new Error('This message changed in another tab. Reload it and try again.');
   }
 }
 
 function requireTicketActor_(user, ticket, viewAs) {
   if (user.role === 'student') {
-    if (ticket.studentId !== user.email) denyAccess_(user, 'VIEW_TICKET', 'Students can only open their own questions.');
+    if (!studentCanSeeTicket_(user.email, ticket)) denyAccess_(user, 'VIEW_TICKET', 'Students can only open their own messages.');
     return 'student';
   }
   var view = normalizeStaffView_(user, viewAs);
-  if (!staffCanSeeTicket_(user, view, ticket)) denyAccess_(user, 'VIEW_TICKET', 'This question is not in your queue.');
+  if (!staffCanSeeTicket_(user, view, ticket)) denyAccess_(user, 'VIEW_TICKET', 'This message is not in your queue.');
   return view;
 }
 
 function assertTicketActor_(user, ticket, viewAs) {
   if (user.role === 'student') {
-    if (ticket.studentId !== user.email) throw new Error('You cannot update this question.');
+    if (!studentCanSeeTicket_(user.email, ticket)) throw new Error('You cannot update this message.');
     return;
   }
   var view = normalizeStaffView_(user, viewAs);
-  if (!staffCanSeeTicket_(user, view, ticket)) throw new Error('You cannot update this question.');
+  if (!staffCanSeeTicket_(user, view, ticket) && ticketAuthorEmail_(ticket) !== user.email) throw new Error('You cannot update this message.');
 }
 
 function writeManagedRow_(entity, values, keyName) {
+  if (entity === 'tickets') ensureTicketsReady_();
   var sheet = getOrCreateManagedSheet_(APP_TABLES[entity]);
   assertSheetSchema_(sheet, entity);
   var headers = getHeaders_(sheet);
@@ -333,13 +356,13 @@ function getTicketHub() {
   var user = requireUser_('VIEW_TICKETS');
   if (user.role !== 'student') denyAccess_(user, 'VIEW_TICKETS', 'Student access required.');
   var tickets = sortTickets_(readAllTickets_().filter(function(ticket) {
-    return ticket.studentId === user.email;
+    return studentCanSeeTicket_(user.email, ticket);
   }), 'studentUnread');
-  var notice = tickets.filter(function(ticket) { return ticket.studentUnread; });
+  var notice = tickets.filter(function(ticket) { return ticket.studentUnread && ticket.shared; });
   return {
     faqs: readPublishedFaqs_('student'),
     categories: publicCategories_(),
-    tickets: attachMessages_(tickets, false),
+    tickets: withShareControls_(attachMessages_(tickets, false), user),
     unreadCount: notice.length,
     unreadTitle: notice.length ? notice[0].title : ''
   };
@@ -347,7 +370,7 @@ function getTicketHub() {
 
 function createTicket(payload) {
   var user = requireUser_('TICKET_CREATE');
-  if (user.role !== 'student') denyAccess_(user, 'TICKET_CREATE', 'Students submit questions.');
+  if (user.role !== 'student') denyAccess_(user, 'TICKET_CREATE', 'Students send messages.');
   var input = payload || {};
   var category = ticketCategory_(input.category);
   if (!category) throw new Error('Choose a category.');
@@ -355,8 +378,8 @@ function createTicket(payload) {
   var body = text_(input.body);
   if (!title) throw new Error('Add a short subject.');
   if (title.length > 90) throw new Error('Subject must be 90 characters or fewer.');
-  if (!body) throw new Error('Write your question before sending.');
-  if (body.length > 2000) throw new Error('Questions must be 2,000 characters or fewer.');
+  if (!body) throw new Error('Write your message before sending.');
+  if (body.length > 2000) throw new Error('Messages must be 2,000 characters or fewer.');
   var placement = findStudentPlacement_(user.email);
   var assignee = category.route === 'supervisor' && placement ? placement.supervisorId : '';
   var now = new Date();
@@ -374,7 +397,8 @@ function createTicket(payload) {
     LastUpdated: now,
     LastActor: user.email,
     StudentUnread: false,
-    StaffUnread: true
+    StaffUnread: true,
+    Shared: true
   };
   return runAuditedMutation_(user, 'TICKET_CREATE', ticketAudit_(record, { bodyHash: textHash_(body) }), function() {
     writeManagedRow_('tickets', record, 'TicketId');
@@ -396,11 +420,11 @@ function replyTicket(ticketId, body, lastUpdated, viewAs) {
   if (!message) throw new Error('Write a message before sending.');
   if (message.length > 2000) throw new Error('Replies must be 2,000 characters or fewer.');
   var preview = loadTicketRaw_(ticketId);
-  if (!preview) throw new Error('This question no longer exists.');
+  if (!preview) throw new Error('This message no longer exists.');
   requireTicketActor_(user, ticketFromRecord_(preview), viewAs);
   return runAuditedMutation_(user, 'TICKET_REPLY', ticketAudit_(preview, { bodyHash: textHash_(message) }), function() {
     var current = loadTicketRaw_(ticketId);
-    if (!current) throw new Error('This question no longer exists.');
+    if (!current) throw new Error('This message no longer exists.');
     var ticket = ticketFromRecord_(current);
     assertTicketActor_(user, ticket, viewAs);
     assertTicketFresh_(current, lastUpdated);
@@ -432,14 +456,14 @@ function setTicketStatus(ticketId, status, lastUpdated, viewAs) {
   var nextStatus = text_(status);
   if (TICKET_STATUSES.indexOf(nextStatus) < 0) throw new Error('Choose a valid status.');
   var preview = loadTicketRaw_(ticketId);
-  if (!preview) throw new Error('This question no longer exists.');
+  if (!preview) throw new Error('This message no longer exists.');
   requireTicketActor_(user, ticketFromRecord_(preview), viewAs);
   if (text_(preview.Status) === nextStatus) {
     return { ticketId: text_(preview.TicketId), status: nextStatus, lastUpdated: ticketStamp_(preview.LastUpdated) };
   }
   return runAuditedMutation_(user, 'TICKET_STATUS', ticketAudit_(preview, { status: nextStatus }), function() {
     var current = loadTicketRaw_(ticketId);
-    if (!current) throw new Error('This question no longer exists.');
+    if (!current) throw new Error('This message no longer exists.');
     assertTicketActor_(user, ticketFromRecord_(current), viewAs);
     assertTicketFresh_(current, lastUpdated);
     var now = new Date();
@@ -456,14 +480,14 @@ function setTicketStatus(ticketId, status, lastUpdated, viewAs) {
 function markTicketRead(ticketId, lastUpdated, viewAs) {
   var user = requireUser_('TICKET_READ');
   var preview = loadTicketRaw_(ticketId);
-  if (!preview) throw new Error('This question no longer exists.');
+  if (!preview) throw new Error('This message no longer exists.');
   var ticket = ticketFromRecord_(preview);
   requireTicketActor_(user, ticket, viewAs);
   var flag = user.role === 'student' ? 'StudentUnread' : 'StaffUnread';
   if (!toBoolean_(preview[flag])) return { ticketId: ticket.ticketId, lastUpdated: ticket.lastUpdated, changed: false };
   return runAuditedMutation_(user, 'TICKET_READ', ticketAudit_(preview), function() {
     var current = loadTicketRaw_(ticketId);
-    if (!current) throw new Error('This question no longer exists.');
+    if (!current) throw new Error('This message no longer exists.');
     assertTicketActor_(user, ticketFromRecord_(current), viewAs);
     assertTicketFresh_(current, lastUpdated);
     if (!toBoolean_(current[flag])) return { ticketId: text_(current.TicketId), lastUpdated: ticketStamp_(current.LastUpdated), changed: false };
@@ -482,7 +506,7 @@ function getStaffTickets(viewAs) {
   var user = requireStaff_('VIEW_TICKETS');
   var view = normalizeStaffView_(user, viewAs);
   var tickets = sortTickets_(queueTickets_(user, view), 'staffUnread');
-  var named = attachMessages_(tickets, true).map(function(ticket) {
+  var named = withShareControls_(attachMessages_(tickets, true), user).map(function(ticket) {
     var placement = findStudentPlacement_(ticket.studentId);
     ticket.displayName = placement ? placement.displayName : ticket.studentId;
     return ticket;
@@ -520,4 +544,145 @@ function seedDefaultFaqs_() {
     });
   });
   sheet.getRange(2, 1, rows.length, headers.length).setValues(rows);
+}
+
+function withShareControls_(tickets, user) {
+  return tickets.map(function(ticket) {
+    ticket.authorEmail = ticketAuthorEmail_(ticket);
+    ticket.canShare = !!(user && ticket.authorEmail === user.email);
+    ticket.kind = ticket.shared ? 'message' : 'note';
+    return ticket;
+  });
+}
+
+function presentStaffNotes_(tickets, user, placements) {
+  return withShareControls_(attachMessages_(tickets, true), user).map(function(ticket) {
+    var placement = placements ? placements[ticket.studentId] : null;
+    ticket.displayName = placement ? placement.displayName : ticket.studentId;
+    return ticket;
+  }).sort(function(left, right) {
+    return right.lastUpdated.localeCompare(left.lastUpdated);
+  });
+}
+
+function notesAuthoredBy_(email) {
+  var author = normalizeEmail_(email);
+  return readAllTickets_().filter(function(ticket) {
+    return ticketAuthorEmail_(ticket) === author;
+  });
+}
+
+function createStaffNote(studentEmail, cohortId, textBody, viewAs) {
+  var user = requireStaff_('NOTE_CREATE');
+  var body = text_(textBody);
+  if (!body) throw new Error('Write a note before saving.');
+  if (body.length > 2000) throw new Error('Notes must be 2,000 characters or fewer.');
+  var context = staffStudentContext_(user, studentEmail, cohortId, 'NOTE_CREATE', viewAs);
+  if (!staffMayAddStudentTodo_(user, context)) {
+    denyAccess_(user, 'NOTE_CREATE', 'You cannot take notes for this student.');
+  }
+  var title = body.replace(/\s+/g, ' ');
+  if (title.length > 90) title = title.slice(0, 90);
+  var route = context.view === 'coordinator' ? 'coordinator' : 'supervisor';
+  var now = new Date();
+  var ticketId = Utilities.getUuid();
+  var record = {
+    TicketId: ticketId,
+    StudentId: context.email,
+    Cohort: text_(cohortId),
+    Category: 'Note',
+    Title: title,
+    Status: 'Open',
+    Route: route,
+    Assignee: user.email,
+    CreatedAt: now,
+    LastUpdated: now,
+    LastActor: user.email,
+    StudentUnread: false,
+    StaffUnread: false,
+    Shared: false
+  };
+  return runAuditedMutation_(user, 'NOTE_CREATE', ticketAudit_(record, { bodyHash: textHash_(body) }), function() {
+    writeManagedRow_('tickets', record, 'TicketId');
+    writeManagedRow_('ticketMessages', {
+      MessageId: Utilities.getUuid(),
+      TicketId: ticketId,
+      AuthorEmail: user.email,
+      AuthorRole: 'staff',
+      Body: body,
+      CreatedAt: now
+    }, 'MessageId');
+    return { ticketId: ticketId, shared: false, lastUpdated: ticketStamp_(now) };
+  });
+}
+
+function setMessageShared(ticketId, shared, lastUpdated, viewAs) {
+  var user = requireUser_('TICKET_SHARE');
+  var wantShared = toBoolean_(shared);
+  var preview = loadTicketRaw_(ticketId);
+  if (!preview) throw new Error('This message no longer exists.');
+  var ticket = ticketFromRecord_(preview);
+  if (ticketAuthorEmail_(ticket) !== user.email) {
+    denyAccess_(user, 'TICKET_SHARE', 'Only the author can change who sees this.');
+  }
+  if (user.role === 'staff') normalizeStaffView_(user, viewAs);
+  if (ticket.shared === wantShared) {
+    return { ticketId: ticket.ticketId, shared: ticket.shared, lastUpdated: ticket.lastUpdated, kind: ticket.shared ? 'message' : 'note' };
+  }
+  return runAuditedMutation_(user, 'TICKET_SHARE', ticketAudit_(preview, { shared: wantShared }), function() {
+    var current = loadTicketRaw_(ticketId);
+    if (!current) throw new Error('This message no longer exists.');
+    var fresh = ticketFromRecord_(current);
+    if (ticketAuthorEmail_(fresh) !== user.email) throw new Error('Only the author can change who sees this.');
+    assertTicketFresh_(current, lastUpdated);
+    var now = new Date();
+    var values = {};
+    getTableHeaders_('tickets').forEach(function(header) { values[header] = current[header]; });
+    values.Shared = wantShared;
+    values.LastUpdated = now;
+    values.LastActor = user.email;
+    if (wantShared) {
+      if (user.role === 'staff') values.StudentUnread = true;
+      else values.StaffUnread = true;
+    } else if (user.role === 'staff') {
+      values.StudentUnread = false;
+    } else {
+      values.StaffUnread = false;
+    }
+    writeManagedRow_('tickets', values, 'TicketId');
+    return { ticketId: fresh.ticketId, shared: wantShared, lastUpdated: ticketStamp_(now), kind: wantShared ? 'message' : 'note' };
+  });
+}
+
+function getStaffNotesHub(viewAs) {
+  var user = requireStaff_('VIEW_NOTES');
+  if (!user.permissions.isSupervisor && !user.permissions.canAdmin) {
+    denyAccess_(user, 'VIEW_NOTES', 'Supervisors and coordinators keep notes.');
+  }
+  var view = normalizeStaffView_(user, viewAs);
+  var tables = readStaffHomeTables_();
+  return {
+    viewAs: view,
+    notes: presentStaffNotes_(notesAuthoredBy_(user.email), user, tables.byEmail),
+    templates: listTodoTemplatesFor_(user.email),
+    phases: readPhases_()
+  };
+}
+
+function getStaffStudentPanel(studentEmail, cohortId, viewAs) {
+  var user = requireStaff_('VIEW_STUDENT_NOTES');
+  var context = staffStudentContext_(user, studentEmail, cohortId, 'VIEW_STUDENT_NOTES', viewAs);
+  var placements = {};
+  placements[context.email] = context.roster;
+  var notes = readAllTickets_().filter(function(ticket) {
+    return ticket.studentId === context.email && ticketAuthorEmail_(ticket) === user.email;
+  });
+  return {
+    canWrite: staffMayAddStudentTodo_(user, context),
+    studentEmail: context.email,
+    displayName: context.roster.displayName,
+    notes: presentStaffNotes_(notes, user, placements),
+    templates: listTodoTemplatesFor_(user.email),
+    phases: readPhases_()
+  };
 }
