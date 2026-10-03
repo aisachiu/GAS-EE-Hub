@@ -551,3 +551,145 @@ function invalidateActionItemCache_(studentId) {
 function actionItemCacheKey_(studentId) {
   return ACTION_ITEM_CACHE_PREFIX + normalizeEmail_(studentId).replace(/[^a-z0-9]/g, '_');
 }
+
+function todoTemplateSheet_() {
+  var sheet = getOrCreateManagedSheet_(APP_TABLES.todoTemplates);
+  assertSheetSchema_(sheet, 'todoTemplates');
+  return sheet;
+}
+
+function todoTemplateFromRecord_(record) {
+  var active = record.Active;
+  return {
+    templateId: text_(record.TemplateId),
+    title: text_(record.Title),
+    description: text_(record.Description),
+    phaseId: text_(record.PhaseId),
+    owner: normalizeEmail_(record.Owner),
+    sortOrder: Number(record.SortOrder) || 0,
+    active: active === '' || active === null || typeof active === 'undefined' ? true : toBoolean_(active)
+  };
+}
+
+function readTodoTemplates_() {
+  var sheet = todoTemplateSheet_();
+  if (sheet.getLastRow() < 2) return [];
+  return readRecords_(sheet).map(todoTemplateFromRecord_).filter(function(template) {
+    return template.templateId && template.owner;
+  });
+}
+
+function listTodoTemplatesFor_(ownerEmail) {
+  var owner = normalizeEmail_(ownerEmail);
+  return readTodoTemplates_().filter(function(template) {
+    return template.owner === owner && template.active;
+  }).sort(function(left, right) {
+    return left.sortOrder - right.sortOrder || left.title.localeCompare(right.title);
+  });
+}
+
+function requireTodoTemplateOwner_(user) {
+  if (!user.permissions.isSupervisor && !user.permissions.canAdmin) {
+    denyAccess_(user, 'SAVE_TODO_TEMPLATE', 'Supervisors and coordinators save template tasks.');
+  }
+}
+
+function assertActivePhase_(phaseId) {
+  var phase = text_(phaseId);
+  if (!phase) return '';
+  var knownPhase = findRecordByValue_(getSpreadsheet_().getSheetByName(APP_TABLES.phases.sheet), 'phaseId', phase);
+  if (!knownPhase || !toBoolean_(knownPhase.active)) throw new Error('Choose an active phase for this template.');
+  return phase;
+}
+
+function saveTodoTemplate(payload) {
+  var user = requireStaff_('SAVE_TODO_TEMPLATE');
+  requireTodoTemplateOwner_(user);
+  var input = payload || {};
+  var title = text_(input.title);
+  if (!title) throw new Error('Template title is required.');
+  if (title.length > 240) throw new Error('Template title must be 240 characters or fewer.');
+  var description = text_(input.description);
+  if (description.length > 2000) throw new Error('Template note must be 2,000 characters or fewer.');
+  var phase = assertActivePhase_(input.phaseId);
+  var templateId = text_(input.templateId);
+  return runAuditedMutation_(user, 'SAVE_TODO_TEMPLATE', { templateId: templateId, title: title, phaseId: phase }, function() {
+    var sheet = todoTemplateSheet_();
+    var existing = templateId ? readTodoTemplates_().filter(function(template) { return template.templateId === templateId; })[0] : null;
+    if (templateId && (!existing || existing.owner !== user.email)) throw new Error('Choose one of your template tasks.');
+    var owned = listTodoTemplatesFor_(user.email);
+    var record = {
+      TemplateId: existing ? existing.templateId : Utilities.getUuid(),
+      Title: title,
+      Description: description,
+      PhaseId: phase,
+      Owner: user.email,
+      SortOrder: existing ? existing.sortOrder : owned.length + 1,
+      Active: true
+    };
+    writeManagedRow_('todoTemplates', record, 'TemplateId');
+    return todoTemplateFromRecord_(record);
+  });
+}
+
+function deleteTodoTemplate(templateId) {
+  var user = requireStaff_('DELETE_TODO_TEMPLATE');
+  requireTodoTemplateOwner_(user);
+  var id = text_(templateId);
+  var existing = readTodoTemplates_().filter(function(template) { return template.templateId === id; })[0];
+  if (!existing || existing.owner !== user.email) throw new Error('Choose one of your template tasks.');
+  return runAuditedMutation_(user, 'DELETE_TODO_TEMPLATE', { templateId: id, title: existing.title }, function() {
+    var record = {
+      TemplateId: existing.templateId,
+      Title: existing.title,
+      Description: existing.description,
+      PhaseId: existing.phaseId,
+      Owner: existing.owner,
+      SortOrder: existing.sortOrder,
+      Active: false
+    };
+    writeManagedRow_('todoTemplates', record, 'TemplateId');
+    return { templateId: id, active: false };
+  });
+}
+
+function applyTodoTemplate(templateId, studentEmail, cohortId, phaseId, viewAs) {
+  var user = requireStaff_('APPLY_TODO_TEMPLATE');
+  var context = staffStudentContext_(user, studentEmail, cohortId, 'APPLY_TODO_TEMPLATE', viewAs);
+  if (!staffMayAddStudentTodo_(user, context)) {
+    denyAccess_(user, 'APPLY_TODO_TEMPLATE', 'You cannot add a to-do for this student.');
+  }
+  var id = text_(templateId);
+  var template = readTodoTemplates_().filter(function(item) { return item.templateId === id; })[0];
+  if (!template || template.owner !== user.email || !template.active) throw new Error('Choose one of your template tasks.');
+  var phase = template.phaseId || text_(phaseId);
+  var input = prepareStudentTodoInput_(template.title, phase);
+  var studentId = context.email;
+  return runAuditedMutation_(user, 'APPLY_TODO_TEMPLATE', {
+    templateId: id, studentId: studentId, phaseId: input.phase, title: input.title, cohort: text_(cohortId)
+  }, function() {
+    var sheet = getRequiredActionItemsSheet_();
+    var values = stampActionItemActors_({
+      TaskId: createActionItemId_(),
+      StudentId: studentId,
+      CreatorType: 'Student',
+      TemplateId: '',
+      PhaseId: input.phase,
+      Title: input.title,
+      Description: template.description,
+      DueDate: '',
+      Status: 'Pending',
+      LastUpdated: new Date()
+    }, user.email, true);
+    appendActionItems_(sheet, [values]);
+    invalidateActionItemCache_(studentId);
+    return {
+      TaskId: values.TaskId,
+      StudentId: studentId,
+      PhaseId: input.phase,
+      Title: input.title,
+      Description: template.description,
+      CreatedBy: user.email
+    };
+  });
+}

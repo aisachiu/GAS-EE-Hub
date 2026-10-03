@@ -339,6 +339,20 @@ function summarizeStudent_(student, items, templates, returned, today, user, vie
     if (item && returned[item.taskId] && status !== 'Completed') returnedCount += 1;
     if (status !== 'Completed') priorComplete = false;
   });
+  var nextSupervisor = null;
+  for (var milestoneIndex = 0; milestoneIndex < templates.length; milestoneIndex++) {
+    var milestone = templates[milestoneIndex];
+    if (milestone.mOwner !== 'supervisor') continue;
+    var milestoneItem = byTemplate[milestone.milestoneId];
+    var milestoneStatus = milestoneItem ? milestoneItem.status : 'Pending';
+    if (milestoneStatus === 'Completed') continue;
+    nextSupervisor = {
+      title: milestone.title,
+      milestoneId: milestone.milestoneId,
+      taskId: milestoneItem ? milestoneItem.taskId : ''
+    };
+    break;
+  }
   return {
     email: student.email,
     displayName: student.displayName,
@@ -356,7 +370,8 @@ function summarizeStudent_(student, items, templates, returned, today, user, vie
     segments: segments.join(''),
     returned: returnedCount,
     waiting: waiting.slice(0, 3),
-    urgency: waiting.length * 100 + behind + returnedCount
+    urgency: waiting.length * 100 + behind + returnedCount,
+    nextSupervisor: nextSupervisor
   };
 }
 
