@@ -502,21 +502,42 @@ function markTicketRead(ticketId, lastUpdated, viewAs) {
   });
 }
 
-function getStaffTickets(viewAs) {
-  var user = requireStaff_('VIEW_TICKETS');
-  var view = normalizeStaffView_(user, viewAs);
-  var tickets = sortTickets_(queueTickets_(user, view), 'staffUnread');
-  var named = withShareControls_(attachMessages_(tickets, true), user).map(function(ticket) {
+function prepareStaffTickets_(user, tickets) {
+  return withShareControls_(attachMessages_(tickets, true), user).map(function(ticket) {
     var placement = findStudentPlacement_(ticket.studentId);
     ticket.displayName = placement ? placement.displayName : ticket.studentId;
     return ticket;
   });
+}
+
+function staffTicketHubFromPrepared_(user, view, prepared) {
+  var queued = sortTickets_(prepared.filter(function(ticket) {
+    return staffCanSeeTicket_(user, view, ticket);
+  }), 'staffUnread');
   return {
     viewAs: view,
-    tickets: named,
-    unreadCount: named.filter(function(ticket) { return ticket.staffUnread; }).length,
+    tickets: queued,
+    unreadCount: queued.filter(function(ticket) { return ticket.staffUnread; }).length,
     categories: publicCategories_()
   };
+}
+
+function getStaffTickets(viewAs) {
+  var user = requireStaff_('VIEW_TICKETS');
+  var view = normalizeStaffView_(user, viewAs);
+  return staffTicketHubFromPrepared_(user, view, prepareStaffTickets_(user, readAllTickets_()));
+}
+
+function getOpeningMessages_() {
+  var user = getCurrentUser_();
+  if (user.role === 'student') return { active: 'student', student: getTicketHub() };
+  if (!user.permissions.isSupervisor && !user.permissions.canAdmin) return { active: 'staff' };
+  var prepared = prepareStaffTickets_(user, readAllTickets_());
+  var active = user.permissions.canAdmin ? 'coordinator' : 'supervisor';
+  var result = { active: active };
+  if (user.permissions.canAdmin) result.coordinator = staffTicketHubFromPrepared_(user, 'coordinator', prepared);
+  if (user.permissions.isSupervisor) result.supervisor = staffTicketHubFromPrepared_(user, 'supervisor', prepared);
+  return result;
 }
 
 function getStaffTicketBadge(viewAs) {
