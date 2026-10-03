@@ -408,6 +408,7 @@ function saveStudentForm(milestoneId, payload) {
       if (actionItem) {
         actionItem.record.Status = 'Completed';
         actionItem.record.LastUpdated = now;
+        stampActionItemActors_(actionItem.record, user.email, false);
         writeActionItem_(actionItem);
         invalidateActionItemCache_(user.email);
       }
