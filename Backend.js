@@ -145,7 +145,9 @@ var APP_TABLES = {
       { name: 'Description', type: 'textarea', table: false },
       { name: 'DueDate', type: 'date' },
       { name: 'Status', type: 'select', required: true, options: ['Pending', 'In Progress', 'Completed'] },
-      { name: 'LastUpdated', type: 'datetime', required: true }
+      { name: 'LastUpdated', type: 'datetime', required: true },
+      { name: 'CreatedBy', type: 'email', validator: 'email' },
+      { name: 'UpdatedBy', type: 'email', validator: 'email' }
     ]
   },
   auditLogs: {
@@ -357,10 +359,11 @@ var AUDIT_LOG_HEADERS = getTableHeaders_('auditLogs');
 var ACTION_ITEM_STATUSES = ['Pending', 'In Progress', 'Completed'];
 
 function getAppBootstrap() {
+  var quotes = loadingQuotePayload_();
   try {
     var user = getCurrentUser_();
     AuditLog.record('LOGIN_SUCCESS', { role: user.role }, user.email);
-    return { user: user };
+    return { user: user, quote: quotes.quote, quotes: quotes.quotes };
   } catch (error) {
     var email = getActiveEmail_();
     try {
@@ -368,8 +371,120 @@ function getAppBootstrap() {
     } catch (auditError) {
       console.error('Unable to audit denied login', auditError);
     }
-    return { user: null };
+    return { user: null, quote: quotes.quote, quotes: quotes.quotes };
   }
+}
+
+var QUOTE_DAY_KEY = 'EE_QUOTE_DAY';
+var QUOTE_SET_KEY = 'EE_QUOTE_SET';
+
+function builtinQuotes_() {
+  return [
+    'A clear question is the start of a strong essay.',
+    'Write the next sentence. The essay grows one line at a time.',
+    'Revision is where good thinking becomes clear writing.',
+    'Small steady steps finish a long project.',
+    'Read closely, then write in your own words.',
+    'A draft is a place to think, not a final verdict.',
+    'Keep your sources close and your claims careful.',
+    'Progress is a page, a note, or a better question.',
+    'Perseverance turns a rough idea into a finished essay.',
+    'Ask for feedback, then make the work more precise.'
+  ];
+}
+
+function quoteDayStamp_() {
+  var now = new Date();
+  var month = now.getMonth() + 1;
+  var day = now.getDate();
+  return now.getFullYear() + '-' + (month < 10 ? '0' : '') + month + '-' + (day < 10 ? '0' : '') + day;
+}
+
+function parseStoredQuotes_(raw) {
+  if (!raw) return [];
+  try {
+    var parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map(function(line) { return text_(line); }).filter(Boolean);
+  } catch (error) {
+    return [];
+  }
+}
+
+function readQuotePool_() {
+  var fallback = builtinQuotes_();
+  var sheet = null;
+  try {
+    sheet = getSpreadsheet_().getSheetByName('Quotations');
+  } catch (error) {
+    return fallback;
+  }
+  if (!sheet || sheet.getLastRow() < 1) return fallback;
+  var data = sheet.getDataRange().getValues();
+  if (!data.length) return fallback;
+  var headers = data[0].map(function(header) { return text_(header).toLowerCase(); });
+  var named = ['quote', 'quotation', 'text', 'line'];
+  var column = 0;
+  var startRow = 0;
+  for (var index = 0; index < headers.length; index++) {
+    if (named.indexOf(headers[index]) >= 0) {
+      column = index;
+      startRow = 1;
+      break;
+    }
+  }
+  var pool = [];
+  for (var rowIndex = startRow; rowIndex < data.length; rowIndex++) {
+    var line = text_(data[rowIndex][column]);
+    if (line) pool.push(line);
+  }
+  return pool.length ? pool : fallback;
+}
+
+function sampleQuotes_(pool, count) {
+  var copy = pool.slice();
+  var sample = [];
+  var limit = Math.min(count, copy.length);
+  for (var index = 0; index < limit; index++) {
+    var pick = Math.floor(Math.random() * copy.length);
+    sample.push(copy.splice(pick, 1)[0]);
+  }
+  return sample;
+}
+
+function activeLoadingQuotes_() {
+  var today = quoteDayStamp_();
+  var props = null;
+  var storedDay = '';
+  var storedRaw = '';
+  try {
+    props = PropertiesService.getScriptProperties();
+    storedDay = text_(props.getProperty(QUOTE_DAY_KEY));
+    storedRaw = props.getProperty(QUOTE_SET_KEY) || '';
+  } catch (error) {
+    props = null;
+  }
+  var quotes = parseStoredQuotes_(storedRaw);
+  if (storedDay === today && quotes.length) return quotes;
+  quotes = sampleQuotes_(readQuotePool_(), 10);
+  if (props) {
+    try {
+      props.setProperty(QUOTE_DAY_KEY, today);
+      props.setProperty(QUOTE_SET_KEY, JSON.stringify(quotes));
+    } catch (writeError) { /* a quote can still be shown for this request */ }
+  }
+  return quotes.length ? quotes : builtinQuotes_();
+}
+
+function loadingQuotePayload_() {
+  var quotes = [];
+  try { quotes = activeLoadingQuotes_(); } catch (error) { quotes = builtinQuotes_(); }
+  if (!quotes.length) quotes = builtinQuotes_();
+  return { quote: quotes[Math.floor(Math.random() * quotes.length)], quotes: quotes };
+}
+
+function getLoadingQuote() {
+  return loadingQuotePayload_();
 }
 
 function getCohorts() {

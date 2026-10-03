@@ -176,19 +176,68 @@ function normalizeStaffView_(user, viewAs) {
   return 'staff';
 }
 
+function cohortStudentFromRecord_(cohortId, record) {
+  var email = normalizeEmail_(record.StudentId);
+  return {
+    cohortId: cohortId,
+    email: email,
+    displayName: text_(record['Display Name']) || email,
+    surname: text_(record.Surname),
+    firstName: text_(record['First Name']),
+    studentNumber: text_(record['Student ID']),
+    hrm: text_(record.HRM),
+    subject: text_(record.subject),
+    supervisorId: normalizeEmail_(record.supervisorId),
+    anchor: record.Anchor_Date ? String(serializable_(record.Anchor_Date)).slice(0, 10) : '',
+    folder: text_(record.EEFolder),
+    doc: text_(record.EEDoc),
+    rppf: text_(record.RPPFDoc),
+    poster: text_(record.EEPoster)
+  };
+}
+
+function readStaffHomeTables_() {
+  var allCohorts = listCohorts_(true);
+  var activeCohorts = allCohorts.filter(function(cohort) {
+    return text_(cohort.status).toLowerCase() !== 'inactive';
+  });
+  var byEmail = {};
+  var byCohort = {};
+  // Each cohort sheet is read once. Student rows and unread tickets join this map in memory.
+  allCohorts.forEach(function(cohort) {
+    var sheet = getSpreadsheet_().getSheetByName(cohort.sheetName);
+    var roster = [];
+    if (sheet) {
+      assertSheetSchema_(sheet, 'cohortMembers');
+      if (sheet.getLastRow() > 1) {
+        readRecords_(sheet).forEach(function(record) {
+          var student = cohortStudentFromRecord_(cohort.id, record);
+          if (!student.email) return;
+          roster.push(student);
+          if (!byEmail[student.email]) byEmail[student.email] = student;
+        });
+      }
+    }
+    byCohort[cohort.id] = roster;
+  });
+  return { activeCohorts: activeCohorts, byEmail: byEmail, byCohort: byCohort };
+}
+
 function getStaffHome(cohortId, viewAs) {
   var user = requireStaff_('VIEW_STAFF_HOME');
-  var cohorts = listCohorts_().map(function(cohort) {
+  var tables = readStaffHomeTables_();
+  var cohorts = tables.activeCohorts.map(function(cohort) {
     return { id: cohort.id, name: cohort.name, sheetName: cohort.sheetName };
   });
   var selected = text_(cohortId);
   if (!selected && cohorts.length) selected = cohorts[0].id;
   if (!selected) return { cohorts: cohorts, cohortId: '', viewAs: 'staff', students: [], phases: [], templates: [] };
-  staffMaySeeCohort_(user, selected);
+  var knownCohort = cohorts.some(function(cohort) { return cohort.id === selected; });
+  if (!knownCohort) staffMaySeeCohort_(user, selected);
   var view = normalizeStaffView_(user, viewAs);
   var phases = readPhases_();
   var templates = orderTemplates_(readTemplates_(), phases);
-  var roster = readCohortRoster_(selected);
+  var roster = (tables.byCohort[selected] || []).slice();
   if (view === 'supervisor') {
     roster = roster.filter(function(student) { return student.supervisorId === user.email; });
   }
@@ -201,7 +250,7 @@ function getStaffHome(cohortId, viewAs) {
   var students = roster.map(function(student) {
     return summarizeStudent_(student, items[student.email] || [], templates, returned, today, user, view);
   }).sort(function(left, right) { return right.urgency - left.urgency || left.displayName.localeCompare(right.displayName); });
-  var notices = staffUnreadNotices_(user, view);
+  var notices = staffUnreadNotices_(user, view, tables.byEmail);
   return {
     cohorts: cohorts,
     cohortId: selected,
@@ -285,7 +334,7 @@ function summarizeStudent_(student, items, templates, returned, today, user, vie
     if (overdue) behind += 1;
     var segment = status === 'Completed' ? 'd' : (status === 'In Progress' ? 'p' : (overdue ? 'l' : 'o'));
     segments.push(segment);
-    var canAct = view !== 'staff' && item && status !== 'Completed' && priorComplete && canCompleteMilestone_(user, student.email, template.mOwner, template.type) && (template.type === 'approval' || template.type === 'meeting' || template.mOwner === 'supervisor' || template.mOwner === 'coordinator');
+    var canAct = view !== 'staff' && item && status !== 'Completed' && priorComplete && canCompleteMilestone_(user, student.email, template.mOwner, template.type, student) && (template.type === 'approval' || template.type === 'meeting' || template.mOwner === 'supervisor' || template.mOwner === 'coordinator');
     if (canAct) waiting.push({ taskId: item.taskId, title: template.title, templateId: template.milestoneId, type: template.type });
     if (item && returned[item.taskId] && status !== 'Completed') returnedCount += 1;
     if (status !== 'Completed') priorComplete = false;
@@ -364,6 +413,12 @@ function staffStudentContext_(user, studentEmail, cohortId, operation, viewAs) {
   return { email: email, roster: roster, view: view };
 }
 
+function staffMayAddStudentTodo_(user, context) {
+  if (!user || user.role !== 'staff' || !context || context.view === 'staff') return false;
+  if (user.permissions.canAdmin) return true;
+  return context.view === 'supervisor' && !!user.permissions.isSupervisor && normalizeEmail_(context.roster.supervisorId) === user.email;
+}
+
 function staffMayUpdateAllMilestones_(user, roster, view) {
   if (!user || user.role !== 'staff' || view === 'staff' || !roster) return false;
   if (user.permissions.canAdmin && (view === 'coordinator' || view === 'supervisor')) return true;
@@ -414,7 +469,7 @@ function getStaffStudentHome(studentEmail, cohortId, viewAs) {
     staffView: true,
     viewAs: view,
     canUpdateMilestones: canUpdateAll,
-    canWriteTodos: false,
+    canWriteTodos: staffMayAddStudentTodo_(user, context),
     viewLabel: staffViewLabel_(view, canUpdateAll),
     displayName: roster.displayName,
     email: email,
@@ -507,6 +562,7 @@ function recordMilestoneDecision(taskId, action, comment, studentEmail, cohortId
     if (decision === 'return' && type !== 'approval' && owner === 'student') throw new Error('Only a review milestone can be returned.');
     item.record.Status = decision === 'return' ? 'In Progress' : 'Completed';
     item.record.LastUpdated = new Date();
+    stampActionItemActors_(item.record, user.email, false);
     writeActionItem_(item);
     invalidateActionItemCache_(email);
     appendMilestoneEvent_({
