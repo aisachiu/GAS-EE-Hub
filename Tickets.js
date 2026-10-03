@@ -675,6 +675,33 @@ function setMessageShared(ticketId, shared, lastUpdated, viewAs) {
   });
 }
 
+function noteStudentsFor_(user, view, tables) {
+  var students = [];
+  var seen = {};
+  (tables.activeCohorts || []).forEach(function(cohort) {
+    (tables.byCohort[cohort.id] || []).forEach(function(student) {
+      var key = student.cohortId + '|' + student.email;
+      if (seen[key]) return;
+      var assigned = student.supervisorId === user.email;
+      var allowed = view === 'supervisor'
+        ? !!user.permissions.isSupervisor && assigned
+        : view === 'coordinator' && !!user.permissions.canAdmin;
+      if (!allowed) return;
+      seen[key] = true;
+      students.push({
+        email: student.email,
+        displayName: student.displayName,
+        cohortId: student.cohortId,
+        subject: student.subject || ''
+      });
+    });
+  });
+  students.sort(function(left, right) {
+    return left.displayName.localeCompare(right.displayName) || String(left.cohortId).localeCompare(String(right.cohortId));
+  });
+  return students;
+}
+
 function getStaffNotesHub(viewAs) {
   var user = requireStaff_('VIEW_NOTES');
   if (!user.permissions.isSupervisor && !user.permissions.canAdmin) {
@@ -685,6 +712,7 @@ function getStaffNotesHub(viewAs) {
   return {
     viewAs: view,
     notes: presentStaffNotes_(notesAuthoredBy_(user.email), user, tables.byEmail),
+    students: noteStudentsFor_(user, view, tables),
     templates: listTodoTemplatesFor_(user.email),
     phases: readPhases_()
   };

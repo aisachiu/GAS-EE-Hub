@@ -191,7 +191,8 @@
       .add-todo-form { display: none; gap: 6px; margin-top: 6px; }
       .add-todo.is-open .add-todo-form { display: flex; }
       .add-todo.is-open .add-todo-open { display: none; }
-      .add-todo-form input { min-width: 0; flex: 1; padding: 7px 9px; border: 1px solid var(--line); border-radius: 3px; }
+      .add-todo-form input, .add-todo-form select, .add-todo-form textarea { min-width: 0; flex: 1; padding: 7px 9px; border: 1px solid var(--line); border-radius: 3px; background: white; }
+      .add-todo-form textarea { width: 100%; min-height: 72px; }
       .load-stage { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 48px 10vw; }
       .notes-scroll .load-stage, .journey-scroll .load-stage { min-height: 220px; padding: 28px 18px; }
       .notes-scroll .load-quote, .journey-scroll .load-quote { max-width: 12em; }
@@ -2165,6 +2166,7 @@
           next.viewAs = hub.viewAs || next.viewAs;
           if (hub.templates) next.templates = hub.templates;
           if (hub.phases) next.phases = hub.phases;
+          if (hub.students) next.students = hub.students;
           state.notesHub = next;
           if (state.notesPane !== 'templates') syncNoteListDom(next.notes);
           if (button.isConnected) markSync(button, 'confirmed');
@@ -2708,12 +2710,13 @@
         const notes = hub.notes || [];
         const templates = hub.templates || [];
         const phases = hub.phases || [];
+        const students = hub.students || [];
         main.innerHTML = `<div class="page-head"><div><p class="eyebrow">Supervisor</p><h1>Notes</h1><p class="lede">Private notes stay with you. Shared notes become messages the student can see.</p></div><div class="page-actions"><button type="button" class="button secondary" id="refresh-notes">Refresh</button></div></div>
           <nav class="subnav" aria-label="Notes sections">
             <button type="button" data-notes-pane="notes" aria-current="${pane === 'notes' ? 'page' : 'false'}">Notes</button>
             <button type="button" data-notes-pane="templates" aria-current="${pane === 'templates' ? 'page' : 'false'}">Template Tasks</button>
           </nav>
-          ${pane === 'templates' ? renderTemplateTasks(templates, phases) : `<div class="note-list">${notes.length ? notes.map(renderNoteCard).join('') : '<div class="empty">Open a student to take a note. Notes you save appear here.</div>'}</div>`}`;
+          ${pane === 'templates' ? renderTemplateTasks(templates, phases) : `${renderNoteComposer(students)}<div class="note-list">${notes.length ? notes.map(renderNoteCard).join('') : `<div class="empty">${noteListEmpty(hub, students)}</div>`}</div>`}`;
         document.getElementById('refresh-notes').addEventListener('click', function(event) { refreshStaffNotes(event.currentTarget); });
         main.querySelectorAll('[data-notes-pane]').forEach(function(button) {
           button.addEventListener('click', function() {
@@ -2721,8 +2724,121 @@
             paintStaffNotes(state.notesHub || hub);
           });
         });
-        if (pane === 'notes') bindShareList(main, notes, function() { renderStaffNotes(); });
-        else bindTemplateTasks(main, phases);
+        if (pane === 'notes') {
+          bindStaffNoteComposer(main, students);
+          bindShareList(main, notes, function() { renderStaffNotes(); });
+        } else bindTemplateTasks(main, phases);
+      }
+
+      function noteListEmpty(hub, students) {
+        if (students.length) return 'Notes you save appear here.';
+        if (hub.viewAs === 'supervisor') return 'No students are assigned to you yet.';
+        return 'Open a student to take a note. Notes you save appear here.';
+      }
+
+      function renderNoteComposer(students) {
+        if (!students.length) return '';
+        const cohorts = {};
+        students.forEach(function(student) { cohorts[student.cohortId] = true; });
+        const manyCohorts = Object.keys(cohorts).length > 1;
+        const options = students.map(function(student) {
+          const label = student.displayName + (student.subject ? ' · ' + student.subject : '') + (manyCohorts ? ' · ' + student.cohortId : '');
+          return `<option value="${escapeHtml(student.email)}" data-cohort="${escapeHtml(student.cohortId)}">${escapeHtml(label)}</option>`;
+        }).join('');
+        return `<div class="add-todo" id="note-composer"><button type="button" class="add-todo-open" aria-expanded="false">+ Add note</button><form class="add-todo-form stack"><select aria-label="Student" required><option value="">Choose a student</option>${options}</select><textarea maxlength="2000" placeholder="Note" aria-label="Note" required></textarea><button class="button" type="submit">Save</button></form></div>`;
+      }
+
+      function bindStaffNoteComposer(main, students) {
+        const box = main.querySelector('#note-composer');
+        if (!box) return;
+        const open = box.querySelector('.add-todo-open');
+        const form = box.querySelector('form');
+        const select = form.querySelector('select');
+        const textArea = form.querySelector('textarea');
+        open.addEventListener('click', function() {
+          box.classList.add('is-open');
+          open.setAttribute('aria-expanded', 'true');
+          select.focus();
+        });
+        form.addEventListener('submit', function(event) {
+          event.preventDefault();
+          const email = select.value;
+          const option = select.options[select.selectedIndex];
+          const cohortId = option ? option.getAttribute('data-cohort') || '' : '';
+          const text = textArea.value.trim();
+          if (!email || !cohortId) {
+            showError(new Error('Choose a student.'));
+            return;
+          }
+          if (!text) return;
+          if (text.length > 2000) {
+            showError(new Error('Notes must be 2,000 characters or fewer.'));
+            return;
+          }
+          const student = students.filter(function(item) { return item.email === email && item.cohortId === cohortId; })[0];
+          if (!student) return;
+          const submit = form.querySelector('button');
+          const list = main.querySelector('.note-list');
+          if (!list) return;
+          submit.disabled = true;
+          const note = {
+            ticketId: 'pending-' + Date.now(),
+            title: text.replace(/\s+/g, ' ').slice(0, 90),
+            displayName: student.displayName,
+            shared: false,
+            canShare: true,
+            kind: 'note',
+            studentUnread: false,
+            staffUnread: false,
+            messages: [{
+              messageId: 'pending-body-' + Date.now(),
+              authorRole: 'staff',
+              authorEmail: state.user.email,
+              body: text,
+              createdAt: new Date().toISOString()
+            }],
+            lastUpdated: ''
+          };
+          const hub = state.notesHub;
+          if (hub) hub.notes = [note].concat(hub.notes || []);
+          const empty = list.querySelector('.empty');
+          if (empty) empty.remove();
+          list.insertAdjacentHTML('afterbegin', renderNoteCard(note));
+          const card = list.querySelector('.note-card');
+          const share = card ? card.querySelector('[data-share]') : null;
+          if (share) share.disabled = true;
+          if (card) markSync(card, 'pending');
+          textArea.value = '';
+          select.value = '';
+          box.classList.remove('is-open');
+          open.setAttribute('aria-expanded', 'false');
+          const scene = state.scene;
+          const actingAs = state.actingAs;
+          dispatchServer('createStaffNote', [student.email, student.cohortId, text, actingAs]).then(function(result) {
+            note.ticketId = result.ticketId;
+            note.lastUpdated = result.lastUpdated || '';
+            submit.disabled = false;
+            if (!sameScene(scene) || state.section !== 'notes' || !card || !card.isConnected) return;
+            card.dataset.ticket = note.ticketId;
+            card.dataset.updated = note.lastUpdated;
+            if (share) {
+              share.dataset.share = note.ticketId;
+              share.disabled = false;
+            }
+            bindShareList(card, [note]);
+            markSync(card, 'confirmed');
+          }).catch(function(error) {
+            if (hub && hub.notes) hub.notes = hub.notes.filter(function(item) { return item !== note; });
+            if (card && card.isConnected) card.remove();
+            if (list.isConnected && !list.querySelector('.note-card')) list.innerHTML = '<div class="empty">Notes you save appear here.</div>';
+            submit.disabled = false;
+            if (!textArea.value) textArea.value = text;
+            if (!select.value) select.value = email;
+            box.classList.add('is-open');
+            open.setAttribute('aria-expanded', 'true');
+            showError(error);
+          });
+        });
       }
 
       function renderTemplateTasks(templates, phases) {
