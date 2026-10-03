@@ -41,6 +41,7 @@
       .eyebrow { color: var(--coral); font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
       .lede, .muted { color: var(--muted); }
       .page-head { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
+      .page-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
       .list { display: grid; gap: 7px; max-width: 860px; }
       .list-row, .resource-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 11px 14px; background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--green); }
       .list-row button { color: inherit; text-align: left; border: 0; background: none; padding: 0; }
@@ -215,7 +216,9 @@
       .next-steps span { color: var(--muted); font-size: 12px; }
       .note-list { display: grid; gap: 8px; }
       .note-card { display: grid; gap: 4px; padding: 10px 12px; background: white; border: 1px solid var(--line); border-left: 3px solid var(--ink); }
-      .note-card p { margin: 0; white-space: pre-wrap; }
+      .note-card p, .note-thread p { margin: 0; white-space: pre-wrap; }
+      .note-thread { display: grid; gap: 6px; }
+      .note-thread p + p { padding-top: 6px; border-top: 1px solid var(--line); }
       .share-check { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; font-weight: 700; }
       .share-check input { width: 16px; height: 16px; accent-color: var(--green); }
       .notes-panel { position: fixed; top: 0; left: 0; z-index: 24; height: 100vh; width: 36px; overflow: hidden; background: var(--ink); transition: width .2s ease; }
@@ -1859,7 +1862,7 @@
         const main = document.getElementById('main');
         const faqs = hub.faqs || [];
         const tickets = hub.tickets || [];
-        main.innerHTML = `<div class="page-head"><div><p class="eyebrow">Help</p><h1>Messages</h1><p class="lede">Search common answers, or send a message to your supervisor or the EE Coordinator.</p></div><button type="button" class="button" id="new-ticket">New message</button></div>
+        main.innerHTML = `<div class="page-head"><div><p class="eyebrow">Help</p><h1>Messages</h1><p class="lede">Search common answers, or send a message to your supervisor or the EE Coordinator.</p></div><div class="page-actions"><button type="button" class="button secondary" id="refresh-messages">Refresh</button><button type="button" class="button" id="new-ticket">New message</button></div></div>
           <section><h2>Quick answers</h2><div class="toolbar"><input id="faq-search" type="search" placeholder="Search common questions" aria-label="Search common questions"></div>
           <div class="faq-list" id="faq-list">${faqs.length ? faqs.map(renderFaq).join('') : '<div class="empty">No published answers yet.</div>'}</div></section>
           <section class="section-gap"><h2>My messages</h2><div class="ticket-list" id="ticket-list">${tickets.length ? tickets.map(function(ticket) { return renderTicket(ticket, false); }).join('') : '<div class="empty">You have not sent a message yet.</div>'}</div></section>`;
@@ -1870,6 +1873,7 @@
           });
         });
         document.getElementById('new-ticket').addEventListener('click', function() { openTicketDialog(hub.categories || []); });
+        document.getElementById('refresh-messages').addEventListener('click', function(event) { refreshMessageDesk(event.currentTarget, false); });
         bindTicketList(main, tickets, false);
         openFocusedTicket(main);
       }
@@ -1951,6 +1955,224 @@
           box.disabled = String(ticket.ticketId).indexOf('pending-') === 0;
         }
         details.dataset.updated = ticket.lastUpdated || '';
+      }
+
+      function quietServer(method, args) {
+        return new Promise(function(resolve, reject) {
+          if (!window.google || !google.script || !google.script.run) {
+            reject(new Error('Open this app from its Google Apps Script deployment.'));
+            return;
+          }
+          const runner = google.script.run.withSuccessHandler(resolve).withFailureHandler(function(error) {
+            reject(new Error(error && error.message ? error.message : String(error)));
+          });
+          runner[method].apply(runner, args || []);
+        });
+      }
+
+      function ticketStampNewer(left, right) {
+        return String(left || '').localeCompare(String(right || '')) > 0;
+      }
+
+      function sameOptimisticMessage(server, local) {
+        if (!server || !local || server.body !== local.body) return false;
+        if (local.authorEmail && server.authorEmail) return server.authorEmail === local.authorEmail;
+        return server.authorRole === local.authorRole;
+      }
+
+      function mergeIntoTicket(local, incoming) {
+        if (ticketStampNewer(local.lastUpdated, incoming.lastUpdated)) return;
+        ['status', 'shared', 'kind', 'lastUpdated', 'studentUnread', 'staffUnread', 'route', 'routeLabel', 'displayName', 'title', 'category', 'canShare', 'authorEmail', 'assignee'].forEach(function(key) {
+          if (incoming[key] !== undefined) local[key] = incoming[key];
+        });
+        const incomingMessages = incoming.messages || [];
+        const pending = (local.messages || []).filter(function(message) {
+          if (String(message.messageId).indexOf('pending-') !== 0) return false;
+          return !incomingMessages.some(function(item) { return sameOptimisticMessage(item, message); });
+        });
+        local.messages = incomingMessages.concat(pending);
+      }
+
+      function mergeTicketList(localTickets, incomingTickets) {
+        const byId = {};
+        (localTickets || []).forEach(function(ticket) { byId[ticket.ticketId] = ticket; });
+        const merged = [];
+        (localTickets || []).forEach(function(ticket) {
+          if (String(ticket.ticketId).indexOf('pending-') === 0) merged.push(ticket);
+        });
+        (incomingTickets || []).forEach(function(incoming) {
+          const local = byId[incoming.ticketId];
+          if (local) mergeIntoTicket(local, incoming);
+          merged.push(local || incoming);
+        });
+        return merged;
+      }
+
+      function refreshUnreadDot(details, ticket, staff) {
+        if (!details) return;
+        const unread = staff ? !!ticket.staffUnread : !!ticket.studentUnread;
+        const dot = details.querySelector('summary .dot');
+        if (unread && !dot) {
+          const summary = details.querySelector('summary');
+          if (summary) summary.insertAdjacentHTML('beforeend', '<span class="dot" aria-label="Unread"></span>');
+        } else if (!unread && dot) dot.remove();
+      }
+
+      function syncThread(details, ticket) {
+        const thread = details.querySelector('.thread');
+        if (!thread) return;
+        const current = Array.prototype.map.call(thread.querySelectorAll('[data-message]'), function(node) {
+          return node.dataset.message;
+        }).join('\n');
+        const next = (ticket.messages || []).map(function(message) { return message.messageId; }).join('\n');
+        if (current === next) return;
+        thread.innerHTML = (ticket.messages || []).map(function(message) {
+          return messageMarkup(message, ticket);
+        }).join('');
+      }
+
+      function syncTicketListDom(tickets, staff) {
+        const list = document.getElementById('ticket-list');
+        if (!list) return;
+        const wanted = {};
+        tickets.forEach(function(ticket) { wanted[ticket.ticketId] = true; });
+        Array.prototype.forEach.call(list.querySelectorAll('details.ticket'), function(details) {
+          if (!wanted[details.dataset.ticket]) details.remove();
+        });
+        const empty = list.querySelector('.empty');
+        if (tickets.length && empty) empty.remove();
+        tickets.forEach(function(ticket) {
+          const id = String(ticket.ticketId).replace(/"/g, '');
+          let details = list.querySelector('details.ticket[data-ticket="' + id + '"]');
+          if (!details) {
+            list.insertAdjacentHTML('beforeend', renderTicket(ticket, staff));
+            details = list.querySelector('details.ticket[data-ticket="' + id + '"]');
+            if (details) bindOneTicket(details, ticket, staff);
+            return;
+          }
+          syncThread(details, ticket);
+          refreshTicketChrome(ticket);
+          refreshUnreadDot(details, ticket, staff);
+        });
+        tickets.forEach(function(ticket) {
+          const id = String(ticket.ticketId).replace(/"/g, '');
+          const details = list.querySelector('details.ticket[data-ticket="' + id + '"]');
+          if (details) list.appendChild(details);
+        });
+        if (!tickets.length) {
+          list.innerHTML = '<div class="empty">' + (staff ? 'No messages in this queue.' : 'You have not sent a message yet.') + '</div>';
+        }
+      }
+
+      function updateMessageCount(tickets) {
+        const count = document.getElementById('message-count');
+        if (!count) return;
+        const total = (tickets || []).length;
+        count.textContent = total + ' message' + (total === 1 ? '' : 's');
+      }
+
+      function refreshMessageDesk(button, staff) {
+        if (!button || button.getAttribute('aria-busy') === 'true') return;
+        const scene = state.scene;
+        const section = state.section;
+        const actingAs = state.actingAs;
+        const key = staff ? actingAs : 'student';
+        markSync(button, 'pending');
+        const request = staff ? quietServer('getStaffTickets', [actingAs]) : quietServer('getTicketHub', []);
+        request.then(function(hub) {
+          if (!sameScene(scene) || state.section !== section || (staff && state.actingAs !== actingAs)) return;
+          const local = state.messageDesks[key];
+          const merged = local ? mergeTicketList(local.tickets || [], hub.tickets || []) : (hub.tickets || []);
+          const next = local || hub;
+          next.tickets = merged;
+          if (hub.faqs) next.faqs = hub.faqs;
+          if (hub.categories) next.categories = hub.categories;
+          if (hub.viewAs) next.viewAs = hub.viewAs;
+          if (!local) rememberMessageDesk(next, key);
+          if (staff) syncStaffUnread(next);
+          else syncStudentUnread(next);
+          syncTicketListDom(next.tickets, staff);
+          updateMessageCount(next.tickets);
+          if (button.isConnected) markSync(button, 'confirmed');
+        }).catch(function(error) {
+          if (!sameScene(scene) || !button.isConnected) return;
+          markSync(button, 'rejected');
+          showError(error);
+        });
+      }
+
+      function noteMessagesHtml(note) {
+        const messages = note.messages && note.messages.length ? note.messages : [{ messageId: '', body: note.title || '' }];
+        return messages.map(function(message) {
+          return `<p data-message="${escapeHtml(message.messageId)}">${escapeHtml(message.body || '')}</p>`;
+        }).join('');
+      }
+
+      function syncNoteListDom(notes) {
+        const list = document.querySelector('#main .note-list');
+        if (!list || state.notesPane === 'templates') return;
+        const wanted = {};
+        notes.forEach(function(note) { wanted[note.ticketId] = true; });
+        Array.prototype.forEach.call(list.querySelectorAll('.note-card[data-ticket]'), function(card) {
+          if (!wanted[card.dataset.ticket]) card.remove();
+        });
+        const empty = list.querySelector('.empty');
+        if (notes.length && empty) empty.remove();
+        notes.forEach(function(note) {
+          const id = String(note.ticketId).replace(/"/g, '');
+          let card = list.querySelector('.note-card[data-ticket="' + id + '"]');
+          if (!card) {
+            list.insertAdjacentHTML('beforeend', renderNoteCard(note));
+            card = list.querySelector('.note-card[data-ticket="' + id + '"]');
+            if (card) bindShareList(card, [note]);
+            return;
+          }
+          const thread = card.querySelector('.note-thread');
+          if (thread) {
+            const current = Array.prototype.map.call(thread.querySelectorAll('[data-message]'), function(node) {
+              return node.dataset.message;
+            }).join('\n');
+            const nextIds = (note.messages || []).map(function(message) { return message.messageId; }).join('\n');
+            if (current !== nextIds) thread.innerHTML = noteMessagesHtml(note);
+          }
+          card.dataset.updated = note.lastUpdated || '';
+          const who = card.querySelector('[data-note-who]');
+          if (who) who.textContent = note.displayName ? note.displayName + ' · ' : '';
+          const kind = card.querySelector('[data-note-kind]');
+          if (kind) kind.textContent = note.shared ? 'Message' : 'Note';
+          const box = card.querySelector('[data-share]');
+          if (box) box.checked = !!note.shared;
+        });
+        notes.forEach(function(note) {
+          const id = String(note.ticketId).replace(/"/g, '');
+          const card = list.querySelector('.note-card[data-ticket="' + id + '"]');
+          if (card) list.appendChild(card);
+        });
+        if (!notes.length) list.innerHTML = '<div class="empty">Open a student to take a note. Notes you save appear here.</div>';
+      }
+
+      function refreshStaffNotes(button) {
+        if (!button || button.getAttribute('aria-busy') === 'true') return;
+        const scene = state.scene;
+        const actingAs = state.actingAs;
+        markSync(button, 'pending');
+        quietServer('getStaffNotesHub', [actingAs]).then(function(hub) {
+          if (!sameScene(scene) || state.section !== 'notes' || state.actingAs !== actingAs) return;
+          const local = state.notesHub;
+          const merged = mergeTicketList((local && local.notes) || [], hub.notes || []);
+          const next = local || hub;
+          next.notes = merged;
+          next.viewAs = hub.viewAs || next.viewAs;
+          if (hub.templates) next.templates = hub.templates;
+          if (hub.phases) next.phases = hub.phases;
+          state.notesHub = next;
+          if (state.notesPane !== 'templates') syncNoteListDom(next.notes);
+          if (button.isConnected) markSync(button, 'confirmed');
+        }).catch(function(error) {
+          if (!sameScene(scene) || !button.isConnected) return;
+          markSync(button, 'rejected');
+          showError(error);
+        });
       }
 
       function rememberTicketRead(ticket, staff) {
@@ -2313,11 +2535,12 @@
         if (state.user.permissions.isSupervisor) roles.push(['supervisor', 'Supervisor']);
         roles.push(['staff', 'Staff browse']);
         const tickets = hub.tickets || [];
-        main.innerHTML = `<div class="page-head"><div><p class="eyebrow">Help</p><h1>Messages</h1><p class="lede">${hub.viewAs === 'supervisor' ? 'Messages from your advisees.' : 'Messages routed to the EE Coordinator, plus supervisor messages that have no assignee yet.'}</p></div></div>
+        main.innerHTML = `<div class="page-head"><div><p class="eyebrow">Help</p><h1>Messages</h1><p class="lede">${hub.viewAs === 'supervisor' ? 'Messages from your advisees.' : 'Messages routed to the EE Coordinator, plus supervisor messages that have no assignee yet.'}</p></div><div class="page-actions"><button type="button" class="button secondary" id="refresh-messages">Refresh</button></div></div>
           <div class="toolbar"><label for="ticket-acting-as">Acting as</label><select id="ticket-acting-as">${roles.map(function(role) {
             return `<option value="${role[0]}" ${state.actingAs === role[0] ? 'selected' : ''}>${role[1]}</option>`;
           }).join('')}</select><span class="muted" id="message-count">${tickets.length} message${tickets.length === 1 ? '' : 's'}</span></div>
-          <div class="ticket-list">${tickets.length ? tickets.map(function(ticket) { return renderTicket(ticket, true); }).join('') : '<div class="empty">No messages in this queue.</div>'}</div>`;
+          <div class="ticket-list" id="ticket-list">${tickets.length ? tickets.map(function(ticket) { return renderTicket(ticket, true); }).join('') : '<div class="empty">No messages in this queue.</div>'}</div>`;
+        document.getElementById('refresh-messages').addEventListener('click', function(event) { refreshMessageDesk(event.currentTarget, true); });
         document.getElementById('ticket-acting-as').addEventListener('change', function(event) {
           state.actingAs = event.target.value;
           state.staffHome = null;
@@ -2427,7 +2650,8 @@
       }
 
       function renderNoteCard(note) {
-        return `<article class="note-card" data-ticket="${escapeHtml(note.ticketId)}" data-updated="${escapeHtml(note.lastUpdated || '')}"><p>${escapeHtml(noteBody(note))}</p><div class="template-row"><span class="muted">${escapeHtml(note.displayName || '')}${note.displayName ? ' · ' : ''}<span data-note-kind>${note.shared ? 'Message' : 'Note'}</span></span>${shareControl(note)}</div></article>`;
+        const who = note.displayName ? escapeHtml(note.displayName) + ' · ' : '';
+        return `<article class="note-card" data-ticket="${escapeHtml(note.ticketId)}" data-updated="${escapeHtml(note.lastUpdated || '')}"><div class="note-thread">${noteMessagesHtml(note)}</div><div class="template-row"><span class="muted"><span data-note-who>${who}</span><span data-note-kind>${note.shared ? 'Message' : 'Note'}</span></span>${shareControl(note)}</div></article>`;
       }
 
       function bindNoteComposer(box, onSave) {
@@ -2484,16 +2708,17 @@
         const notes = hub.notes || [];
         const templates = hub.templates || [];
         const phases = hub.phases || [];
-        main.innerHTML = `<div class="page-head"><div><p class="eyebrow">Supervisor</p><h1>Notes</h1><p class="lede">Private notes stay with you. Shared notes become messages the student can see.</p></div></div>
+        main.innerHTML = `<div class="page-head"><div><p class="eyebrow">Supervisor</p><h1>Notes</h1><p class="lede">Private notes stay with you. Shared notes become messages the student can see.</p></div><div class="page-actions"><button type="button" class="button secondary" id="refresh-notes">Refresh</button></div></div>
           <nav class="subnav" aria-label="Notes sections">
             <button type="button" data-notes-pane="notes" aria-current="${pane === 'notes' ? 'page' : 'false'}">Notes</button>
             <button type="button" data-notes-pane="templates" aria-current="${pane === 'templates' ? 'page' : 'false'}">Template Tasks</button>
           </nav>
           ${pane === 'templates' ? renderTemplateTasks(templates, phases) : `<div class="note-list">${notes.length ? notes.map(renderNoteCard).join('') : '<div class="empty">Open a student to take a note. Notes you save appear here.</div>'}</div>`}`;
+        document.getElementById('refresh-notes').addEventListener('click', function(event) { refreshStaffNotes(event.currentTarget); });
         main.querySelectorAll('[data-notes-pane]').forEach(function(button) {
           button.addEventListener('click', function() {
             state.notesPane = button.dataset.notesPane;
-            paintStaffNotes(hub);
+            paintStaffNotes(state.notesHub || hub);
           });
         });
         if (pane === 'notes') bindShareList(main, notes, function() { renderStaffNotes(); });
