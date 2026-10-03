@@ -191,7 +191,20 @@
       .add-todo.is-open .add-todo-form { display: flex; }
       .add-todo.is-open .add-todo-open { display: none; }
       .add-todo-form input { min-width: 0; flex: 1; padding: 7px 9px; border: 1px solid var(--line); border-radius: 3px; }
-      .load-quote { display: block; margin-top: 6px; font-style: italic; }
+      .load-stage { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 48px 10vw; }
+      .load-status { margin: 0 0 22px; color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+      .load-quote { margin: 0; max-width: 16em; border: 0; padding: 0; color: #1a4d73; }
+      .load-quote-text { font: 500 clamp(28px, 4.8vw, 56px)/1.22 Georgia, "Iowan Old Style", Palatino, "Palatino Linotype", serif; background-image: linear-gradient(105deg, #16324a 0%, #1d4e73 34%, #7dcec6 46%, #f7fbfb 50%, #8fd0c8 54%, #0f6f62 66%, #16324a 100%); background-size: 240% 100%; animation: quote-sheen 11s ease-in-out infinite alternate; }
+      @supports ((-webkit-background-clip: text) or (background-clip: text)) {
+        .load-quote-text { color: transparent; -webkit-background-clip: text; background-clip: text; }
+      }
+      @keyframes quote-sheen { from { background-position: 0% 50%; } to { background-position: 100% 50%; } }
+      @media (prefers-reduced-motion: reduce) {
+        .load-quote-text { animation: none; background-position: 42% 50%; }
+      }
+      .journey-scroll .load-stage { min-height: 220px; padding: 28px 18px; }
+      .journey-scroll .load-quote { max-width: 12em; }
+      .journey-scroll .load-quote-text { font-size: 26px; }
       .todo-edit { display: grid; gap: 6px; margin-top: 8px; }
       .todo-edit input, .todo-edit textarea { width: 100%; padding: 6px 8px; border: 1px solid var(--line); }
       .drop-hint { display: none; color: var(--green); font-size: 11px; }
@@ -349,7 +362,7 @@
     </style>
   </head>
   <body>
-    <div id="app"><div class="shell"><p class="muted" data-connect="1">Connecting to VSA EE Hub...</p></div></div>
+    <div id="app"><div class="load-stage" data-connect="1"><p class="load-status">Connecting to VSA EE Hub...</p></div></div>
     <script>
       const state = {
         user: null,
@@ -395,11 +408,11 @@
         const bank = state.quotes && state.quotes.length ? state.quotes : (state.quote ? [state.quote] : []);
         if (!bank.length) return '';
         const quote = bank[Math.floor(Math.random() * bank.length)];
-        return `<span class="load-quote">${escapeHtml(quote)}</span>`;
+        return `<blockquote class="load-quote"><span class="load-quote-text">${escapeHtml(quote)}</span></blockquote>`;
       }
 
       function loadingLine(message) {
-        return `<p class="muted">${escapeHtml(message)}${quoteMarkup()}</p>`;
+        return `<div class="load-stage"><p class="load-status">${escapeHtml(message)}</p>${quoteMarkup()}</div>`;
       }
 
       function rememberQuotes(result) {
@@ -407,7 +420,8 @@
         if (result.quotes && result.quotes.length) state.quotes = result.quotes.slice();
         if (result.quote) state.quote = result.quote;
         const node = document.querySelector('#app [data-connect]');
-        if (node) node.innerHTML = 'Connecting to VSA EE Hub...' + quoteMarkup();
+        if (!node) return;
+        node.innerHTML = '<p class="load-status">Connecting to VSA EE Hub...</p>' + quoteMarkup();
       }
 
       function start() {
