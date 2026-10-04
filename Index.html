@@ -296,6 +296,7 @@
       .tabs button[aria-current="page"] { color: white; border-bottom-color: var(--gold); }
       .topbar { position: sticky; top: 0; z-index: 30; min-height: 40px; padding: 0 12px; }
       main { max-width: 1180px; margin: 0 auto; padding: 10px; container-type: inline-size; }
+      main.plan-wide { max-width: none; padding-inline: clamp(12px, 2vw, 28px); }
       @container (max-width: 760px) {
         .tiles, .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .doc-grid { grid-template-columns: 1fr; }
@@ -392,7 +393,10 @@
         .staff-board { grid-template-columns: 1fr; }
         .next-steps { position: static; }
       }
-      .plan-intro { max-width: 760px; margin: 0 0 12px; }
+      .plan-intro { max-width: 70ch; margin: 0 0 12px; }
+      .plan-layout { display: grid; grid-template-columns: clamp(300px, 33vw, 480px) minmax(0, 1fr); gap: 18px; align-items: start; }
+      .plan-side { position: sticky; top: 52px; max-height: calc(100vh - 64px); overflow: auto; padding-bottom: 8px; }
+      .plan-main { min-width: 0; container-type: inline-size; }
       .plan-block { margin: 0 0 16px; }
       .plan-block h2 { margin-bottom: 4px; }
       .plan-phase-list, .plan-edit-list { display: grid; gap: 8px; }
@@ -401,9 +405,10 @@
         background: white;
         border-left: 4px solid var(--phase, var(--ink));
       }
-      .plan-phase { display: grid; grid-template-columns: auto minmax(140px, 1.6fr) 88px minmax(150px, 1fr) auto auto; gap: 8px; align-items: end; padding: 8px; }
-      .plan-phase .plan-wide { grid-column: 1 / -1; }
+      .plan-phase { display: grid; gap: 8px; padding: 10px; }
       .plan-phase.is-hidden { background: #f7f8f9; }
+      .plan-phase-bar { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+      .plan-phase-row { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 8px; align-items: end; }
       .plan-filter { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 999px; background: white; color: var(--ink); font-weight: 700; }
       .plan-filter[aria-pressed="false"] { color: var(--muted); background: #f3f5f6; }
       .plan-swatch { width: 10px; height: 10px; border-radius: 50%; background: var(--phase, var(--ink)); flex: none; }
@@ -445,8 +450,10 @@
       .plan-chip.is-dragging { opacity: .45; }
       .plan-edit { display: grid; gap: 8px; padding: 10px; }
       .plan-edit.is-selected { box-shadow: inset 0 0 0 1px var(--ink); }
-      .plan-edit-main { display: grid; grid-template-columns: 14px minmax(140px, 1.5fr) 148px 108px minmax(120px, 1fr) 110px 120px auto; gap: 8px; align-items: end; }
-      .plan-edit .plan-swatch { align-self: center; }
+      .plan-edit-main { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+      .plan-edit-main > .field { flex: 1 1 148px; min-width: 0; }
+      .plan-edit-main > .plan-actions { flex: 1 1 140px; }
+      .plan-edit .plan-swatch { flex: none; align-self: center; margin-bottom: 8px; }
       .plan-actions { display: flex; flex-wrap: wrap; gap: 4px; }
       .plan-sync.sync-pending { outline: 2px solid var(--coral); outline-offset: 1px; }
       .plan-sync.sync-confirmed { animation: sync-confirmed .85s ease both, plan-saved-outline .85s ease both; }
@@ -461,9 +468,13 @@
         .plan-chip { height: 8px; padding: 0; border: 0; border-radius: 99px; background: var(--phase, var(--ink)); }
         .plan-chip-title { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
       }
-      @media (max-width: 900px) {
-        .plan-phase, .plan-anchor, .plan-edit-main { grid-template-columns: 1fr 1fr; }
-        .plan-phase .plan-wide, .plan-edit textarea { grid-column: 1 / -1; }
+      @container (max-width: 720px) {
+        .plan-anchor { grid-template-columns: 1fr; }
+      }
+      @media (max-width: 1100px) {
+        .plan-layout { grid-template-columns: 1fr; }
+        .plan-side { position: static; max-height: none; overflow: visible; }
+        .plan-anchor { grid-template-columns: 1fr; }
       }
     </style>
   </head>
@@ -3107,6 +3118,8 @@
       function renderAdmin() {
         advanceScene();
         const main = document.getElementById('main');
+        const planner = state.adminEntity === 'pathway' || state.adminEntity === 'phases' || state.adminEntity === 'milestoneTemplates' || state.adminEntity === 'templateDesigner';
+        main.classList.toggle('plan-wide', planner);
         main.innerHTML = `<div class="page-head"><div><p class="eyebrow">Administration</p><h1>Admin</h1><p class="lede">Manage the records that power the EE Hub.</p></div></div>
           <nav class="subnav" aria-label="Admin sections">${adminSections.map(function(section) {
             return `<button type="button" data-admin-entity="${section[0]}" aria-current="${state.adminEntity === section[0] ? 'page' : 'false'}">${section[1]}</button>`;
@@ -3637,10 +3650,15 @@
         const anchorMilestones = plan.milestones.filter(function(milestone) { return pathwayOffset(milestone.offsetDays) === 0; });
         return `<div id="pathway-planner">
           <p class="lede plan-intro">Define the phases first, then put an anchor milestone on day 0. Add the other milestones on the calendar. Colour shows the phase. A hidden phase drops its milestones from the calendar and the list.</p>
+          <div class="plan-layout">
+          <aside class="plan-side">
           <section class="plan-block" aria-labelledby="plan-phases-heading">
-            <div class="toolbar"><h2 id="plan-phases-heading">Phases</h2><button type="button" class="button" data-plan-action="add-phase">Add phase</button>${hiddenCount ? '<button type="button" class="button secondary" data-plan-action="show-phases">Show all phases</button>' : ''}<span class="muted">Shown phases stay on the calendar. Colour follows phase order.</span></div>
+            <div class="toolbar"><h2 id="plan-phases-heading">Phases</h2><button type="button" class="button" data-plan-action="add-phase">Add phase</button>${hiddenCount ? '<button type="button" class="button secondary" data-plan-action="show-phases">Show all phases</button>' : ''}</div>
+            <p class="muted">Shown phases stay on the calendar. Colour follows phase order.</p>
             ${plan.phases.length ? `<div class="plan-phase-list">${pathwaySortedPhases().map(pathwayPhaseMarkup).join('')}</div>` : '<div class="empty">Add the first phase to start the plan.</div>'}
           </section>
+          </aside>
+          <div class="plan-main">
           <section class="plan-anchor plan-block" style="--phase:${anchorMilestones.length ? pathwayPhaseColor(anchorMilestones[0].phase) : '#004C80'}">
             <div class="field"><label for="plan-anchor-date">Anchor date</label><input id="plan-anchor-date" type="date" value="${escapeHtml(plan.anchorDate)}"><p class="muted">Day 0 on this calendar. Changing it moves the preview only. Each student still has an anchor date under Assignments.</p></div>
             <div>${pathwayAnchorCopy(anchorMilestones)}</div>
@@ -3658,6 +3676,8 @@
             <div class="toolbar"><h2 id="plan-list-heading">Milestones</h2><button type="button" class="button" data-plan-action="add-milestone">Add milestone</button><span class="muted">Edit the list here. Hidden phases are left out.</span></div>
             ${visible.length ? `<div class="plan-edit-list">${visible.map(pathwayMilestoneMarkup).join('')}</div>` : '<div class="empty">No milestones in the phases that are shown. Show a phase, or add a milestone.</div>'}
           </section>
+          </div>
+          </div>
         </div>`;
       }
 
@@ -3680,15 +3700,19 @@
         const count = state.pathwayPlan.milestones.filter(function(milestone) { return milestone.phase === phase.phaseId; }).length;
         const locked = phase.deleting ? 'disabled' : '';
         return `<article class="plan-phase plan-sync${hidden ? ' is-hidden' : ''}${pathwaySyncClass('phase', phase.phaseId)}" data-sync-key="phase:${escapeHtml(phase.phaseId)}" style="--phase:${color}">
-          <button type="button" class="plan-filter" data-plan-action="filter-phase" data-phase-id="${escapeHtml(phase.phaseId)}" aria-pressed="${hidden ? 'false' : 'true'}">
-            <span class="plan-swatch" style="--phase:${color}"></span>${hidden ? 'Hidden' : 'Shown'}
-          </button>
+          <div class="plan-phase-bar">
+            <button type="button" class="plan-filter" data-plan-action="filter-phase" data-phase-id="${escapeHtml(phase.phaseId)}" aria-pressed="${hidden ? 'false' : 'true'}">
+              <span class="plan-swatch" style="--phase:${color}"></span>${hidden ? 'Hidden' : 'Shown'}
+            </button>
+            <button type="button" class="link-button" data-plan-action="delete-phase" data-phase-id="${escapeHtml(phase.phaseId)}">Delete</button>
+          </div>
           <div class="field"><label>Title</label><input ${locked} data-focus="phase:${escapeHtml(phase.phaseId)}:title" data-phase-id="${escapeHtml(phase.phaseId)}" data-phase-field="phaseTitle" value="${escapeHtml(phase.phaseTitle)}"></div>
-          <div class="field"><label>Order</label><input ${locked} type="number" data-focus="phase:${escapeHtml(phase.phaseId)}:sequence" data-phase-id="${escapeHtml(phase.phaseId)}" data-phase-field="sequence" value="${escapeHtml(phase.sequence)}"></div>
+          <div class="plan-phase-row">
+            <div class="field"><label>Order</label><input ${locked} type="number" data-focus="phase:${escapeHtml(phase.phaseId)}:sequence" data-phase-id="${escapeHtml(phase.phaseId)}" data-phase-field="sequence" value="${escapeHtml(phase.sequence)}"></div>
+            <label class="field check"><input type="checkbox" ${locked} data-phase-id="${escapeHtml(phase.phaseId)}" data-phase-field="active" ${phase.active ? 'checked' : ''}> Active</label>
+          </div>
           <div class="field"><label>Prerequisite</label><select ${locked} data-focus="phase:${escapeHtml(phase.phaseId)}:prerequisite" data-phase-id="${escapeHtml(phase.phaseId)}" data-phase-field="prerequisitePhaseId">${pathwayPrerequisiteOptions(phase)}</select></div>
-          <label class="field check"><input type="checkbox" ${locked} data-phase-id="${escapeHtml(phase.phaseId)}" data-phase-field="active" ${phase.active ? 'checked' : ''}> Active</label>
-          <button type="button" class="link-button" data-plan-action="delete-phase" data-phase-id="${escapeHtml(phase.phaseId)}">Delete</button>
-          <div class="field plan-wide"><label>Description</label><p class="muted">${count} milestone${count === 1 ? '' : 's'}</p><textarea ${locked} data-focus="phase:${escapeHtml(phase.phaseId)}:description" data-phase-id="${escapeHtml(phase.phaseId)}" data-phase-field="phaseDescription">${escapeHtml(phase.phaseDescription || '')}</textarea></div>
+          <div class="field"><label>Description</label><p class="muted">${count} milestone${count === 1 ? '' : 's'}</p><textarea ${locked} data-focus="phase:${escapeHtml(phase.phaseId)}:description" data-phase-id="${escapeHtml(phase.phaseId)}" data-phase-field="phaseDescription">${escapeHtml(phase.phaseDescription || '')}</textarea></div>
         </article>`;
       }
 
