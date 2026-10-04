@@ -363,6 +363,8 @@ function getStudentForm(milestoneId) {
     var rowNumber = findRowNumber_(sheet, 'StudentId', user.email);
     if (rowNumber > 0) response = readFormRow_(sheet, rowNumber, definition.fields);
   }
+  var due = studentFormDueDate_(user.email, definition.milestoneId);
+  var formOpen = !formWritesClosed_(due, new Date());
   return {
     milestoneId: definition.milestoneId,
     title: text_(template.milestoneTitle),
@@ -371,8 +373,100 @@ function getStudentForm(milestoneId) {
     js: definition.js,
     fields: resolveFieldOptions_(definition.fields),
     response: response,
+    formOpen: formOpen,
+    closedMessage: formOpen ? '' : formClosedMessage_(due),
     student: { displayName: placement.displayName || user.displayName, subject: placement.subject || '' }
   };
+}
+
+function scriptTimeZone_() {
+  var zone = '';
+  try { zone = Session.getScriptTimeZone(); } catch (error) { zone = ''; }
+  if (!zone) {
+    try { zone = getSpreadsheet_().getSpreadsheetTimeZone(); } catch (sheetError) { zone = ''; }
+  }
+  return zone || 'UTC';
+}
+
+function scriptClockParts_(value) {
+  if (value === '' || value === null || value === undefined) return null;
+  var date = value instanceof Date ? value : new Date(value);
+  if (isNaN(date.getTime())) return null;
+  var timeZone = scriptTimeZone_();
+  var formatted = Utilities.formatDate(date, timeZone, 'yyyy-MM-dd HH:mm:ss');
+  var match = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/.exec(formatted);
+  if (!match) return null;
+  return {
+    date: date,
+    timeZone: timeZone,
+    year: Number(match[1]),
+    month: Number(match[2]),
+    day: Number(match[3]),
+    hour: Number(match[4]),
+    minute: Number(match[5]),
+    second: Number(match[6])
+  };
+}
+
+function dueDateFacts_(dueValue) {
+  if (dueValue === '' || dueValue === null || dueValue === undefined) return { missing: true };
+  var date = dueValue instanceof Date ? dueValue : new Date(dueValue);
+  if (isNaN(date.getTime())) return { invalid: true };
+  var parts = scriptClockParts_(date);
+  if (!parts) return { invalid: true };
+  var utcMidnight = date.getUTCHours() === 0 && date.getUTCMinutes() === 0 && date.getUTCSeconds() === 0;
+  var localMidnight = parts.hour === 0 && parts.minute === 0 && parts.second === 0;
+  if (!utcMidnight && !localMidnight) return { date: date, parts: parts, timed: true };
+  var year = localMidnight ? parts.year : date.getUTCFullYear();
+  var month = localMidnight ? parts.month : date.getUTCMonth() + 1;
+  var day = localMidnight ? parts.day : date.getUTCDate();
+  return { date: date, parts: parts, timed: false, year: year, month: month, day: day };
+}
+
+function startOfScriptDay_(year, month, day) {
+  var timeZone = scriptTimeZone_();
+  var utcGuess = Date.UTC(year, month - 1, day, 0, 0, 0);
+  var corrected = new Date(utcGuess);
+  for (var pass = 0; pass < 2; pass++) {
+    var formatted = Utilities.formatDate(corrected, timeZone, 'yyyy-MM-dd HH:mm:ss');
+    var match = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/.exec(formatted);
+    if (!match) return corrected;
+    var shown = Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(match[4]), Number(match[5]), Number(match[6]));
+    var target = Date.UTC(year, month - 1, day, 0, 0, 0);
+    if (shown === target) return corrected;
+    corrected = new Date(corrected.getTime() + (target - shown));
+  }
+  return corrected;
+}
+
+function formWritesClosed_(dueValue, now) {
+  var facts = dueDateFacts_(dueValue);
+  if (facts.missing) return false;
+  if (facts.invalid) return true;
+  var current = now instanceof Date ? now : new Date(now || Date.now());
+  if (isNaN(current.getTime())) return true;
+  if (facts.timed) return current.getTime() > facts.date.getTime();
+  var deadline = startOfScriptDay_(facts.year, facts.month, facts.day + 1);
+  return current.getTime() >= deadline.getTime();
+}
+
+function formClosedMessage_(dueValue) {
+  var facts = dueDateFacts_(dueValue);
+  if (facts.missing || facts.invalid || !facts.parts) return 'This form is closed because its due date could not be read. Answers can no longer be changed.';
+  var when = facts.timed
+    ? Utilities.formatDate(facts.date, facts.parts.timeZone, 'd MMM yyyy, HH:mm')
+    : Utilities.formatDate(startOfScriptDay_(facts.year, facts.month, facts.day), facts.parts.timeZone, 'd MMM yyyy');
+  return 'This form\'s due date has passed (' + when + '). Answers can no longer be changed.';
+}
+
+function studentFormDueDate_(studentEmail, milestoneId) {
+  var item = findSystemActionItem_(studentEmail, milestoneId);
+  return item && item.record ? item.record.DueDate : '';
+}
+
+function assertStudentFormWritable_(studentEmail, milestoneId) {
+  var due = studentFormDueDate_(studentEmail, milestoneId);
+  if (formWritesClosed_(due, new Date())) throw new Error(formClosedMessage_(due));
 }
 
 function readFormRow_(sheet, rowNumber, fields) {
@@ -415,6 +509,7 @@ function saveStudentForm(milestoneId, payload) {
     var sheet = getSpreadsheet_().getSheetByName(formSheetName_(milestoneId));
     if (!sheet) throw new Error('The form response sheet is missing.');
     assertFormResponseSchema_(sheet, definition.fields);
+    assertStudentFormWritable_(user.email, definition.milestoneId);
     var headers = getHeaders_(sheet);
     var rowNumber = findRowNumber_(sheet, 'StudentId', user.email);
     if (rowNumber > 0) {

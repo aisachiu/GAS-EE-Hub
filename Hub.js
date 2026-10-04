@@ -484,8 +484,7 @@ function staffMayAddStudentTodo_(user, context) {
 
 function staffMayUpdateAllMilestones_(user, roster, view) {
   if (!user || user.role !== 'staff' || view === 'staff' || !roster) return false;
-  if (user.permissions.canAdmin && (view === 'coordinator' || view === 'supervisor')) return true;
-  return view === 'supervisor' && !!user.permissions.isSupervisor && normalizeEmail_(roster.supervisorId) === user.email;
+  return !!(user.permissions && user.permissions.canAdmin);
 }
 
 function staffMayUpdateSystemItem_(user, context, record) {
@@ -498,8 +497,8 @@ function staffMayUpdateSystemItem_(user, context, record) {
 }
 
 function staffViewLabel_(view, canUpdate) {
-  if (view === 'coordinator') return canUpdate ? 'Coordinator · you can update milestones' : 'Coordinator';
-  if (view === 'supervisor') return canUpdate ? 'Supervisor · you can update milestones' : 'Supervisor';
+  if (view === 'coordinator') return canUpdate ? 'Coordinator · you can update every milestone' : 'Coordinator';
+  if (view === 'supervisor') return canUpdate ? 'Supervisor · you can update every milestone' : 'Supervisor · you can update milestones you own';
   return 'Staff browse · read only';
 }
 

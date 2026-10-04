@@ -34,6 +34,7 @@ function getStudentActionItems_(studentEmail, user) {
     item.mOwner = templateOwners[text_(item.TemplateId)] || '';
     item.canEdit = item.CreatorType === 'Student' && user && user.role === 'student' && normalizeEmail_(item.StudentId) === user.email;
     item.canUpdate = item.canEdit || (item.CreatorType === 'System' && !!user && canCompleteMilestone_(user, item.StudentId, item.mOwner, item.templateType));
+    item.formOpen = item.templateType !== 'form' || !formWritesClosed_(item.DueDate, new Date());
     return item;
   }).sort(function(left, right) {
     var leftDate = left.DueDate ? Date.parse(left.DueDate) : Number.MAX_SAFE_INTEGER;
