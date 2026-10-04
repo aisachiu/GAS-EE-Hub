@@ -387,7 +387,10 @@ function getAppBootstrap() {
   try {
     var user = getCurrentUser_();
     AuditLog.record('LOGIN_SUCCESS', { role: user.role }, user.email);
-    return { user: user, quote: quotes.quote, quotes: quotes.quotes };
+    var messages = null;
+    try { messages = getOpeningMessages_(); }
+    catch (messageError) { console.error('Unable to load opening messages', messageError); }
+    return { user: user, quote: quotes.quote, quotes: quotes.quotes, messages: messages };
   } catch (error) {
     var email = getActiveEmail_();
     try {
