@@ -392,6 +392,79 @@
         .staff-board { grid-template-columns: 1fr; }
         .next-steps { position: static; }
       }
+      .plan-intro { max-width: 760px; margin: 0 0 12px; }
+      .plan-block { margin: 0 0 16px; }
+      .plan-block h2 { margin-bottom: 4px; }
+      .plan-phase-list, .plan-edit-list { display: grid; gap: 8px; }
+      .plan-phase, .plan-edit, .plan-anchor {
+        border: 1px solid var(--line);
+        background: white;
+        border-left: 4px solid var(--phase, var(--ink));
+      }
+      .plan-phase { display: grid; grid-template-columns: auto minmax(140px, 1.6fr) 88px minmax(150px, 1fr) auto auto; gap: 8px; align-items: end; padding: 8px; }
+      .plan-phase .plan-wide { grid-column: 1 / -1; }
+      .plan-phase.is-hidden { background: #f7f8f9; }
+      .plan-filter { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 999px; background: white; color: var(--ink); font-weight: 700; }
+      .plan-filter[aria-pressed="false"] { color: var(--muted); background: #f3f5f6; }
+      .plan-swatch { width: 10px; height: 10px; border-radius: 50%; background: var(--phase, var(--ink)); flex: none; }
+      .plan-filter[aria-pressed="false"] .plan-swatch { background: transparent; box-shadow: inset 0 0 0 2px var(--phase, var(--muted)); }
+      .plan-phase textarea, .plan-edit textarea { min-height: 52px; }
+      .plan-anchor { display: grid; grid-template-columns: minmax(180px, 240px) minmax(0, 1fr) auto; gap: 12px; align-items: end; padding: 12px; }
+      .plan-anchor p { margin: 0; }
+      .plan-span { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+      .plan-span button { min-width: 32px; min-height: 32px; border: 1px solid var(--line); background: white; color: var(--ink); font-weight: 700; }
+      .plan-span button[aria-pressed="true"] { color: white; background: var(--ink); border-color: var(--ink); }
+      .plan-scroll {
+        position: relative;
+        overflow-x: auto;
+        overflow-y: hidden;
+        border: 1px solid var(--line);
+        background: #f8fafb;
+        scroll-behavior: auto;
+      }
+      .plan-track { display: flex; align-items: stretch; min-height: 100%; }
+      .plan-month { flex: 0 0 auto; min-width: 0; padding: 8px; overflow: hidden; border-right: 1px solid var(--line); background: white; container-type: inline-size; }
+      .plan-month h3 { margin: 0 0 6px; font-size: 14px; }
+      .plan-weekdays, .plan-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+      .plan-weekdays span { color: var(--muted); font-size: 10px; font-weight: 700; text-align: center; }
+      .plan-blank { min-height: 1px; }
+      .plan-day { display: grid; align-content: start; gap: 3px; min-width: 0; min-height: 78px; padding: 3px; overflow: hidden; border: 1px solid transparent; background: #fbfcfd; }
+      .plan-day.is-today { background: #f4fbf8; }
+      .plan-day.is-anchor-day { background: #eef5fb; box-shadow: inset 0 0 0 1px var(--ink); }
+      .plan-day.is-drop { background: #fff6f1; box-shadow: inset 0 0 0 2px var(--gold); }
+      .plan-day-hit { border: 0; padding: 0; background: transparent; color: var(--ink); font-weight: 700; text-align: left; }
+      .plan-day.is-anchor-day .plan-day-hit::after { content: 'Anchor'; display: block; color: var(--ink); font-size: 9px; letter-spacing: .04em; text-transform: uppercase; }
+      .plan-chips { display: grid; gap: 2px; min-width: 0; }
+      .plan-chip {
+        display: block; width: 100%; min-width: 0; padding: 2px 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        text-align: left; border: 1px solid transparent; border-left: 3px solid var(--phase, var(--ink));
+        background: color-mix(in srgb, var(--phase, var(--ink)) 16%, white); color: #1c2b36; font-size: 11px; font-weight: 700; cursor: grab;
+      }
+      .plan-chip.is-anchor { font-weight: 750; }
+      .plan-chip.is-selected { box-shadow: inset 0 0 0 1px var(--ink); }
+      .plan-chip.is-dragging { opacity: .45; }
+      .plan-edit { display: grid; gap: 8px; padding: 10px; }
+      .plan-edit.is-selected { box-shadow: inset 0 0 0 1px var(--ink); }
+      .plan-edit-main { display: grid; grid-template-columns: 14px minmax(140px, 1.5fr) 148px 108px minmax(120px, 1fr) 110px 120px auto; gap: 8px; align-items: end; }
+      .plan-edit .plan-swatch { align-self: center; }
+      .plan-actions { display: flex; flex-wrap: wrap; gap: 4px; }
+      .plan-sync.sync-pending { outline: 2px solid var(--coral); outline-offset: 1px; }
+      .plan-sync.sync-confirmed { animation: sync-confirmed .85s ease both, plan-saved-outline .85s ease both; }
+      @keyframes plan-saved-outline {
+        0% { outline: 2px solid var(--coral); outline-offset: 1px; }
+        35% { outline: 2px solid #14745f; outline-offset: 2px; }
+        100% { outline-color: transparent; }
+      }
+      @container (max-width: 280px) {
+        .plan-day { min-height: 52px; padding: 2px; }
+        .plan-day.is-anchor-day .plan-day-hit::after { content: 'A'; }
+        .plan-chip { height: 8px; padding: 0; border: 0; border-radius: 99px; background: var(--phase, var(--ink)); }
+        .plan-chip-title { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+      }
+      @media (max-width: 900px) {
+        .plan-phase, .plan-anchor, .plan-edit-main { grid-template-columns: 1fr 1fr; }
+        .plan-phase .plan-wide, .plan-edit textarea { grid-column: 1 / -1; }
+      }
     </style>
   </head>
   <body>
@@ -437,7 +510,8 @@
         scene: 0,
         messageDesks: {},
         requests: { active: 0, nextId: 0 },
-        mutationQueues: {}
+        mutationQueues: {},
+        pathwayPlan: null
       };
 
       document.addEventListener('DOMContentLoaded', start);
@@ -3024,8 +3098,8 @@
       }
 
       const adminSections = [
-        ['cohorts', 'Cohorts'], ['cohortMembers', 'Students in cohorts'], ['phases', 'Phases'], ['milestoneTemplates', 'Milestone templates'],
-        ['templateDesigner', 'Template designer'], ['assignments', 'Assignments'],
+        ['cohorts', 'Cohorts'], ['cohortMembers', 'Students in cohorts'], ['pathway', 'Phases & milestones'],
+        ['assignments', 'Assignments'],
         ['studentUsers', 'Student users'], ['staffUsers', 'Staff users'], ['subjects', 'Subjects'], ['formDesigner', 'Milestone forms'],
         ['resources', 'Resources'], ['faqs', 'FAQs'], ['ticketCategories', 'Message categories']
       ];
@@ -3051,8 +3125,11 @@
       function loadAdminSection() {
         const target = document.getElementById('admin-content');
         if (!target) return;
-        if (state.adminEntity === 'templateDesigner') {
-          renderTemplateDesigner(target);
+        if (state.adminEntity === 'phases' || state.adminEntity === 'milestoneTemplates' || state.adminEntity === 'templateDesigner') {
+          state.adminEntity = 'pathway';
+        }
+        if (state.adminEntity === 'pathway') {
+          renderPathwayPlanner(target);
           return;
         }
         if (state.adminEntity === 'formDesigner') {
@@ -3090,6 +3167,7 @@
       }
 
       function refreshAdminSectionSilently() {
+        if (state.adminEntity === 'pathway') return;
         if (state.adminEntity === 'cohortMembers') {
           callServer('getCohortMembersForAdmin', state.cohortId).then(renderAdminData).catch(showError);
           return;
@@ -3179,77 +3257,1053 @@
         }).catch(function(error) { button.disabled = false; showError(error); });
       }
 
-      function renderTemplateDesigner(target) {
-        target.innerHTML = loadingLine('Loading phases and templates...');
-        Promise.all([callServer('getAdminRecords', 'phases'), callServer('getAdminRecords', 'milestoneTemplates')]).then(function(results) {
-          const phases = results[0].records || [];
-          const templates = results[1].records || [];
-          target.innerHTML = `<div class="toolbar"><button type="button" class="button secondary" id="manage-phases">Manage phases</button><button type="button" class="button secondary" id="manage-templates">Manage templates</button></div>
-            ${phases.length ? `<div class="template-board">${phases.slice().sort(function(left, right) { return Number(left.sequence) - Number(right.sequence); }).map(function(phase) {
-              const phaseTemplates = templates.filter(function(template) { return template.phase === phase.phaseId; });
-              return `<section class="template-phase" data-phase-drop="${escapeHtml(phase.phaseId)}"><header><span class="eyebrow">Phase ${escapeHtml(phase.phaseId)}</span><h2>${escapeHtml(phase.phaseTitle)}</h2><p class="muted">${escapeHtml(phase.phaseDescription || '')}</p></header><div class="template-list">${phaseTemplates.map(function(template) {
-                return `<article class="template-card" draggable="true" data-template-drag="${escapeHtml(template.milestoneId)}" data-template-phase="${escapeHtml(phase.phaseId)}"><span class="task-kind">${escapeHtml(template.type)}</span><strong>${escapeHtml(template.milestoneTitle)}</strong><small>${escapeHtml(template.mOwner)} · offset ${escapeHtml(template.offsetDays)}d</small><span class="drop-hint">Drop to reorder</span></article>`;
-              }).join('') || '<p class="muted">No templates in this phase.</p>'}</div></section>`;
-            }).join('')}</div>` : '<div class="empty">Add phases before arranging templates.</div>'}`;
-          document.getElementById('manage-phases').addEventListener('click', function() { switchAdminSection('phases'); });
-          document.getElementById('manage-templates').addEventListener('click', function() { switchAdminSection('milestoneTemplates'); });
-          bindTemplateDragging(target);
-        }).catch(showError);
+      const PATHWAY_COLORS = ['#004C80', '#0E8A6A', '#FF5A36', '#6B4C9A', '#B8860B', '#0E7C86', '#C43D6E', '#3E6B4F'];
+      let pathwayPainting = false;
+      const PATHWAY_TYPES = ['form', 'upload', 'doc', 'approval', 'meeting'];
+      const PATHWAY_OWNERS = ['student', 'supervisor', 'lead', 'coordinator'];
+      const PATHWAY_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+      function readPlanSetting(key, fallback) {
+        try {
+          const value = window.localStorage.getItem(key);
+          return value === null || value === '' ? fallback : value;
+        } catch (error) {
+          return fallback;
+        }
       }
 
-      function bindTemplateDragging(target) {
-        target.querySelectorAll('[data-template-drag]').forEach(function(card) {
-          card.addEventListener('dragstart', function(event) {
-            event.dataTransfer.setData('text/plain', card.dataset.templateDrag);
-            event.dataTransfer.effectAllowed = 'move';
-          });
+      function writePlanSetting(key, value) {
+        try { window.localStorage.setItem(key, String(value)); } catch (error) { /* the plan still works for this visit */ }
+      }
+
+      function clonePathway(value) {
+        return JSON.parse(JSON.stringify(value));
+      }
+
+      function pathwayOffset(value) {
+        const number = Number(value);
+        return isFinite(number) ? Math.round(number) : 0;
+      }
+
+      function parsePlanDate(value) {
+        const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || '').slice(0, 10));
+        if (!match) return null;
+        const year = Number(match[1]);
+        const month = Number(match[2]);
+        const day = Number(match[3]);
+        const date = new Date(Date.UTC(year, month - 1, day));
+        if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
+        return date;
+      }
+
+      function formatPlanDate(date) {
+        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(date.getUTCDate()).padStart(2, '0');
+        return date.getUTCFullYear() + '-' + month + '-' + day;
+      }
+
+      function addPlanDays(date, days) {
+        const next = new Date(date.getTime());
+        next.setUTCDate(next.getUTCDate() + days);
+        return next;
+      }
+
+      function addPlanMonths(date, count) {
+        return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + count, 1));
+      }
+
+      function startOfPlanMonth(date) {
+        return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
+      }
+
+      function planMonthKey(date) {
+        return formatPlanDate(startOfPlanMonth(date)).slice(0, 7);
+      }
+
+      function planMonthDiff(start, end) {
+        return (end.getUTCFullYear() - start.getUTCFullYear()) * 12 + (end.getUTCMonth() - start.getUTCMonth());
+      }
+
+      function planDaysBetween(fromDate, toDate) {
+        return Math.round((toDate.getTime() - fromDate.getTime()) / 86400000);
+      }
+
+      function formatPlanLabel(date) {
+        return date.getUTCDate() + ' ' + PATHWAY_MONTHS[date.getUTCMonth()] + ' ' + date.getUTCFullYear();
+      }
+
+      function pathwayDefaultAnchorIso() {
+        const now = new Date();
+        return formatPlanDate(new Date(Date.UTC(now.getFullYear(), now.getMonth() + 5, 1)));
+      }
+
+      function pathwayTodayIso() {
+        const now = new Date();
+        return formatPlanDate(new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())));
+      }
+
+      function ensurePathwayPlan() {
+        if (state.pathwayPlan) return state.pathwayPlan;
+        let hidden = {};
+        try {
+          const parsed = JSON.parse(readPlanSetting('ee-hub-plan-hidden', '[]'));
+          if (Array.isArray(parsed)) parsed.forEach(function(id) { hidden[String(id)] = true; });
+        } catch (error) { hidden = {}; }
+        const storedAnchor = readPlanSetting('ee-hub-plan-anchor', pathwayDefaultAnchorIso());
+        const storedMonths = Number(readPlanSetting('ee-hub-plan-months', '2'));
+        state.pathwayPlan = {
+          phases: [],
+          milestones: [],
+          anchorDate: parsePlanDate(storedAnchor) ? String(storedAnchor).slice(0, 10) : pathwayDefaultAnchorIso(),
+          monthsVisible: Math.max(2, Math.min(6, storedMonths || 2)),
+          hiddenPhaseIds: hidden,
+          leadMonths: 1,
+          trailMonths: 1,
+          selectedMilestoneId: '',
+          preferredPhaseId: '',
+          persistedPhases: {},
+          persistedMilestones: {},
+          baselines: { phases: {}, milestones: {} },
+          saving: {},
+          timers: {},
+          loaded: false,
+          loadToken: 0,
+          pendingScroll: 'anchor',
+          scrollLeft: 0,
+          dragId: '',
+          didDrop: false,
+          focusAfterPaint: '',
+          selectAfterPaint: false,
+          resizeBound: false
+        };
+        return state.pathwayPlan;
+      }
+
+      function pathwayAnchorIso() {
+        return ensurePathwayPlan().anchorDate;
+      }
+
+      function pathwayNormalizePhase(record) {
+        return {
+          phaseId: String(record.phaseId || '').trim().toLowerCase(),
+          phaseTitle: String(record.phaseTitle || ''),
+          phaseDescription: String(record.phaseDescription || ''),
+          sequence: record.sequence === '' || record.sequence === undefined || record.sequence === null ? '' : Number(record.sequence),
+          prerequisitePhaseId: String(record.prerequisitePhaseId || ''),
+          active: toBoolean(record.active)
+        };
+      }
+
+      function pathwayNormalizeMilestone(record) {
+        return {
+          milestoneId: String(record.milestoneId || '').trim(),
+          type: String(record.type || 'form').toLowerCase(),
+          milestoneTitle: String(record.milestoneTitle || ''),
+          offsetDays: pathwayOffset(record.offsetDays),
+          milestoneDescription: String(record.milestoneDescription || ''),
+          phase: String(record.phase || ''),
+          mOwner: String(record.mOwner || 'student').toLowerCase(),
+          deleting: !!record.deleting
+        };
+      }
+
+      function pathwayPhasePayload(phase) {
+        const sequenceText = String(phase.sequence === undefined || phase.sequence === null ? '' : phase.sequence).trim();
+        return {
+          phaseId: String(phase.phaseId || '').trim().toLowerCase(),
+          phaseTitle: String(phase.phaseTitle || '').trim(),
+          phaseDescription: String(phase.phaseDescription || ''),
+          sequence: sequenceText === '' ? NaN : Number(sequenceText),
+          prerequisitePhaseId: String(phase.prerequisitePhaseId || ''),
+          active: !!phase.active
+        };
+      }
+
+      function pathwayMilestonePayload(milestone) {
+        return {
+          milestoneId: String(milestone.milestoneId || '').trim(),
+          type: String(milestone.type || 'form').toLowerCase(),
+          milestoneTitle: String(milestone.milestoneTitle || '').trim(),
+          offsetDays: pathwayOffset(milestone.offsetDays),
+          milestoneDescription: String(milestone.milestoneDescription || ''),
+          phase: String(milestone.phase || ''),
+          mOwner: String(milestone.mOwner || 'student').toLowerCase()
+        };
+      }
+
+      function pathwaySamePayload(left, right) {
+        return JSON.stringify(left) === JSON.stringify(right);
+      }
+
+      function pathwaySortedPhases() {
+        return ensurePathwayPlan().phases.slice().sort(function(left, right) {
+          const delta = (Number(left.sequence) || 0) - (Number(right.sequence) || 0);
+          if (delta) return delta;
+          return String(left.phaseTitle).localeCompare(String(right.phaseTitle));
         });
-        target.querySelectorAll('[data-phase-drop]').forEach(function(phase) {
-          phase.addEventListener('dragover', function(event) { event.preventDefault(); phase.classList.add('drag-over'); });
-          phase.addEventListener('dragleave', function(event) { if (!phase.contains(event.relatedTarget)) phase.classList.remove('drag-over'); });
-          phase.addEventListener('drop', function(event) {
-            event.preventDefault();
-            phase.classList.remove('drag-over');
-            const templateId = event.dataTransfer.getData('text/plain');
-            const card = Array.from(target.querySelectorAll('[data-template-drag]')).find(function(item) { return item.dataset.templateDrag === templateId; });
-            const targetCard = event.target.closest('[data-template-drag]');
-            if (!card || (targetCard && targetCard === card)) return;
-            const previousParent = card.parentElement;
-            const previousPhaseId = card.closest('[data-phase-drop]') && card.closest('[data-phase-drop]').dataset.phaseDrop;
-            const previousNextSibling = card.nextElementSibling;
-            const beforeTemplateId = targetCard && targetCard.dataset.templateDrag !== templateId ? targetCard.dataset.templateDrag : '';
-            const insertionPoint = beforeTemplateId ? Array.from(target.querySelectorAll('[data-template-drag]')).find(function(item) { return item.dataset.templateDrag === beforeTemplateId; }) : null;
-            if (insertionPoint) insertionPoint.parentElement.insertBefore(card, insertionPoint);
-            else phase.querySelector('.template-list').appendChild(card);
-            card.dataset.templatePhase = phase.dataset.phaseDrop;
-            markSync(card, 'pending');
-            runMutation('reorderMilestoneTemplate', [templateId, phase.dataset.phaseDrop, beforeTemplateId], {
-              key: 'template-order',
-              confirm: function(result) {
-                const authoritative = (result.order || []).filter(function(item) { return item.templateId === templateId; })[0];
-                if (!authoritative || authoritative.phaseId !== phase.dataset.phaseDrop) {
-                  rollbackTemplateCard(card, previousParent, previousNextSibling, previousPhaseId);
-                  markSync(card, 'rejected');
-                  showError(new Error('The template order changed before this save was confirmed.'));
-                  return;
-                }
-                markSync(card, 'confirmed');
-              },
-              reject: function(error) {
-                rollbackTemplateCard(card, previousParent, previousNextSibling, previousPhaseId);
-                markSync(card, 'rejected');
-                showError(error);
-              }
-            });
+      }
+
+      function pathwayFindPhase(id) {
+        return ensurePathwayPlan().phases.filter(function(phase) { return phase.phaseId === id; })[0] || null;
+      }
+
+      function pathwayFindMilestone(id) {
+        return ensurePathwayPlan().milestones.filter(function(milestone) { return milestone.milestoneId === id; })[0] || null;
+      }
+
+      function pathwayPhaseColor(phaseId) {
+        const phases = pathwaySortedPhases();
+        let index = 0;
+        phases.forEach(function(phase, phaseIndex) { if (phase.phaseId === phaseId) index = phaseIndex; });
+        return PATHWAY_COLORS[index % PATHWAY_COLORS.length];
+      }
+
+      function pathwayVisibleMilestones() {
+        const hidden = ensurePathwayPlan().hiddenPhaseIds;
+        return ensurePathwayPlan().milestones.filter(function(milestone) {
+          return !hidden[milestone.phase];
+        }).sort(function(left, right) {
+          const delta = pathwayOffset(right.offsetDays) - pathwayOffset(left.offsetDays);
+          if (delta) return delta;
+          return String(left.milestoneTitle).localeCompare(String(right.milestoneTitle));
+        });
+      }
+
+      function pathwayMilestoneIso(milestone) {
+        const anchor = parsePlanDate(pathwayAnchorIso());
+        if (!anchor) return '';
+        return formatPlanDate(addPlanDays(anchor, -pathwayOffset(milestone.offsetDays)));
+      }
+
+      function pathwaySetMilestoneDate(milestone, iso) {
+        const anchor = parsePlanDate(pathwayAnchorIso());
+        const due = parsePlanDate(iso);
+        if (!anchor || !due) return false;
+        milestone.offsetDays = planDaysBetween(due, anchor);
+        return true;
+      }
+
+      function pathwayOffsetLabel(offset) {
+        const days = pathwayOffset(offset);
+        if (days === 0) return 'On the anchor date';
+        const size = Math.abs(days);
+        const unit = size === 1 ? 'day' : 'days';
+        return days > 0 ? size + ' ' + unit + ' before the anchor' : size + ' ' + unit + ' after the anchor';
+      }
+
+      function pathwayDefaultPhaseId() {
+        const phases = pathwaySortedPhases().filter(function(phase) {
+          return phase.active && !state.pathwayPlan.hiddenPhaseIds[phase.phaseId];
+        });
+        if (state.pathwayPlan.preferredPhaseId && phases.some(function(phase) { return phase.phaseId === state.pathwayPlan.preferredPhaseId; })) {
+          return state.pathwayPlan.preferredPhaseId;
+        }
+        return phases.length ? phases[0].phaseId : '';
+      }
+
+      function pathwayNextId(prefix, records, field) {
+        const used = {};
+        records.forEach(function(record) { used[record[field]] = true; });
+        let number = records.length + 1;
+        while (used[prefix + number]) number += 1;
+        return prefix + number;
+      }
+
+      function pathwayOptionList(values, current) {
+        const options = values.slice();
+        if (current && options.indexOf(current) < 0) options.push(current);
+        return options.map(function(value) {
+          return `<option value="${escapeHtml(value)}" ${value === current ? 'selected' : ''}>${escapeHtml(value)}</option>`;
+        }).join('');
+      }
+
+      function pathwayPhaseOptions(current) {
+        const options = pathwaySortedPhases().map(function(phase) {
+          const label = (phase.phaseTitle || phase.phaseId) + (phase.active ? '' : ' (inactive)');
+          return `<option value="${escapeHtml(phase.phaseId)}" ${phase.phaseId === current ? 'selected' : ''}>${escapeHtml(label)}</option>`;
+        });
+        if (current && !pathwayFindPhase(current)) options.push(`<option value="${escapeHtml(current)}" selected>${escapeHtml(current)}</option>`);
+        return options.join('');
+      }
+
+      function pathwayPrerequisiteOptions(phase) {
+        const options = ['<option value="">No prerequisite</option>'].concat(pathwaySortedPhases().filter(function(item) {
+          return item.phaseId !== phase.phaseId;
+        }).map(function(item) {
+          return `<option value="${escapeHtml(item.phaseId)}" ${item.phaseId === phase.prerequisitePhaseId ? 'selected' : ''}>${escapeHtml(item.phaseTitle || item.phaseId)}</option>`;
+        }));
+        return options.join('');
+      }
+
+      function pathwaySyncClass(kind, id) {
+        return state.pathwayPlan.saving[kind + ':' + id] ? ' sync-pending' : '';
+      }
+
+      function pathwayIngest(phaseRecords, milestoneRecords) {
+        const plan = ensurePathwayPlan();
+        plan.phases = phaseRecords.map(pathwayNormalizePhase).filter(function(phase) { return phase.phaseId; });
+        plan.milestones = milestoneRecords.map(pathwayNormalizeMilestone).filter(function(milestone) { return milestone.milestoneId; });
+        plan.persistedPhases = {};
+        plan.persistedMilestones = {};
+        plan.baselines = { phases: {}, milestones: {} };
+        plan.phases.forEach(function(phase) {
+          plan.persistedPhases[phase.phaseId] = true;
+          plan.baselines.phases[phase.phaseId] = clonePathway(phase);
+        });
+        plan.milestones.forEach(function(milestone) {
+          plan.persistedMilestones[milestone.milestoneId] = true;
+          plan.baselines.milestones[milestone.milestoneId] = clonePathway(milestone);
+        });
+      }
+
+      function renderPathwayPlanner(target) {
+        const plan = ensurePathwayPlan();
+        const busy = Object.keys(plan.saving).length > 0 || Object.keys(plan.timers).length > 0;
+        if (plan.loaded && busy) {
+          plan.pendingScroll = 'preserve';
+          paintPathway();
+          return;
+        }
+        const token = ++plan.loadToken;
+        target.innerHTML = loadingLine('Loading phases and milestones...');
+        Promise.all([
+          callServer('getAdminRecords', 'phases'),
+          callServer('getAdminRecords', 'milestoneTemplates')
+        ]).then(function(results) {
+          if (!state.pathwayPlan || token !== state.pathwayPlan.loadToken) return;
+          pathwayIngest(results[0].records || [], results[1].records || []);
+          state.pathwayPlan.loaded = true;
+          state.pathwayPlan.pendingScroll = 'anchor';
+          paintPathway();
+        }).catch(function(error) {
+          if (isStale(error)) return;
+          showError(error);
+          if (target) target.innerHTML = '<div class="empty">Phases and milestones could not be loaded.</div>';
+        });
+      }
+
+      function paintPathway() {
+        const target = document.getElementById('admin-content');
+        const plan = ensurePathwayPlan();
+        if (pathwayPainting || state.section !== 'admin' || state.adminEntity !== 'pathway') return;
+        if (!target || !plan.loaded) return;
+        pathwayPainting = true;
+        try {
+        const previous = document.activeElement;
+        const focusKey = plan.focusAfterPaint || (previous && previous.getAttribute ? previous.getAttribute('data-focus') : '');
+        const selectionStart = previous && typeof previous.selectionStart === 'number' ? previous.selectionStart : null;
+        const selectionEnd = previous && typeof previous.selectionEnd === 'number' ? previous.selectionEnd : null;
+        const selectAll = plan.selectAfterPaint;
+        plan.focusAfterPaint = '';
+        plan.selectAfterPaint = false;
+        const scroller = document.getElementById('plan-scroll');
+        if (scroller && plan.pendingScroll === 'preserve') plan.scrollLeft = scroller.scrollLeft;
+        target.innerHTML = pathwayMarkup();
+        pathwayBind(target);
+        sizePathwayMonths();
+        pathwayApplyScroll();
+        if (focusKey) {
+          const next = target.querySelector('[data-focus="' + cssEscape(focusKey) + '"]');
+          if (next) {
+            next.focus();
+            if (selectAll && next.select) next.select();
+            else if (selectionStart !== null && next.setSelectionRange) {
+              const end = selectionEnd === null ? selectionStart : selectionEnd;
+              const length = String(next.value || '').length;
+              next.setSelectionRange(Math.min(selectionStart, length), Math.min(end, length));
+            }
+          }
+        }
+        Object.keys(plan.saving).forEach(function(key) {
+          const parts = key.split(':');
+          pathwayMarkSaving(parts[0], parts.slice(1).join(':'), 'pending');
+        });
+        if (!plan.resizeBound) {
+          plan.resizeBound = true;
+          window.addEventListener('resize', function() {
+            if (state.section !== 'admin' || state.adminEntity !== 'pathway') return;
+            sizePathwayMonths();
+          });
+        }
+        } finally {
+          pathwayPainting = false;
+        }
+      }
+
+      function pathwayMarkup() {
+        const plan = state.pathwayPlan;
+        const hiddenCount = Object.keys(plan.hiddenPhaseIds).length;
+        const visible = pathwayVisibleMilestones();
+        const anchorMilestones = plan.milestones.filter(function(milestone) { return pathwayOffset(milestone.offsetDays) === 0; });
+        return `<div id="pathway-planner">
+          <p class="lede plan-intro">Define the phases first, then put an anchor milestone on day 0. Add the other milestones on the calendar. Colour shows the phase. A hidden phase drops its milestones from the calendar and the list.</p>
+          <section class="plan-block" aria-labelledby="plan-phases-heading">
+            <div class="toolbar"><h2 id="plan-phases-heading">Phases</h2><button type="button" class="button" data-plan-action="add-phase">Add phase</button>${hiddenCount ? '<button type="button" class="button secondary" data-plan-action="show-phases">Show all phases</button>' : ''}<span class="muted">Shown phases stay on the calendar. Colour follows phase order.</span></div>
+            ${plan.phases.length ? `<div class="plan-phase-list">${pathwaySortedPhases().map(pathwayPhaseMarkup).join('')}</div>` : '<div class="empty">Add the first phase to start the plan.</div>'}
+          </section>
+          <section class="plan-anchor plan-block" style="--phase:${anchorMilestones.length ? pathwayPhaseColor(anchorMilestones[0].phase) : '#004C80'}">
+            <div class="field"><label for="plan-anchor-date">Anchor date</label><input id="plan-anchor-date" type="date" value="${escapeHtml(plan.anchorDate)}"><p class="muted">Day 0 on this calendar. Changing it moves the preview only. Each student still has an anchor date under Assignments.</p></div>
+            <div>${pathwayAnchorCopy(anchorMilestones)}</div>
+            <div class="field"><span id="plan-months-label">Months in view</span><div class="plan-span" role="radiogroup" aria-labelledby="plan-months-label">${[2, 3, 4, 5, 6].map(function(count) {
+              return `<button type="button" data-plan-action="months" data-months="${count}" aria-pressed="${plan.monthsVisible === count ? 'true' : 'false'}">${count}</button>`;
+            }).join('')}</div><p class="muted">Desktop opens on 2 months. Choose up to 6 across the width, then scroll for the rest.</p></div>
+          </section>
+          <section class="plan-block" aria-labelledby="plan-calendar-heading">
+            <div class="toolbar"><h2 id="plan-calendar-heading">Calendar</h2><button type="button" class="button secondary" data-plan-action="earlier">Earlier</button><button type="button" class="button secondary" data-plan-action="later">Later</button><button type="button" class="button secondary" data-plan-action="jump-anchor">Jump to anchor</button><span class="muted">${visible.length} milestone${visible.length === 1 ? '' : 's'} in view. Drag a milestone to another day, or click a day to add one.</span></div>
+            <div id="plan-scroll" class="plan-scroll" tabindex="0" aria-label="Milestone calendar, scroll horizontally">
+              <div class="plan-track">${pathwayMonths().map(pathwayMonthMarkup).join('')}</div>
+            </div>
+          </section>
+          <section class="plan-block" aria-labelledby="plan-list-heading">
+            <div class="toolbar"><h2 id="plan-list-heading">Milestones</h2><button type="button" class="button" data-plan-action="add-milestone">Add milestone</button><span class="muted">Edit the list here. Hidden phases are left out.</span></div>
+            ${visible.length ? `<div class="plan-edit-list">${visible.map(pathwayMilestoneMarkup).join('')}</div>` : '<div class="empty">No milestones in the phases that are shown. Show a phase, or add a milestone.</div>'}
+          </section>
+        </div>`;
+      }
+
+      function pathwayAnchorCopy(anchorMilestones) {
+        if (!anchorMilestones.length) {
+          return `<p class="eyebrow">Anchor milestone</p><p>Nothing falls on the anchor date yet. Name the milestone that should land on each student's anchor date.</p>
+            <div class="toolbar"><input id="plan-anchor-title" data-focus="anchor:title" placeholder="Final essay" aria-label="Anchor milestone title"><button type="button" class="button" data-plan-action="add-anchor">Add on this date</button></div>`;
+        }
+        const names = anchorMilestones.map(function(milestone) {
+          const phase = pathwayFindPhase(milestone.phase);
+          const hidden = !!state.pathwayPlan.hiddenPhaseIds[milestone.phase];
+          return escapeHtml(milestone.milestoneTitle || milestone.milestoneId) + (phase ? ' · ' + escapeHtml(phase.phaseTitle || phase.phaseId) : '') + (hidden ? ' · hidden by filter' : '');
+        }).join('<br>');
+        return `<p class="eyebrow">Anchor milestone</p><p>${names}</p><button type="button" class="button secondary" data-plan-action="add-anchor">Add another on this date</button>`;
+      }
+
+      function pathwayPhaseMarkup(phase) {
+        const hidden = !!state.pathwayPlan.hiddenPhaseIds[phase.phaseId];
+        const color = pathwayPhaseColor(phase.phaseId);
+        const count = state.pathwayPlan.milestones.filter(function(milestone) { return milestone.phase === phase.phaseId; }).length;
+        const locked = phase.deleting ? 'disabled' : '';
+        return `<article class="plan-phase plan-sync${hidden ? ' is-hidden' : ''}${pathwaySyncClass('phase', phase.phaseId)}" data-sync-key="phase:${escapeHtml(phase.phaseId)}" style="--phase:${color}">
+          <button type="button" class="plan-filter" data-plan-action="filter-phase" data-phase-id="${escapeHtml(phase.phaseId)}" aria-pressed="${hidden ? 'false' : 'true'}">
+            <span class="plan-swatch" style="--phase:${color}"></span>${hidden ? 'Hidden' : 'Shown'}
+          </button>
+          <div class="field"><label>Title</label><input ${locked} data-focus="phase:${escapeHtml(phase.phaseId)}:title" data-phase-id="${escapeHtml(phase.phaseId)}" data-phase-field="phaseTitle" value="${escapeHtml(phase.phaseTitle)}"></div>
+          <div class="field"><label>Order</label><input ${locked} type="number" data-focus="phase:${escapeHtml(phase.phaseId)}:sequence" data-phase-id="${escapeHtml(phase.phaseId)}" data-phase-field="sequence" value="${escapeHtml(phase.sequence)}"></div>
+          <div class="field"><label>Prerequisite</label><select ${locked} data-focus="phase:${escapeHtml(phase.phaseId)}:prerequisite" data-phase-id="${escapeHtml(phase.phaseId)}" data-phase-field="prerequisitePhaseId">${pathwayPrerequisiteOptions(phase)}</select></div>
+          <label class="field check"><input type="checkbox" ${locked} data-phase-id="${escapeHtml(phase.phaseId)}" data-phase-field="active" ${phase.active ? 'checked' : ''}> Active</label>
+          <button type="button" class="link-button" data-plan-action="delete-phase" data-phase-id="${escapeHtml(phase.phaseId)}">Delete</button>
+          <div class="field plan-wide"><label>Description</label><p class="muted">${count} milestone${count === 1 ? '' : 's'}</p><textarea ${locked} data-focus="phase:${escapeHtml(phase.phaseId)}:description" data-phase-id="${escapeHtml(phase.phaseId)}" data-phase-field="phaseDescription">${escapeHtml(phase.phaseDescription || '')}</textarea></div>
+        </article>`;
+      }
+
+      function pathwayMonths() {
+        const anchor = parsePlanDate(pathwayAnchorIso()) || parsePlanDate(pathwayDefaultAnchorIso());
+        let min = anchor;
+        let max = anchor;
+        pathwayVisibleMilestones().forEach(function(milestone) {
+          const due = parsePlanDate(pathwayMilestoneIso(milestone));
+          if (!due) return;
+          if (due.getTime() < min.getTime()) min = due;
+          if (due.getTime() > max.getTime()) max = due;
+        });
+        const plan = state.pathwayPlan;
+        let start = addPlanMonths(startOfPlanMonth(min), -plan.leadMonths);
+        let end = addPlanMonths(startOfPlanMonth(max), plan.trailMonths);
+        while (planMonthDiff(start, end) + 1 < plan.monthsVisible) end = addPlanMonths(end, 1);
+        const months = [];
+        for (let cursor = start; cursor.getTime() <= end.getTime() && months.length < 48; cursor = addPlanMonths(cursor, 1)) months.push(cursor);
+        return months;
+      }
+
+      function pathwayMonthMarkup(monthDate) {
+        const year = monthDate.getUTCFullYear();
+        const month = monthDate.getUTCMonth();
+        const firstWeekday = (new Date(Date.UTC(year, month, 1)).getUTCDay() + 6) % 7;
+        const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+        const anchorIso = pathwayAnchorIso();
+        const today = pathwayTodayIso();
+        let cells = '';
+        for (let blank = 0; blank < firstWeekday; blank += 1) cells += '<span class="plan-blank"></span>';
+        for (let day = 1; day <= daysInMonth; day += 1) {
+          const iso = formatPlanDate(new Date(Date.UTC(year, month, day)));
+          const milestones = pathwayVisibleMilestones().filter(function(milestone) { return pathwayMilestoneIso(milestone) === iso; });
+          const classes = ['plan-day'];
+          if (iso === anchorIso) classes.push('is-anchor-day');
+          if (iso === today) classes.push('is-today');
+          cells += `<div class="${classes.join(' ')}" data-plan-date="${iso}"><button type="button" class="plan-day-hit" data-plan-add="${iso}" aria-label="Add a milestone on ${escapeHtml(formatPlanLabel(parsePlanDate(iso)))}">${day}</button><div class="plan-chips">${milestones.map(pathwayChipMarkup).join('')}</div></div>`;
+        }
+        return `<section class="plan-month" data-month="${planMonthKey(monthDate)}"><h3>${PATHWAY_MONTHS[month]} ${year}</h3><div class="plan-weekdays" aria-hidden="true"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div><div class="plan-grid">${cells}</div></section>`;
+      }
+
+      function pathwayChipMarkup(milestone) {
+        const color = pathwayPhaseColor(milestone.phase);
+        const anchor = pathwayOffset(milestone.offsetDays) === 0;
+        const selected = state.pathwayPlan.selectedMilestoneId === milestone.milestoneId;
+        const label = (milestone.milestoneTitle || 'Untitled') + ' · ' + pathwayOffsetLabel(milestone.offsetDays);
+        return `<button type="button" class="plan-chip plan-sync${anchor ? ' is-anchor' : ''}${selected ? ' is-selected' : ''}${pathwaySyncClass('milestone', milestone.milestoneId)}" draggable="${milestone.deleting ? 'false' : 'true'}" data-chip-id="${escapeHtml(milestone.milestoneId)}" data-sync-key="milestone:${escapeHtml(milestone.milestoneId)}" style="--phase:${color}" title="${escapeHtml(label)}"><span class="plan-chip-title">${escapeHtml(milestone.milestoneTitle || 'Untitled')}</span></button>`;
+      }
+
+      function pathwayMilestoneMarkup(milestone) {
+        const color = pathwayPhaseColor(milestone.phase);
+        const selected = state.pathwayPlan.selectedMilestoneId === milestone.milestoneId;
+        const anchor = pathwayOffset(milestone.offsetDays) === 0;
+        const locked = milestone.deleting ? 'disabled' : '';
+        const id = escapeHtml(milestone.milestoneId);
+        return `<article class="plan-edit plan-sync${selected ? ' is-selected' : ''}${pathwaySyncClass('milestone', milestone.milestoneId)}" data-milestone-row="${id}" data-sync-key="milestone:${id}" style="--phase:${color}">
+          <div class="plan-edit-main">
+            <span class="plan-swatch" style="--phase:${color}"></span>
+            <div class="field"><label>Title</label><input ${locked} data-focus="milestone:${id}:title" data-milestone-id="${id}" data-milestone-field="milestoneTitle" value="${escapeHtml(milestone.milestoneTitle)}"></div>
+            <div class="field"><label>Date</label><input ${locked} type="date" data-focus="milestone:${id}:due" data-milestone-id="${id}" data-milestone-field="due" value="${escapeHtml(pathwayMilestoneIso(milestone))}"></div>
+            <div class="field"><label>Days before anchor</label><input ${locked} type="number" data-focus="milestone:${id}:offset" data-milestone-id="${id}" data-milestone-field="offsetDays" value="${escapeHtml(milestone.offsetDays)}"></div>
+            <div class="field"><label>Phase</label><select ${locked} data-focus="milestone:${id}:phase" data-milestone-id="${id}" data-milestone-field="phase">${pathwayPhaseOptions(milestone.phase)}</select></div>
+            <div class="field"><label>Type</label><select ${locked} data-focus="milestone:${id}:type" data-milestone-id="${id}" data-milestone-field="type">${pathwayOptionList(PATHWAY_TYPES, milestone.type)}</select></div>
+            <div class="field"><label>Owner</label><select ${locked} data-focus="milestone:${id}:owner" data-milestone-id="${id}" data-milestone-field="mOwner">${pathwayOptionList(PATHWAY_OWNERS, milestone.mOwner)}</select></div>
+            <div class="plan-actions"><button type="button" class="link-button" data-plan-action="make-anchor" data-milestone-id="${id}" ${anchor || milestone.deleting ? 'disabled' : ''}>${anchor ? 'Anchor' : 'Make anchor'}</button><button type="button" class="link-button" data-plan-action="delete-milestone" data-milestone-id="${id}">Delete</button></div>
+          </div>
+          <div class="field"><label>Description</label><p class="muted">${escapeHtml(pathwayOffsetLabel(milestone.offsetDays))}</p><textarea ${locked} data-focus="milestone:${id}:description" data-milestone-id="${id}" data-milestone-field="milestoneDescription">${escapeHtml(milestone.milestoneDescription || '')}</textarea></div>
+        </article>`;
+      }
+
+      function pathwayBind(root) {
+        root.addEventListener('click', pathwayOnClick);
+        root.addEventListener('input', pathwayOnInput);
+        root.addEventListener('change', pathwayOnChange);
+        root.addEventListener('focusout', pathwayOnBlur);
+        root.addEventListener('dragstart', pathwayOnDragStart);
+        root.addEventListener('dragover', pathwayOnDragOver);
+        root.addEventListener('drop', pathwayOnDrop);
+        root.addEventListener('dragend', pathwayOnDragEnd);
+        const scroller = document.getElementById('plan-scroll');
+        if (scroller) scroller.addEventListener('scroll', function() { state.pathwayPlan.scrollLeft = scroller.scrollLeft; });
+      }
+
+      function pathwayOnClick(event) {
+        if (state.pathwayPlan.didDrop) {
+          state.pathwayPlan.didDrop = false;
+          return;
+        }
+        const actionNode = event.target.closest('[data-plan-action]');
+        if (actionNode) {
+          pathwayRunAction(actionNode);
+          return;
+        }
+        const chip = event.target.closest('[data-chip-id]');
+        if (chip) {
+          pathwaySelectMilestone(chip.dataset.chipId);
+          return;
+        }
+        const day = event.target.closest('.plan-day');
+        if (day && !event.target.closest('.plan-chip')) pathwayAddMilestone(day.dataset.planDate);
+      }
+
+      function pathwayRunAction(node) {
+        const action = node.dataset.planAction;
+        if (action === 'filter-phase') pathwayTogglePhase(node.dataset.phaseId);
+        else if (action === 'show-phases') pathwayShowAllPhases();
+        else if (action === 'add-phase') pathwayAddPhase();
+        else if (action === 'delete-phase') pathwayDeletePhase(node.dataset.phaseId);
+        else if (action === 'add-milestone') pathwayAddMilestone(pathwayAnchorIso());
+        else if (action === 'add-anchor') {
+          const titleInput = document.getElementById('plan-anchor-title');
+          pathwayAddMilestone(pathwayAnchorIso(), titleInput ? titleInput.value.trim() : '');
+        } else if (action === 'months') pathwaySetMonths(Number(node.dataset.months));
+        else if (action === 'earlier') pathwayExtend('earlier');
+        else if (action === 'later') pathwayExtend('later');
+        else if (action === 'jump-anchor') {
+          const scroller = document.getElementById('plan-scroll');
+          if (scroller) pathwayScrollAnchorIntoView(scroller);
+        } else if (action === 'make-anchor') pathwayMakeAnchor(node.dataset.milestoneId);
+        else if (action === 'delete-milestone') pathwayDeleteMilestone(node.dataset.milestoneId);
+      }
+
+      function pathwayOnInput(event) {
+        const input = event.target;
+        if (!input || input.tagName === 'SELECT' || input.type === 'date') return;
+        if (input.dataset && input.dataset.phaseField) pathwayUpdatePhaseField(input);
+        if (input.dataset && input.dataset.milestoneField) pathwayUpdateMilestoneField(input);
+      }
+
+      function pathwayOnChange(event) {
+        const input = event.target;
+        if (!input) return;
+        if (input.id === 'plan-anchor-date') {
+          pathwaySetAnchorDate(input.value);
+          return;
+        }
+        if (input.tagName !== 'SELECT' && input.type !== 'date') return;
+        if (input.dataset && input.dataset.phaseField) pathwayUpdatePhaseField(input);
+        if (input.dataset && input.dataset.milestoneField) pathwayUpdateMilestoneField(input);
+      }
+
+      function pathwayOnBlur(event) {
+        const input = event.target;
+        if (pathwayPainting || !input || !input.dataset) return;
+        if (input.dataset.phaseField === 'phaseTitle' && !String(input.value || '').trim()) {
+          const phase = pathwayFindPhase(input.dataset.phaseId);
+          const baseline = phase && state.pathwayPlan.baselines.phases[phase.phaseId];
+          if (phase && baseline && baseline.phaseTitle) {
+            phase.phaseTitle = baseline.phaseTitle;
+            state.pathwayPlan.pendingScroll = 'preserve';
+            paintPathway();
+          }
+          showError(new Error('Phase title is required.'));
+        }
+        if (input.dataset.milestoneField === 'milestoneTitle' && !String(input.value || '').trim()) {
+          const milestone = pathwayFindMilestone(input.dataset.milestoneId);
+          const baseline = milestone && state.pathwayPlan.baselines.milestones[milestone.milestoneId];
+          if (milestone) milestone.milestoneTitle = baseline && baseline.milestoneTitle ? baseline.milestoneTitle : 'New milestone';
+          state.pathwayPlan.pendingScroll = 'preserve';
+          paintPathway();
+          showError(new Error('Milestone title is required.'));
+        }
+      }
+
+      function pathwayUpdatePhaseField(input) {
+        const phase = pathwayFindPhase(input.dataset.phaseId);
+        if (!phase || phase.deleting) return;
+        const field = input.dataset.phaseField;
+        if (field === 'active') phase.active = !!input.checked;
+        else if (field === 'sequence') phase.sequence = input.value === '' ? '' : Number(input.value);
+        else phase[field] = input.value;
+        state.pathwayPlan.preferredPhaseId = phase.phaseId;
+        if (field === 'sequence' || field === 'active' || field === 'prerequisitePhaseId') {
+          state.pathwayPlan.pendingScroll = 'preserve';
+          paintPathway();
+        }
+        pathwaySchedulePhaseSave(phase.phaseId, field === 'phaseTitle' || field === 'phaseDescription' ? 450 : 0);
+      }
+
+      function pathwayUpdateMilestoneField(input) {
+        const milestone = pathwayFindMilestone(input.dataset.milestoneId);
+        if (!milestone || milestone.deleting) return;
+        const field = input.dataset.milestoneField;
+        if (field === 'due') {
+          if (!pathwaySetMilestoneDate(milestone, input.value)) return;
+        } else if (field === 'offsetDays') {
+          if (input.value === '' || input.value === '-') return;
+          milestone.offsetDays = pathwayOffset(input.value);
+        } else milestone[field] = input.value;
+        if (field === 'milestoneTitle') pathwayRefreshChipTitle(milestone);
+        if (field === 'due' || field === 'offsetDays' || field === 'phase' || field === 'type' || field === 'mOwner') {
+          state.pathwayPlan.pendingScroll = 'preserve';
+          state.pathwayPlan.selectedMilestoneId = milestone.milestoneId;
+          paintPathway();
+        }
+        pathwayScheduleMilestoneSave(milestone.milestoneId, field === 'milestoneTitle' || field === 'milestoneDescription' ? 450 : 0);
+      }
+
+      function pathwayRefreshChipTitle(milestone) {
+        document.querySelectorAll('[data-chip-id="' + cssEscape(milestone.milestoneId) + '"] .plan-chip-title').forEach(function(node) {
+          node.textContent = milestone.milestoneTitle || 'Untitled';
+        });
+      }
+
+      function pathwaySelectMilestone(id) {
+        state.pathwayPlan.selectedMilestoneId = id;
+        document.querySelectorAll('.plan-chip').forEach(function(chip) {
+          chip.classList.toggle('is-selected', chip.dataset.chipId === id);
+        });
+        document.querySelectorAll('.plan-edit').forEach(function(row) {
+          row.classList.toggle('is-selected', row.dataset.milestoneRow === id);
+        });
+        const row = document.querySelector('[data-milestone-row="' + cssEscape(id) + '"]');
+        if (row && row.scrollIntoView) row.scrollIntoView({ block: 'nearest' });
+      }
+
+      function pathwayTogglePhase(id) {
+        const hidden = state.pathwayPlan.hiddenPhaseIds;
+        if (hidden[id]) delete hidden[id];
+        else hidden[id] = true;
+        writePlanSetting('ee-hub-plan-hidden', JSON.stringify(Object.keys(hidden)));
+        state.pathwayPlan.pendingScroll = 'preserve';
+        paintPathway();
+      }
+
+      function pathwayShowAllPhases() {
+        state.pathwayPlan.hiddenPhaseIds = {};
+        writePlanSetting('ee-hub-plan-hidden', '[]');
+        state.pathwayPlan.pendingScroll = 'preserve';
+        paintPathway();
+      }
+
+      function pathwaySetAnchorDate(iso) {
+        if (!parsePlanDate(iso)) return;
+        state.pathwayPlan.anchorDate = String(iso).slice(0, 10);
+        writePlanSetting('ee-hub-plan-anchor', state.pathwayPlan.anchorDate);
+        state.pathwayPlan.pendingScroll = 'anchor';
+        paintPathway();
+      }
+
+      function pathwaySetMonths(count) {
+        const next = Math.max(2, Math.min(6, count || 2));
+        state.pathwayPlan.monthsVisible = next;
+        writePlanSetting('ee-hub-plan-months', String(next));
+        state.pathwayPlan.pendingScroll = 'anchor';
+        paintPathway();
+      }
+
+      function pathwayExtend(direction) {
+        if (direction === 'earlier') {
+          if (state.pathwayPlan.leadMonths >= 24) return;
+          state.pathwayPlan.leadMonths += 1;
+          state.pathwayPlan.pendingScroll = 'start';
+        } else {
+          if (state.pathwayPlan.trailMonths >= 24) return;
+          state.pathwayPlan.trailMonths += 1;
+          state.pathwayPlan.pendingScroll = 'end';
+        }
+        paintPathway();
+      }
+
+      function pathwayAddPhase() {
+        const plan = state.pathwayPlan;
+        const id = pathwayNextId('p', plan.phases, 'phaseId');
+        const maxOrder = plan.phases.reduce(function(max, phase) {
+          const number = Number(phase.sequence);
+          return isFinite(number) ? Math.max(max, number) : max;
+        }, 0);
+        const ordered = pathwaySortedPhases();
+        plan.phases.push({
+          phaseId: id,
+          phaseTitle: 'New phase',
+          phaseDescription: '',
+          sequence: maxOrder + 1,
+          prerequisitePhaseId: ordered.length ? ordered[ordered.length - 1].phaseId : '',
+          active: true
+        });
+        plan.preferredPhaseId = id;
+        plan.focusAfterPaint = 'phase:' + id + ':title';
+        plan.selectAfterPaint = true;
+        plan.pendingScroll = 'preserve';
+        paintPathway();
+        pathwayCommitPhase(id);
+      }
+
+      function pathwayAddMilestone(iso, title) {
+        const phaseId = pathwayDefaultPhaseId();
+        if (!phaseId) {
+          showError(new Error('Add an active phase, and leave it shown, before adding a milestone.'));
+          return;
+        }
+        const anchor = parsePlanDate(pathwayAnchorIso());
+        const due = parsePlanDate(iso) || anchor;
+        if (!anchor || !due) return;
+        const id = pathwayNextId('m', state.pathwayPlan.milestones, 'milestoneId');
+        state.pathwayPlan.milestones.push({
+          milestoneId: id,
+          type: 'form',
+          milestoneTitle: title || 'New milestone',
+          offsetDays: planDaysBetween(due, anchor),
+          milestoneDescription: '',
+          phase: phaseId,
+          mOwner: 'student'
+        });
+        state.pathwayPlan.selectedMilestoneId = id;
+        state.pathwayPlan.preferredPhaseId = phaseId;
+        state.pathwayPlan.focusAfterPaint = 'milestone:' + id + ':title';
+        state.pathwayPlan.selectAfterPaint = true;
+        state.pathwayPlan.pendingScroll = 'preserve';
+        paintPathway();
+        pathwayCommitMilestone(id);
+      }
+
+      function pathwayMakeAnchor(id) {
+        const milestone = pathwayFindMilestone(id);
+        if (!milestone || milestone.deleting || pathwayOffset(milestone.offsetDays) === 0) return;
+        milestone.offsetDays = 0;
+        state.pathwayPlan.selectedMilestoneId = id;
+        state.pathwayPlan.pendingScroll = 'anchor';
+        paintPathway();
+        pathwayCommitMilestone(id);
+      }
+
+      function sizePathwayMonths() {
+        const scroller = document.getElementById('plan-scroll');
+        if (!scroller || !state.pathwayPlan) return;
+        const months = scroller.querySelectorAll('.plan-month');
+        if (!months.length) return;
+        const width = Math.max(1, Math.floor(scroller.clientWidth / state.pathwayPlan.monthsVisible));
+        months.forEach(function(month) { month.style.width = width + 'px'; });
+      }
+
+      function pathwayApplyScroll() {
+        const scroller = document.getElementById('plan-scroll');
+        if (!scroller) return;
+        const mode = state.pathwayPlan.pendingScroll || 'preserve';
+        if (mode === 'start') scroller.scrollLeft = 0;
+        else if (mode === 'end') scroller.scrollLeft = scroller.scrollWidth;
+        else if (mode === 'anchor') pathwayScrollAnchorIntoView(scroller);
+        else scroller.scrollLeft = state.pathwayPlan.scrollLeft || 0;
+        state.pathwayPlan.pendingScroll = 'preserve';
+        state.pathwayPlan.scrollLeft = scroller.scrollLeft;
+      }
+
+      function pathwayScrollAnchorIntoView(scroller) {
+        const anchor = parsePlanDate(pathwayAnchorIso());
+        if (!anchor) return;
+        const month = scroller.querySelector('[data-month="' + planMonthKey(anchor) + '"]');
+        if (!month) return;
+        const scrollerBox = scroller.getBoundingClientRect();
+        const monthBox = month.getBoundingClientRect();
+        const left = monthBox.left - scrollerBox.left + scroller.scrollLeft;
+        const width = monthBox.width || 1;
+        scroller.scrollLeft = Math.max(0, left - Math.max(0, state.pathwayPlan.monthsVisible - 1) * width);
+        state.pathwayPlan.scrollLeft = scroller.scrollLeft;
+      }
+
+      function pathwaySchedulePhaseSave(id, delay) {
+        const key = 'phase:' + id;
+        window.clearTimeout(state.pathwayPlan.timers[key]);
+        state.pathwayPlan.timers[key] = window.setTimeout(function() {
+          delete state.pathwayPlan.timers[key];
+          pathwayCommitPhase(id);
+        }, delay || 0);
+      }
+
+      function pathwayScheduleMilestoneSave(id, delay) {
+        const key = 'milestone:' + id;
+        window.clearTimeout(state.pathwayPlan.timers[key]);
+        state.pathwayPlan.timers[key] = window.setTimeout(function() {
+          delete state.pathwayPlan.timers[key];
+          pathwayCommitMilestone(id);
+        }, delay || 0);
+      }
+
+      function pathwayEnqueue(key, createWork) {
+        const prior = state.mutationQueues[key] || Promise.resolve();
+        const operation = prior.catch(function() {}).then(function() { return createWork(); });
+        state.mutationQueues[key] = operation.catch(function() {});
+        return operation;
+      }
+
+      function pathwayMarkSaving(kind, id, status) {
+        if (!state.pathwayPlan) return;
+        const key = kind + ':' + id;
+        if (status === 'pending') state.pathwayPlan.saving[key] = true;
+        else delete state.pathwayPlan.saving[key];
+        document.querySelectorAll('[data-sync-key="' + cssEscape(key) + '"]').forEach(function(element) {
+          markSync(element, status);
+        });
+      }
+
+      function pathwayRemovePhase(id) {
+        state.pathwayPlan.phases = state.pathwayPlan.phases.filter(function(phase) { return phase.phaseId !== id; });
+      }
+
+      function pathwayRemoveMilestone(id) {
+        state.pathwayPlan.milestones = state.pathwayPlan.milestones.filter(function(milestone) { return milestone.milestoneId !== id; });
+        if (state.pathwayPlan.selectedMilestoneId === id) state.pathwayPlan.selectedMilestoneId = '';
+      }
+
+      function pathwayReplacePhase(id, record) {
+        const index = state.pathwayPlan.phases.findIndex(function(phase) { return phase.phaseId === id; });
+        if (index >= 0) state.pathwayPlan.phases[index] = pathwayNormalizePhase(record);
+      }
+
+      function pathwayReplaceMilestone(id, record) {
+        const index = state.pathwayPlan.milestones.findIndex(function(milestone) { return milestone.milestoneId === id; });
+        if (index >= 0) state.pathwayPlan.milestones[index] = pathwayNormalizeMilestone(record);
+      }
+
+      function pathwayCommitPhase(id) {
+        return pathwayEnqueue('pathway:phase:' + id, function() {
+          const phase = pathwayFindPhase(id);
+          if (!phase || phase.deleting) return null;
+          const payload = pathwayPhasePayload(phase);
+          if (!payload.phaseTitle || !isFinite(payload.sequence)) {
+            const baseline = state.pathwayPlan.baselines.phases[id];
+            if (!payload.phaseTitle && baseline) phase.phaseTitle = baseline.phaseTitle;
+            if (!isFinite(payload.sequence) && baseline) phase.sequence = baseline.sequence;
+            state.pathwayPlan.pendingScroll = 'preserve';
+            paintPathway();
+            showError(new Error(!payload.phaseTitle ? 'Phase title is required.' : 'Phase order must be a number.'));
+            return null;
+          }
+          const isNew = !state.pathwayPlan.persistedPhases[id];
+          pathwayMarkSaving('phase', id, 'pending');
+          return callServer('saveAdminRecord', 'phases', payload, isNew ? '' : id).then(function() {
+            state.pathwayPlan.persistedPhases[id] = true;
+            state.pathwayPlan.baselines.phases[id] = clonePathway(payload);
+            pathwayMarkSaving('phase', id, 'confirmed');
+            const current = pathwayFindPhase(id);
+            if (current && !pathwaySamePayload(pathwayPhasePayload(current), payload)) {
+              window.setTimeout(function() { pathwayCommitPhase(id); }, 0);
+            }
+          }).catch(function(error) {
+            if (isStale(error)) return;
+            const current = pathwayFindPhase(id);
+            if (current && pathwaySamePayload(pathwayPhasePayload(current), payload)) {
+              if (isNew) pathwayRemovePhase(id);
+              else if (state.pathwayPlan.baselines.phases[id]) pathwayReplacePhase(id, state.pathwayPlan.baselines.phases[id]);
+              state.pathwayPlan.pendingScroll = 'preserve';
+              paintPathway();
+            }
+            pathwayMarkSaving('phase', id, 'rejected');
+            showError(error);
           });
         });
       }
 
-      function rollbackTemplateCard(card, previousParent, previousNextSibling, previousPhaseId) {
-        if (!card || !previousParent) return;
-        if (previousNextSibling && previousNextSibling.parentElement === previousParent) previousParent.insertBefore(card, previousNextSibling);
-        else previousParent.appendChild(card);
-        card.dataset.templatePhase = previousPhaseId || card.dataset.templatePhase;
+      function pathwayCommitMilestone(id) {
+        return pathwayEnqueue('pathway:milestone:' + id, function() {
+          const milestone = pathwayFindMilestone(id);
+          if (!milestone || milestone.deleting) return null;
+          const payload = pathwayMilestonePayload(milestone);
+          if (!payload.milestoneTitle) return null;
+          const phase = pathwayFindPhase(payload.phase);
+          if (!phase || !phase.active) {
+            const baseline = state.pathwayPlan.baselines.milestones[id];
+            if (baseline) pathwayReplaceMilestone(id, baseline);
+            state.pathwayPlan.pendingScroll = 'preserve';
+            paintPathway();
+            showError(new Error('Choose an active phase before saving this milestone.'));
+            return null;
+          }
+          const isNew = !state.pathwayPlan.persistedMilestones[id];
+          pathwayMarkSaving('milestone', id, 'pending');
+          return callServer('saveAdminRecord', 'milestoneTemplates', payload, isNew ? '' : id).then(function() {
+            state.pathwayPlan.persistedMilestones[id] = true;
+            state.pathwayPlan.baselines.milestones[id] = clonePathway(payload);
+            pathwayMarkSaving('milestone', id, 'confirmed');
+            const current = pathwayFindMilestone(id);
+            if (current && !pathwaySamePayload(pathwayMilestonePayload(current), payload)) {
+              window.setTimeout(function() { pathwayCommitMilestone(id); }, 0);
+            }
+          }).catch(function(error) {
+            if (isStale(error)) return;
+            const current = pathwayFindMilestone(id);
+            if (current && pathwaySamePayload(pathwayMilestonePayload(current), payload)) {
+              if (isNew) pathwayRemoveMilestone(id);
+              else if (state.pathwayPlan.baselines.milestones[id]) pathwayReplaceMilestone(id, state.pathwayPlan.baselines.milestones[id]);
+              state.pathwayPlan.pendingScroll = 'preserve';
+              paintPathway();
+            }
+            pathwayMarkSaving('milestone', id, 'rejected');
+            showError(error);
+          });
+        });
+      }
+
+      function pathwayDeletePhase(id) {
+        const phase = pathwayFindPhase(id);
+        if (!phase) return;
+        const title = phase.phaseTitle || phase.phaseId;
+        if (!window.confirm('Delete the ' + title + ' phase?')) return;
+        phase.deleting = true;
+        state.pathwayPlan.pendingScroll = 'preserve';
+        paintPathway();
+        pathwayEnqueue('pathway:phase:' + id, function() {
+          if (!state.pathwayPlan.persistedPhases[id]) {
+            pathwayRemovePhase(id);
+            state.pathwayPlan.pendingScroll = 'preserve';
+            paintPathway();
+            return null;
+          }
+          pathwayMarkSaving('phase', id, 'pending');
+          return callServer('deleteAdminRecord', 'phases', id).then(function() {
+            pathwayMarkSaving('phase', id, 'confirmed');
+            window.setTimeout(function() {
+              pathwayRemovePhase(id);
+              delete state.pathwayPlan.persistedPhases[id];
+              delete state.pathwayPlan.baselines.phases[id];
+              delete state.pathwayPlan.hiddenPhaseIds[id];
+              state.pathwayPlan.pendingScroll = 'preserve';
+              paintPathway();
+            }, 650);
+          }).catch(function(error) {
+            if (isStale(error)) return;
+            const current = pathwayFindPhase(id);
+            if (current) current.deleting = false;
+            state.pathwayPlan.pendingScroll = 'preserve';
+            paintPathway();
+            pathwayMarkSaving('phase', id, 'rejected');
+            showError(error);
+          });
+        });
+      }
+
+      function pathwayDeleteMilestone(id) {
+        const milestone = pathwayFindMilestone(id);
+        if (!milestone) return;
+        const title = milestone.milestoneTitle || milestone.milestoneId;
+        if (!window.confirm('Delete ' + title + '?')) return;
+        milestone.deleting = true;
+        state.pathwayPlan.pendingScroll = 'preserve';
+        paintPathway();
+        pathwayEnqueue('pathway:milestone:' + id, function() {
+          if (!state.pathwayPlan.persistedMilestones[id]) {
+            pathwayRemoveMilestone(id);
+            state.pathwayPlan.pendingScroll = 'preserve';
+            paintPathway();
+            return null;
+          }
+          pathwayMarkSaving('milestone', id, 'pending');
+          return callServer('deleteAdminRecord', 'milestoneTemplates', id).then(function() {
+            pathwayMarkSaving('milestone', id, 'confirmed');
+            window.setTimeout(function() {
+              pathwayRemoveMilestone(id);
+              delete state.pathwayPlan.persistedMilestones[id];
+              delete state.pathwayPlan.baselines.milestones[id];
+              state.pathwayPlan.pendingScroll = 'preserve';
+              paintPathway();
+            }, 650);
+          }).catch(function(error) {
+            if (isStale(error)) return;
+            const current = pathwayFindMilestone(id);
+            if (current) current.deleting = false;
+            state.pathwayPlan.pendingScroll = 'preserve';
+            paintPathway();
+            pathwayMarkSaving('milestone', id, 'rejected');
+            showError(error);
+          });
+        });
+      }
+
+      function pathwayOnDragStart(event) {
+        const chip = event.target.closest('[data-chip-id]');
+        if (!chip || !event.dataTransfer) return;
+        state.pathwayPlan.dragId = chip.dataset.chipId;
+        event.dataTransfer.setData('text/plain', chip.dataset.chipId);
+        event.dataTransfer.effectAllowed = 'move';
+        chip.classList.add('is-dragging');
+      }
+
+      function pathwayOnDragOver(event) {
+        const day = event.target.closest('.plan-day');
+        if (!day || !state.pathwayPlan.dragId) return;
+        event.preventDefault();
+        if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+        document.querySelectorAll('.plan-day.is-drop').forEach(function(node) {
+          if (node !== day) node.classList.remove('is-drop');
+        });
+        day.classList.add('is-drop');
+      }
+
+      function pathwayOnDrop(event) {
+        const day = event.target.closest('.plan-day');
+        if (!day) return;
+        event.preventDefault();
+        const id = (event.dataTransfer && event.dataTransfer.getData('text/plain')) || state.pathwayPlan.dragId;
+        state.pathwayPlan.dragId = '';
+        state.pathwayPlan.didDrop = true;
+        window.setTimeout(function() { if (state.pathwayPlan) state.pathwayPlan.didDrop = false; }, 300);
+        day.classList.remove('is-drop');
+        const milestone = pathwayFindMilestone(id);
+        const due = parsePlanDate(day.dataset.planDate);
+        const anchor = parsePlanDate(pathwayAnchorIso());
+        if (!milestone || milestone.deleting || !due || !anchor) return;
+        const next = planDaysBetween(due, anchor);
+        if (pathwayOffset(milestone.offsetDays) === next) return;
+        milestone.offsetDays = next;
+        state.pathwayPlan.selectedMilestoneId = id;
+        state.pathwayPlan.pendingScroll = 'preserve';
+        paintPathway();
+        pathwayCommitMilestone(id);
+      }
+
+      function pathwayOnDragEnd() {
+        if (!state.pathwayPlan) return;
+        state.pathwayPlan.dragId = '';
+        document.querySelectorAll('.is-dragging, .plan-day.is-drop').forEach(function(node) {
+          node.classList.remove('is-dragging');
+          node.classList.remove('is-drop');
+        });
       }
 
       function switchAdminSection(entity) {
