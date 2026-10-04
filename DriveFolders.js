@@ -1,27 +1,8 @@
 // Cohort Drive folders. Requires the Drive advanced service (Drive v3) and the
-// https://www.googleapis.com/auth/drive scope. Optional script property
-// DRIVE_PICKER_DEVELOPER_KEY enables the Google Picker in the admin panel.
+// https://www.googleapis.com/auth/drive scope.
 
 var DRIVE_FOLDER_BATCH_LIMIT = 8;
 var DRIVE_NAME_PART_LIMIT = 80;
-
-function getDrivePickerConfig() {
-  requireAdmin_('DRIVE_PICKER_TOKEN');
-  var token = '';
-  var developerKey = '';
-  try {
-    DriveApp.getRootFolder();
-    token = ScriptApp.getOAuthToken();
-  } catch (error) {
-    token = '';
-  }
-  try {
-    developerKey = text_(PropertiesService.getScriptProperties().getProperty('DRIVE_PICKER_DEVELOPER_KEY'));
-  } catch (error) {
-    developerKey = '';
-  }
-  return { token: token, developerKey: developerKey };
-}
 
 function getCohortDriveSettings(cohortId) {
   requireAdmin_('GET_COHORT_DRIVE_SETTINGS');
