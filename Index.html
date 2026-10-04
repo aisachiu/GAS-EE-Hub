@@ -88,6 +88,20 @@
       .field textarea { min-height: 76px; resize: vertical; }
       .field.check { align-content: start; }
       .field.check input { width: 18px; height: 18px; accent-color: var(--green); }
+      .form-intro { margin: 0 0 12px; }
+      .hint { display: block; margin: 0 0 8px; color: var(--muted); font-size: 13px; font-weight: 500; }
+      .subject-picks, .likert { margin: 0 0 14px; padding: 12px; border: 1px solid var(--line); }
+      .subject-picks legend, .likert legend { padding: 0 4px; font-weight: 700; }
+      .check-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 10px; }
+      .check-option { display: flex; align-items: flex-start; gap: 8px; padding: 7px 8px; background: #f8fafb; border: 1px solid var(--line); font-size: 14px; }
+      .check-option input { width: 18px; height: 18px; margin-top: 1px; accent-color: var(--green); }
+      .check-option:has(input:disabled) { color: var(--muted); background: #f3f5f6; }
+      .scale { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+      .scale label { display: grid; justify-items: center; gap: 2px; padding: 8px 4px; text-align: center; background: #f8fafb; border: 1px solid var(--line); font-size: 12px; cursor: pointer; }
+      .scale label:has(input:checked) { background: var(--green-soft); border-color: var(--green); }
+      .scale input { accent-color: var(--green); }
+      .scale span { font-weight: 700; }
+      .scale small { color: var(--muted); line-height: 1.2; }
       .notice { margin: 8px 0; padding: 8px 10px; border-left: 3px solid var(--gold); background: #fff5f1; color: #663020; }
       .notice-list { margin: 0 0 14px; }
       .notice-list h2 { margin-bottom: 8px; font-size: 16px; }
@@ -364,7 +378,9 @@
         .nav { overflow-x: auto; }
         .nav button { white-space: nowrap; }
         .page-head { align-items: flex-start; flex-direction: column; }
-        .form-grid { grid-template-columns: 1fr; }
+        .form-grid, .check-grid { grid-template-columns: 1fr; }
+        .scale { grid-template-columns: 1fr; }
+        .scale label { grid-template-columns: auto auto 1fr; justify-items: start; align-items: center; text-align: left; }
         .field.wide { grid-column: auto; }
         .list-row { align-items: flex-start; }
         .account { max-width: 48%; overflow-wrap: anywhere; }
@@ -1645,7 +1661,9 @@
         callServer('getFormResponse', milestoneId, email).then(function(form) {
           const answers = form.response ? form.response.values : null;
           const body = (form.fields || []).map(function(field) {
-            return `<p><strong>${escapeHtml(field.label)}</strong><br>${escapeHtml(answers ? answers[field.name] || '—' : 'No response yet')}</p>`;
+            const raw = answers ? answers[field.name] : '';
+            const shown = !answers ? 'No response yet' : (field.type === 'checks' && raw ? String(raw).split('; ').join(', ') : (raw || '—'));
+            return `<p><strong>${escapeHtml(field.label)}</strong><br>${escapeHtml(shown)}</p>`;
           }).join('');
           openFormShell(form.title || 'Form', body, '', null);
         }).catch(showError);
@@ -1885,9 +1903,42 @@
         dialog.innerHTML = '';
       }
 
+      function namedControls(root, name) {
+        return Array.prototype.filter.call(root.querySelectorAll('[name]'), function(control) { return control.name === name; });
+      }
+
+      function fillCheckGroup(root, field, current) {
+        const selected = String(current || '').split(';').map(function(part) { return part.trim(); }).filter(Boolean);
+        let host = root.querySelector('[data-checks="' + field.name + '"]');
+        if (!host) {
+          host = document.createElement('div');
+          host.className = 'check-grid';
+          host.setAttribute('data-checks', field.name);
+          const label = document.createElement('label');
+          label.className = 'field wide';
+          label.appendChild(document.createTextNode(field.label));
+          label.appendChild(host);
+          root.appendChild(label);
+        }
+        host.innerHTML = (field.options || []).map(function(option) {
+          const checked = selected.indexOf(option) >= 0 ? ' checked' : '';
+          return `<label class="check-option"><input type="checkbox" name="${escapeHtml(field.name)}" value="${escapeHtml(option)}"${checked}> ${escapeHtml(option)}</label>`;
+        }).join('');
+      }
+
       function fillFormControls(root, fields, values) {
         fields.forEach(function(field) {
-          let input = root.querySelector('[name="' + field.name + '"]');
+          const current = values[field.name] || '';
+          if (field.type === 'checks') {
+            fillCheckGroup(root, field, current);
+            return;
+          }
+          const named = namedControls(root, field.name);
+          if (named.length && named[0].type === 'radio') {
+            named.forEach(function(input) { input.checked = input.value === String(current); });
+            return;
+          }
+          let input = named[0];
           if (!input) {
             const label = document.createElement('label');
             label.className = 'field';
@@ -1899,20 +1950,29 @@
             root.appendChild(label);
           }
           if (input.tagName === 'SELECT') {
-            const current = values[field.name] || '';
             input.innerHTML = '<option value="">Select…</option>' + (field.options || []).map(function(option) {
               return `<option ${option === current ? 'selected' : ''}>${escapeHtml(option)}</option>`;
             }).join('');
-          } else if (input.type === 'checkbox') input.checked = values[field.name] === 'Yes' || values[field.name] === true;
-          else if (values[field.name]) input.value = values[field.name];
+          } else if (input.type === 'checkbox') input.checked = current === 'Yes' || current === true;
+          else if (current) input.value = current;
         });
       }
 
       function collectFormValues(root, fields) {
         const values = {};
         fields.forEach(function(field) {
-          const input = root.querySelector('[name="' + field.name + '"]');
-          if (!input) return;
+          const named = namedControls(root, field.name);
+          if (!named.length) return;
+          if (field.type === 'checks') {
+            values[field.name] = named.filter(function(input) { return input.checked; }).map(function(input) { return input.value; });
+            return;
+          }
+          if (named[0].type === 'radio') {
+            const picked = named.filter(function(input) { return input.checked; })[0];
+            values[field.name] = picked ? picked.value : '';
+            return;
+          }
+          const input = named[0];
           values[field.name] = input.type === 'checkbox' ? input.checked : input.value;
         });
         return values;
@@ -3229,7 +3289,7 @@
         if (!target) return;
         const definition = design.definition;
         target.innerHTML = `<p class="muted">${escapeHtml(design.sheetName)} · version ${definition.version || 0} · ${escapeHtml(definition.status)} · ${design.responseCount} responses</p>
-          <p class="notice">Custom JavaScript can use EEForm only. It cannot call google.script, the network, or the rest of the page. Publish is what creates the response columns.</p>
+          <p class="notice">Custom JavaScript can use EEForm only. It cannot call google.script, the network, or the rest of the page. Publish is what creates the response columns. Use type checks with Options set to subjects, and Max set to 3, for a subject shortlist.</p>
           <div id="field-editor">${definition.fields.map(function(field, index) { return fieldEditorRow(field, index); }).join('')}</div>
           <div class="toolbar"><button type="button" class="button secondary" id="add-form-field">Add field</button></div>
           <div class="field wide"><label for="form-html">HTML</label><textarea id="form-html">${escapeHtml(definition.html || '')}</textarea></div>
@@ -3243,6 +3303,9 @@
         document.getElementById('publish-form-design').addEventListener('click', function() { storeFormDesign(true); });
         document.getElementById('preview-form-design').addEventListener('click', function() {
           const payload = readFormDesignPayload();
+          payload.fields.forEach(function(field) {
+            if (field.optionsFrom === 'subjects') field.options = design.subjectNames || [];
+          });
           openFormShell(design.title + ' preview', payload.html, payload.js, { fields: payload.fields, values: {}, student: { displayName: 'Preview student', subject: '' }, onSubmit: function() { closeForm(); showSuccess('Preview only. Nothing was saved.'); return Promise.resolve(); } });
         });
       }
@@ -3251,10 +3314,11 @@
         const options = field.optionsFrom === 'subjects' ? 'subjects' : (field.options || []).join(', ');
         return `<div class="form-grid" data-field-row="${index}"><div class="field"><label>Name</label><input data-part="name" value="${escapeHtml(field.name)}"></div>
           <div class="field"><label>Label</label><input data-part="label" value="${escapeHtml(field.label)}"></div>
-          <div class="field"><label>Type</label><select data-part="type">${['text', 'textarea', 'number', 'date', 'select', 'checkbox'].map(function(type) {
+          <div class="field"><label>Type</label><select data-part="type">${['text', 'textarea', 'number', 'date', 'select', 'checkbox', 'checks'].map(function(type) {
             return `<option ${field.type === type ? 'selected' : ''}>${type}</option>`;
           }).join('')}</select></div>
           <div class="field"><label>Options</label><input data-part="options" value="${escapeHtml(options)}" placeholder="subjects, or comma-separated choices"></div>
+          <div class="field"><label>Max</label><input data-part="max" type="number" min="1" max="40" value="${field.maxSelections ? escapeHtml(String(field.maxSelections)) : ''}" placeholder="No limit"></div>
           <label class="field check"><input type="checkbox" data-part="required" ${field.required ? 'checked' : ''}> Required</label></div>`;
       }
 
@@ -3268,6 +3332,7 @@
             type: row.querySelector('[data-part="type"]').value,
             required: row.querySelector('[data-part="required"]').checked,
             optionsFrom: optionsFrom,
+            maxSelections: Number(row.querySelector('[data-part="max"]').value) || 0,
             options: optionsFrom ? [] : optionsText.split(',').map(function(option) { return option.trim(); }).filter(Boolean)
           };
         }).filter(function(field) { return field.name; });

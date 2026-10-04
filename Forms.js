@@ -1,5 +1,8 @@
 var FORM_SYSTEM_COLUMNS = ['StudentId', 'FormVersion', 'Status', 'SubmittedAt', 'LastUpdated'];
-var FORM_FIELD_TYPES = ['text', 'textarea', 'number', 'date', 'select', 'checkbox'];
+var FORM_FIELD_TYPES = ['text', 'textarea', 'number', 'date', 'select', 'checkbox', 'checks'];
+var LIKERT_SCALE = ['1 — Strongly disagree', '2 — Disagree', '3 — Neutral', '4 — Agree', '5 — Strongly agree'];
+var SUBJECT_PREFERENCE_MAX = 3;
+var LEGACY_SUBJECT_FIELDS = ['choice1', 'choice2', 'choice3', 'interdisciplinary', 'theme', 'motivation'];
 
 function formSheetName_(milestoneId) {
   var id = text_(milestoneId);
@@ -33,9 +36,11 @@ function normalizeFormFields_(fields) {
     var optionsFrom = text_(field.optionsFrom);
     if (optionsFrom && optionsFrom !== 'subjects') throw new Error('optionsFrom must be subjects.');
     var options = Array.isArray(field.options) ? field.options.map(text_).filter(Boolean).slice(0, 40) : [];
-    if (type === 'select' && !optionsFrom && !options.length) throw new Error(name + ' needs options.');
+    if ((type === 'select' || type === 'checks') && !optionsFrom && !options.length) throw new Error(name + ' needs options.');
     var maxLength = Number(field.maxLength);
     if (!maxLength || maxLength < 1) maxLength = type === 'textarea' ? 2000 : 240;
+    var maxSelections = Math.floor(Number(field.maxSelections));
+    if (!maxSelections || maxSelections < 1) maxSelections = 0;
     return {
       name: name,
       label: text_(field.label) || name,
@@ -43,45 +48,53 @@ function normalizeFormFields_(fields) {
       required: field.required === true || text_(field.required).toLowerCase() === 'true',
       options: options,
       optionsFrom: optionsFrom,
+      maxSelections: Math.min(40, maxSelections),
       maxLength: Math.min(5000, maxLength)
     };
   });
 }
 
+function likertMarkup_(name, legend) {
+  var choices = LIKERT_SCALE.map(function(option) {
+    var parts = option.split(' — ');
+    return '<label><input type="radio" name="' + name + '" value="' + option + '"><span>' + parts[0] + '</span><small>' + (parts[1] || option) + '</small></label>';
+  }).join('');
+  return '<fieldset class="likert"><legend>' + legend + '</legend><div class="scale" role="radiogroup">' + choices + '</div></fieldset>';
+}
+
 function starterSubjectForm_() {
+  var confidenceLabel = 'I feel confident about the EE at this point';
+  var supportedLabel = 'I feel supported learning about the EE so far';
   return {
     milestoneId: 'm1',
     status: 'Draft',
     version: 0,
     fields: [
-      { name: 'choice1', label: '1st choice', type: 'select', required: true, options: [], optionsFrom: 'subjects', maxLength: 120 },
-      { name: 'choice2', label: '2nd choice', type: 'select', required: false, options: [], optionsFrom: 'subjects', maxLength: 120 },
-      { name: 'choice3', label: '3rd choice', type: 'select', required: false, options: [], optionsFrom: 'subjects', maxLength: 120 },
-      { name: 'interdisciplinary', label: 'Interdisciplinary EE', type: 'checkbox', required: false, options: [], optionsFrom: '', maxLength: 8 },
-      { name: 'theme', label: 'Global theme', type: 'select', required: false, options: ['Sustainability & environment', 'Conflict & peace', 'Health & wellbeing', 'Equality & inclusion'], optionsFrom: '', maxLength: 120 },
-      { name: 'motivation', label: 'Why these subjects?', type: 'textarea', required: true, options: [], optionsFrom: '', maxLength: 500 }
+      { name: 'subjects', label: 'Which subjects are you considering for your EE?', type: 'checks', required: true, options: [], optionsFrom: 'subjects', maxSelections: SUBJECT_PREFERENCE_MAX, maxLength: 240 },
+      { name: 'rationale', label: 'Explain your choices', type: 'textarea', required: true, options: [], optionsFrom: '', maxSelections: 0, maxLength: 2000 },
+      { name: 'confidence', label: confidenceLabel, type: 'select', required: true, options: LIKERT_SCALE.slice(), optionsFrom: '', maxSelections: 0, maxLength: 80 },
+      { name: 'supported', label: supportedLabel, type: 'select', required: true, options: LIKERT_SCALE.slice(), optionsFrom: '', maxSelections: 0, maxLength: 80 }
     ],
-    html: '<div class="form-grid"><label class="field">1st choice<select name="choice1"></select></label><label class="field">2nd choice<select name="choice2"></select></label><label class="field">3rd choice<select name="choice3"></select></label></div><label class="field check"><input type="checkbox" name="interdisciplinary"> I am interested in an interdisciplinary Extended Essay</label><label class="field" id="theme-field">Global theme<select name="theme"></select></label><label class="field wide">Why are you drawn to these subjects?<textarea name="motivation" maxlength="500"></textarea></label>',
+    html: [
+      '<p class="form-intro">Choose the subjects you are most interested in for your Extended Essay. You can select up to three.</p>',
+      '<fieldset class="subject-picks"><legend>Which subjects are you considering for your EE?</legend><p class="hint" id="subject-count">Select up to 3.</p><div class="check-grid" data-checks="subjects"></div></fieldset>',
+      '<label class="field wide">Explain your choices<span class="hint">Why these subjects, and what kind of topic do you hope to explore?</span><textarea name="rationale" maxlength="2000"></textarea></label>',
+      likertMarkup_('confidence', confidenceLabel),
+      likertMarkup_('supported', supportedLabel)
+    ].join(''),
     js: [
       'var root = EEForm.root;',
-      'var names = ["choice1", "choice2", "choice3"];',
-      'var selects = names.map(function(name) { return root.querySelector("[name=\\"" + name + "\\"]"); });',
-      'function syncChoices() {',
-      '  var chosen = selects.map(function(select) { return select ? select.value : ""; });',
-      '  selects.forEach(function(select, index) {',
-      '    if (!select) return;',
-      '    Array.prototype.forEach.call(select.options, function(option) {',
-      '      option.disabled = !!(option.value && chosen.some(function(value, other) { return other !== index && value === option.value; }));',
-      '    });',
-      '  });',
+      'var subjectField = (EEForm.fields || []).filter(function(field) { return field.name === "subjects"; })[0];',
+      'var maxSubjects = subjectField && Number(subjectField.maxSelections) > 0 ? Number(subjectField.maxSelections) : 3;',
+      'var boxes = Array.prototype.filter.call(root.querySelectorAll("input"), function(input) { return input.name === "subjects" && input.type === "checkbox"; });',
+      'var count = root.querySelector("#subject-count");',
+      'function limitSubjects() {',
+      '  var picked = boxes.filter(function(box) { return box.checked; }).length;',
+      '  boxes.forEach(function(box) { box.disabled = !box.checked && picked >= maxSubjects; });',
+      '  if (count) count.textContent = picked + " of " + maxSubjects + " selected";',
       '}',
-      'selects.forEach(function(select) { if (select) select.addEventListener("change", syncChoices); });',
-      'syncChoices();',
-      'var box = root.querySelector("[name=\\"interdisciplinary\\"]");',
-      'var theme = root.querySelector("#theme-field");',
-      'function toggleTheme() { if (theme) theme.hidden = !(box && box.checked); }',
-      'if (box) box.addEventListener("change", toggleTheme);',
-      'toggleTheme();'
+      'boxes.forEach(function(box) { box.addEventListener("change", limitSubjects); });',
+      'limitSubjects();'
     ].join('\n'),
     submitCompletes: true
   };
@@ -150,7 +163,8 @@ function fieldNames_(fields) {
 }
 
 function listFormMilestones() {
-  requireAdmin_('LIST_FORMS');
+  var user = requireAdmin_('LIST_FORMS');
+  upgradeLegacySubjectPreferenceForm_(user);
   var templates = readRecords_(getRequiredActionSheet_('milestoneTemplates')).filter(function(template) {
     return text_(template.type).toLowerCase() === 'form';
   });
@@ -168,6 +182,7 @@ function listFormMilestones() {
 
 function getFormDesigner(milestoneId) {
   var user = requireAdmin_('VIEW_FORM_DESIGN');
+  upgradeLegacySubjectPreferenceForm_(user);
   var template = requireFormTemplate_(milestoneId);
   var record = readFormDefinitionRecord_(milestoneId);
   var definition = record ? definitionFromRecord_(record) : starterFor_(text_(template.milestoneId));
@@ -178,6 +193,7 @@ function getFormDesigner(milestoneId) {
     definition: definition,
     sheetName: formSheetName_(milestoneId),
     responseCount: sheet && sheet.getLastRow() > 1 ? sheet.getLastRow() - 1 : 0,
+    subjectNames: subjectOptionNames_(),
     designer: user.email
   };
 }
@@ -248,6 +264,9 @@ function migrateFormSheet_(sheetName, customNames) {
   }
   var actual = getHeaders_(sheet);
   if (sheet.getLastRow() < 2) {
+    if (sheet.getLastColumn() > expected.length) {
+      sheet.deleteColumns(expected.length + 1, sheet.getLastColumn() - expected.length);
+    }
     sheet.getRange(1, 1, 1, expected.length).setValues([expected]);
     return;
   }
@@ -290,6 +309,7 @@ function resolveFieldOptions_(fields) {
       type: field.type,
       required: field.required,
       maxLength: field.maxLength,
+      maxSelections: field.maxSelections || 0,
       options: field.options.slice()
     };
     if (field.optionsFrom === 'subjects') {
@@ -417,10 +437,33 @@ function saveStudentForm(milestoneId, payload) {
   });
 }
 
+function checkedSelections_(raw) {
+  var list = Array.isArray(raw) ? raw : text_(raw).split(';');
+  var unique = [];
+  list.forEach(function(item) {
+    var value = text_(item);
+    if (value && unique.indexOf(value) < 0) unique.push(value);
+  });
+  return unique;
+}
+
 function validateFormAnswers_(fields, values, submit) {
   var answers = {};
   fields.forEach(function(field) {
     var raw = values[field.name];
+    if (field.type === 'checks') {
+      var selected = checkedSelections_(raw);
+      var choices = field.optionsFrom === 'subjects' ? subjectOptionNames_() : field.options;
+      selected.forEach(function(item) {
+        if (choices.indexOf(item) < 0) throw new Error(field.label + ' includes a choice that is not available.');
+      });
+      if (field.maxSelections && selected.length > field.maxSelections) throw new Error('Choose at most ' + field.maxSelections + ' for ' + field.label + '.');
+      if (submit && field.required && !selected.length) throw new Error(field.label + ' is required.');
+      var joined = selected.join('; ');
+      if (joined.length > field.maxLength) throw new Error(field.label + ' is too long.');
+      answers[field.name] = joined;
+      return;
+    }
     var value = field.type === 'checkbox' ? (raw === true || ['true', 'yes', '1'].indexOf(text_(raw).toLowerCase()) >= 0 ? 'Yes' : 'No') : text_(raw);
     if (submit && field.required && (field.type === 'checkbox' ? value !== 'Yes' : !value)) throw new Error(field.label + ' is required.');
     if (value && field.type !== 'checkbox' && value.length > field.maxLength) throw new Error(field.label + ' is too long.');
@@ -462,6 +505,23 @@ function getFormResponse(milestoneId, studentEmail) {
     fields: resolveFieldOptions_(definition.fields),
     response: rowNumber > 0 ? readFormRow_(sheet, rowNumber, definition.fields) : null
   };
+}
+
+function isLegacySubjectForm_(fields) {
+  return fieldNames_(fields).join('\u0000') === LEGACY_SUBJECT_FIELDS.join('\u0000');
+}
+
+function upgradeLegacySubjectPreferenceForm_(user) {
+  var record = readFormDefinitionRecord_('m1');
+  if (!record || text_(record.status) === 'Published') return;
+  var definition;
+  try { definition = definitionFromRecord_(record); } catch (error) { return; }
+  if (!isLegacySubjectForm_(definition.fields)) return;
+  var responseSheet = getSpreadsheet_().getSheetByName(formSheetName_('m1'));
+  if (responseSheet && responseSheet.getLastRow() > 1) return;
+  var starter = starterSubjectForm_();
+  writeFormDefinition_(user, starter, 'Draft', Number(record.version) || 0);
+  if (responseSheet) migrateFormSheet_(formSheetName_('m1'), fieldNames_(starter.fields));
 }
 
 function seedPublishedSubjectForm_() {
