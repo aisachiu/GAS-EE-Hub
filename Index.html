@@ -396,26 +396,37 @@
       .plan-intro { max-width: 70ch; margin: 0 0 12px; }
       .plan-layout { display: grid; grid-template-columns: clamp(300px, 33vw, 480px) minmax(0, 1fr); gap: 18px; align-items: start; }
       .plan-side { position: sticky; top: 52px; max-height: calc(100vh - 64px); overflow: auto; padding-bottom: 8px; }
-      .plan-main { min-width: 0; container-type: inline-size; }
+      .plan-main { min-width: 0; container-type: inline-size; container-name: plan-main; }
       .plan-block { margin: 0 0 16px; }
       .plan-block h2 { margin-bottom: 4px; }
-      .plan-phase-list, .plan-edit-list { display: grid; gap: 8px; }
+      .plan-phase-list, .plan-edit-list { display: grid; gap: 4px; }
       .plan-phase, .plan-edit, .plan-anchor {
         border: 1px solid var(--line);
         background: white;
         border-left: 4px solid var(--phase, var(--ink));
       }
-      .plan-phase { display: grid; gap: 8px; padding: 10px; }
+      .plan-phase { display: grid; gap: 6px; padding: 4px 8px; }
       .plan-phase.is-hidden { background: #f7f8f9; }
-      .plan-phase-bar { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-      .plan-phase-row { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 8px; align-items: end; }
-      .plan-filter { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 999px; background: white; color: var(--ink); font-weight: 700; }
+      .plan-phase-summary { display: flex; align-items: center; gap: 8px; min-height: 32px; }
+      .plan-phase-toggle { display: inline-flex; align-items: center; gap: 8px; flex: 1 1 auto; min-width: 0; margin: 0; padding: 2px 0; border: 0; background: transparent; color: var(--ink); font: inherit; font-weight: 700; text-align: left; cursor: pointer; }
+      .plan-phase-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .plan-phase-fields { display: flex; flex-wrap: wrap; gap: 6px; align-items: end; }
+      .plan-phase-fields > .field { flex: 1 1 140px; min-width: 0; }
+      .plan-phase-fields > .plan-phase-order { flex: 0 1 72px; }
+      .plan-phase-fields > .check { flex: 0 0 auto; align-self: end; padding-bottom: 6px; }
+      .plan-phase .field, .plan-edit .field { gap: 2px; }
+      .plan-phase .field input, .plan-phase .field select, .plan-phase .field textarea,
+      .plan-edit .field input, .plan-edit .field select, .plan-edit .field textarea { padding: 4px 7px; }
+      .plan-filter { display: inline-flex; align-items: center; gap: 6px; flex: none; min-height: 28px; padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px; background: white; color: var(--ink); font-weight: 700; }
       .plan-filter[aria-pressed="false"] { color: var(--muted); background: #f3f5f6; }
       .plan-swatch { width: 10px; height: 10px; border-radius: 50%; background: var(--phase, var(--ink)); flex: none; }
       .plan-filter[aria-pressed="false"] .plan-swatch { background: transparent; box-shadow: inset 0 0 0 2px var(--phase, var(--muted)); }
-      .plan-phase textarea, .plan-edit textarea { min-height: 52px; }
-      .plan-anchor { display: grid; grid-template-columns: minmax(180px, 240px) minmax(0, 1fr) auto; gap: 12px; align-items: end; padding: 12px; }
-      .plan-anchor p { margin: 0; }
+      .plan-phase textarea, .plan-edit textarea { min-height: 40px; }
+      .plan-count { margin: 2px 0 0; }
+      .plan-anchor { display: grid; grid-template-columns: 1fr; gap: 8px; align-items: start; padding: 8px 10px; }
+      .plan-anchor > * { min-width: 0; }
+      .plan-anchor .toolbar { margin: 6px 0 0; }
+      .plan-anchor p { margin: 0; overflow-wrap: anywhere; }
       .plan-span { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
       .plan-span button { min-width: 32px; min-height: 32px; border: 1px solid var(--line); background: white; color: var(--ink); font-weight: 700; }
       .plan-span button[aria-pressed="true"] { color: white; background: var(--ink); border-color: var(--ink); }
@@ -448,12 +459,17 @@
       .plan-chip.is-anchor { font-weight: 750; }
       .plan-chip.is-selected { box-shadow: inset 0 0 0 1px var(--ink); }
       .plan-chip.is-dragging { opacity: .45; }
-      .plan-edit { display: grid; gap: 8px; padding: 10px; }
+      .plan-edit { display: grid; gap: 6px; padding: 6px 8px; }
       .plan-edit.is-selected { box-shadow: inset 0 0 0 1px var(--ink); }
-      .plan-edit-main { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
-      .plan-edit-main > .field { flex: 1 1 148px; min-width: 0; }
-      .plan-edit-main > .plan-actions { flex: 1 1 140px; }
+      .plan-edit-main { display: flex; align-items: end; gap: 8px; }
+      .plan-edit-fields { flex: 1 1 auto; min-width: 0; display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(138px, .85fr) minmax(96px, .55fr); gap: 6px; align-items: end; }
+      .plan-edit-more { display: flex; flex-wrap: wrap; gap: 6px; align-items: end; }
+      .plan-edit-more > .field { flex: 1 1 140px; min-width: 0; }
+      .plan-edit-more > .plan-actions { flex: 1 1 120px; }
+      .plan-edit-more > .plan-edit-description { flex: 1 1 100%; }
       .plan-edit .plan-swatch { flex: none; align-self: center; margin-bottom: 8px; }
+      .plan-icon-button { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 32px; height: 32px; margin-bottom: 1px; padding: 0; border: 1px solid var(--line); border-radius: 3px; background: white; color: var(--ink); }
+      .plan-icon-button[aria-expanded="true"] { color: white; background: var(--ink); border-color: var(--ink); }
       .plan-actions { display: flex; flex-wrap: wrap; gap: 4px; }
       .plan-sync.sync-pending { outline: 2px solid var(--coral); outline-offset: 1px; }
       .plan-sync.sync-confirmed { animation: sync-confirmed .85s ease both, plan-saved-outline .85s ease both; }
@@ -468,13 +484,16 @@
         .plan-chip { height: 8px; padding: 0; border: 0; border-radius: 99px; background: var(--phase, var(--ink)); }
         .plan-chip-title { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
       }
-      @container (max-width: 720px) {
-        .plan-anchor { grid-template-columns: 1fr; }
+      @container plan-main (min-width: 860px) {
+        .plan-anchor { grid-template-columns: minmax(190px, 230px) minmax(180px, 1fr) minmax(200px, 260px); align-items: end; }
+      }
+      @container plan-main (max-width: 640px) {
+        .plan-edit-fields { grid-template-columns: 1fr 1fr; }
+        .plan-edit-fields > .field:first-child { grid-column: 1 / -1; }
       }
       @media (max-width: 1100px) {
         .plan-layout { grid-template-columns: 1fr; }
         .plan-side { position: static; max-height: none; overflow: visible; }
-        .plan-anchor { grid-template-columns: 1fr; }
       }
     </style>
   </head>
@@ -3370,6 +3389,8 @@
           anchorDate: parsePlanDate(storedAnchor) ? String(storedAnchor).slice(0, 10) : pathwayDefaultAnchorIso(),
           monthsVisible: Math.max(2, Math.min(6, storedMonths || 2)),
           hiddenPhaseIds: hidden,
+          openPhaseIds: {},
+          openMilestoneIds: {},
           leadMonths: 1,
           trailMonths: 1,
           selectedMilestoneId: '',
@@ -3610,9 +3631,13 @@
         plan.focusAfterPaint = '';
         plan.selectAfterPaint = false;
         const scroller = document.getElementById('plan-scroll');
+        const side = document.querySelector('.plan-side');
+        const sideScroll = side ? side.scrollTop : 0;
         if (scroller && plan.pendingScroll === 'preserve') plan.scrollLeft = scroller.scrollLeft;
         target.innerHTML = pathwayMarkup();
         pathwayBind(target);
+        const nextSide = document.querySelector('.plan-side');
+        if (nextSide) nextSide.scrollTop = sideScroll;
         sizePathwayMonths();
         pathwayApplyScroll();
         if (focusKey) {
@@ -3696,23 +3721,29 @@
 
       function pathwayPhaseMarkup(phase) {
         const hidden = !!state.pathwayPlan.hiddenPhaseIds[phase.phaseId];
+        const open = !!state.pathwayPlan.openPhaseIds[phase.phaseId];
         const color = pathwayPhaseColor(phase.phaseId);
         const count = state.pathwayPlan.milestones.filter(function(milestone) { return milestone.phase === phase.phaseId; }).length;
         const locked = phase.deleting ? 'disabled' : '';
-        return `<article class="plan-phase plan-sync${hidden ? ' is-hidden' : ''}${pathwaySyncClass('phase', phase.phaseId)}" data-sync-key="phase:${escapeHtml(phase.phaseId)}" style="--phase:${color}">
-          <div class="plan-phase-bar">
-            <button type="button" class="plan-filter" data-plan-action="filter-phase" data-phase-id="${escapeHtml(phase.phaseId)}" aria-pressed="${hidden ? 'false' : 'true'}">
+        const id = escapeHtml(phase.phaseId);
+        return `<article class="plan-phase plan-sync${hidden ? ' is-hidden' : ''}${open ? ' is-open' : ''}${pathwaySyncClass('phase', phase.phaseId)}" data-sync-key="phase:${id}" style="--phase:${color}">
+          <div class="plan-phase-summary">
+            <button type="button" class="plan-phase-toggle" data-plan-action="toggle-phase" data-phase-id="${id}" data-focus="phase:${id}:toggle" aria-expanded="${open ? 'true' : 'false'}">
+              <span class="plan-swatch" style="--phase:${color}"></span>
+              <span class="plan-phase-name">${escapeHtml(phase.phaseTitle || 'Untitled phase')}</span>
+            </button>
+            <button type="button" class="plan-filter" data-plan-action="filter-phase" data-phase-id="${id}" aria-pressed="${hidden ? 'false' : 'true'}">
               <span class="plan-swatch" style="--phase:${color}"></span>${hidden ? 'Hidden' : 'Shown'}
             </button>
-            <button type="button" class="link-button" data-plan-action="delete-phase" data-phase-id="${escapeHtml(phase.phaseId)}">Delete</button>
+            ${open ? `<button type="button" class="link-button" data-plan-action="delete-phase" data-phase-id="${id}">Delete</button>` : ''}
           </div>
-          <div class="field"><label>Title</label><input ${locked} data-focus="phase:${escapeHtml(phase.phaseId)}:title" data-phase-id="${escapeHtml(phase.phaseId)}" data-phase-field="phaseTitle" value="${escapeHtml(phase.phaseTitle)}"></div>
-          <div class="plan-phase-row">
-            <div class="field"><label>Order</label><input ${locked} type="number" data-focus="phase:${escapeHtml(phase.phaseId)}:sequence" data-phase-id="${escapeHtml(phase.phaseId)}" data-phase-field="sequence" value="${escapeHtml(phase.sequence)}"></div>
-            <label class="field check"><input type="checkbox" ${locked} data-phase-id="${escapeHtml(phase.phaseId)}" data-phase-field="active" ${phase.active ? 'checked' : ''}> Active</label>
+          ${open ? `<div class="plan-phase-fields">
+            <div class="field"><label>Title</label><input ${locked} data-focus="phase:${id}:title" data-phase-id="${id}" data-phase-field="phaseTitle" value="${escapeHtml(phase.phaseTitle)}"></div>
+            <div class="field plan-phase-order"><label>Order</label><input ${locked} type="number" data-focus="phase:${id}:sequence" data-phase-id="${id}" data-phase-field="sequence" value="${escapeHtml(phase.sequence)}"></div>
+            <label class="field check"><input type="checkbox" ${locked} data-phase-id="${id}" data-phase-field="active" ${phase.active ? 'checked' : ''}> Active</label>
+            <div class="field"><label>Prerequisite</label><select ${locked} data-focus="phase:${id}:prerequisite" data-phase-id="${id}" data-phase-field="prerequisitePhaseId">${pathwayPrerequisiteOptions(phase)}</select></div>
           </div>
-          <div class="field"><label>Prerequisite</label><select ${locked} data-focus="phase:${escapeHtml(phase.phaseId)}:prerequisite" data-phase-id="${escapeHtml(phase.phaseId)}" data-phase-field="prerequisitePhaseId">${pathwayPrerequisiteOptions(phase)}</select></div>
-          <div class="field"><label>Description</label><p class="muted">${count} milestone${count === 1 ? '' : 's'}</p><textarea ${locked} data-focus="phase:${escapeHtml(phase.phaseId)}:description" data-phase-id="${escapeHtml(phase.phaseId)}" data-phase-field="phaseDescription">${escapeHtml(phase.phaseDescription || '')}</textarea></div>
+          <div class="field"><label>Description</label><textarea ${locked} data-focus="phase:${id}:description" data-phase-id="${id}" data-phase-field="phaseDescription">${escapeHtml(phase.phaseDescription || '')}</textarea><p class="muted plan-count">${count} milestone${count === 1 ? '' : 's'}</p></div>` : ''}
         </article>`;
       }
 
@@ -3763,24 +3794,35 @@
         return `<button type="button" class="plan-chip plan-sync${anchor ? ' is-anchor' : ''}${selected ? ' is-selected' : ''}${pathwaySyncClass('milestone', milestone.milestoneId)}" draggable="${milestone.deleting ? 'false' : 'true'}" data-chip-id="${escapeHtml(milestone.milestoneId)}" data-sync-key="milestone:${escapeHtml(milestone.milestoneId)}" style="--phase:${color}" title="${escapeHtml(label)}"><span class="plan-chip-title">${escapeHtml(milestone.milestoneTitle || 'Untitled')}</span></button>`;
       }
 
+      function pathwayDetailsIcon(open) {
+        if (open) return '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M3 10.2 8 5.2l5 5-.9.9L8 7.1l-4.1 4z"/></svg>';
+        return '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M11.2 1.6 14.4 4.8 5.2 14H2v-3.2zM3.1 11.9l.3 1.7 1.7.3 6.7-6.7-2-2z"/></svg>';
+      }
+
       function pathwayMilestoneMarkup(milestone) {
         const color = pathwayPhaseColor(milestone.phase);
         const selected = state.pathwayPlan.selectedMilestoneId === milestone.milestoneId;
+        const open = !!state.pathwayPlan.openMilestoneIds[milestone.milestoneId];
         const anchor = pathwayOffset(milestone.offsetDays) === 0;
         const locked = milestone.deleting ? 'disabled' : '';
         const id = escapeHtml(milestone.milestoneId);
-        return `<article class="plan-edit plan-sync${selected ? ' is-selected' : ''}${pathwaySyncClass('milestone', milestone.milestoneId)}" data-milestone-row="${id}" data-sync-key="milestone:${id}" style="--phase:${color}">
+        return `<article class="plan-edit plan-sync${selected ? ' is-selected' : ''}${open ? ' is-open' : ''}${pathwaySyncClass('milestone', milestone.milestoneId)}" data-milestone-row="${id}" data-sync-key="milestone:${id}" style="--phase:${color}">
           <div class="plan-edit-main">
             <span class="plan-swatch" style="--phase:${color}"></span>
-            <div class="field"><label>Title</label><input ${locked} data-focus="milestone:${id}:title" data-milestone-id="${id}" data-milestone-field="milestoneTitle" value="${escapeHtml(milestone.milestoneTitle)}"></div>
-            <div class="field"><label>Date</label><input ${locked} type="date" data-focus="milestone:${id}:due" data-milestone-id="${id}" data-milestone-field="due" value="${escapeHtml(pathwayMilestoneIso(milestone))}"></div>
-            <div class="field"><label>Days before anchor</label><input ${locked} type="number" data-focus="milestone:${id}:offset" data-milestone-id="${id}" data-milestone-field="offsetDays" value="${escapeHtml(milestone.offsetDays)}"></div>
+            <div class="plan-edit-fields">
+              <div class="field"><label>Title</label><input ${locked} data-focus="milestone:${id}:title" data-milestone-id="${id}" data-milestone-field="milestoneTitle" value="${escapeHtml(milestone.milestoneTitle)}"></div>
+              <div class="field"><label>Date</label><input ${locked} type="date" data-focus="milestone:${id}:due" data-milestone-id="${id}" data-milestone-field="due" value="${escapeHtml(pathwayMilestoneIso(milestone))}"></div>
+              <div class="field"><label>Days before anchor</label><input ${locked} type="number" data-focus="milestone:${id}:offset" data-milestone-id="${id}" data-milestone-field="offsetDays" value="${escapeHtml(milestone.offsetDays)}"></div>
+            </div>
+            <button type="button" class="plan-icon-button" data-plan-action="toggle-milestone" data-milestone-id="${id}" data-focus="milestone:${id}:details" aria-expanded="${open ? 'true' : 'false'}" aria-label="${open ? 'Hide milestone details' : 'Edit milestone details'}">${pathwayDetailsIcon(open)}</button>
+          </div>
+          ${open ? `<div class="plan-edit-more">
             <div class="field"><label>Phase</label><select ${locked} data-focus="milestone:${id}:phase" data-milestone-id="${id}" data-milestone-field="phase">${pathwayPhaseOptions(milestone.phase)}</select></div>
             <div class="field"><label>Type</label><select ${locked} data-focus="milestone:${id}:type" data-milestone-id="${id}" data-milestone-field="type">${pathwayOptionList(PATHWAY_TYPES, milestone.type)}</select></div>
             <div class="field"><label>Owner</label><select ${locked} data-focus="milestone:${id}:owner" data-milestone-id="${id}" data-milestone-field="mOwner">${pathwayOptionList(PATHWAY_OWNERS, milestone.mOwner)}</select></div>
             <div class="plan-actions"><button type="button" class="link-button" data-plan-action="make-anchor" data-milestone-id="${id}" ${anchor || milestone.deleting ? 'disabled' : ''}>${anchor ? 'Anchor' : 'Make anchor'}</button><button type="button" class="link-button" data-plan-action="delete-milestone" data-milestone-id="${id}">Delete</button></div>
-          </div>
-          <div class="field"><label>Description</label><p class="muted">${escapeHtml(pathwayOffsetLabel(milestone.offsetDays))}</p><textarea ${locked} data-focus="milestone:${id}:description" data-milestone-id="${id}" data-milestone-field="milestoneDescription">${escapeHtml(milestone.milestoneDescription || '')}</textarea></div>
+            <div class="field plan-edit-description"><label>Description</label><textarea ${locked} data-focus="milestone:${id}:description" data-milestone-id="${id}" data-milestone-field="milestoneDescription">${escapeHtml(milestone.milestoneDescription || '')}</textarea></div>
+          </div>` : ''}
         </article>`;
       }
 
@@ -3819,6 +3861,8 @@
       function pathwayRunAction(node) {
         const action = node.dataset.planAction;
         if (action === 'filter-phase') pathwayTogglePhase(node.dataset.phaseId);
+        else if (action === 'toggle-phase') pathwayTogglePhaseOpen(node.dataset.phaseId);
+        else if (action === 'toggle-milestone') pathwayToggleMilestoneOpen(node.dataset.milestoneId);
         else if (action === 'show-phases') pathwayShowAllPhases();
         else if (action === 'add-phase') pathwayAddPhase();
         else if (action === 'delete-phase') pathwayDeletePhase(node.dataset.phaseId);
@@ -3885,6 +3929,10 @@
         if (field === 'active') phase.active = !!input.checked;
         else if (field === 'sequence') phase.sequence = input.value === '' ? '' : Number(input.value);
         else phase[field] = input.value;
+        if (field === 'phaseTitle') {
+          const name = input.closest('.plan-phase') && input.closest('.plan-phase').querySelector('.plan-phase-name');
+          if (name) name.textContent = String(input.value || '').trim() || 'Untitled phase';
+        }
         state.pathwayPlan.preferredPhaseId = phase.phaseId;
         if (field === 'sequence' || field === 'active' || field === 'prerequisitePhaseId') {
           state.pathwayPlan.pendingScroll = 'preserve';
@@ -3928,6 +3976,26 @@
         });
         const row = document.querySelector('[data-milestone-row="' + cssEscape(id) + '"]');
         if (row && row.scrollIntoView) row.scrollIntoView({ block: 'nearest' });
+      }
+
+      function pathwayTogglePhaseOpen(id) {
+        const plan = state.pathwayPlan;
+        const opening = !plan.openPhaseIds[id];
+        if (opening) plan.openPhaseIds[id] = true;
+        else delete plan.openPhaseIds[id];
+        plan.pendingScroll = 'preserve';
+        plan.focusAfterPaint = opening ? 'phase:' + id + ':title' : 'phase:' + id + ':toggle';
+        paintPathway();
+      }
+
+      function pathwayToggleMilestoneOpen(id) {
+        const plan = state.pathwayPlan;
+        if (plan.openMilestoneIds[id]) delete plan.openMilestoneIds[id];
+        else plan.openMilestoneIds[id] = true;
+        plan.selectedMilestoneId = id;
+        plan.pendingScroll = 'preserve';
+        plan.focusAfterPaint = 'milestone:' + id + ':details';
+        paintPathway();
       }
 
       function pathwayTogglePhase(id) {
@@ -3992,6 +4060,7 @@
           active: true
         });
         plan.preferredPhaseId = id;
+        plan.openPhaseIds[id] = true;
         plan.focusAfterPaint = 'phase:' + id + ':title';
         plan.selectAfterPaint = true;
         plan.pendingScroll = 'preserve';
