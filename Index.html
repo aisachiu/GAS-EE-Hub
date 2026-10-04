@@ -3411,8 +3411,8 @@
           <p class="muted">Create one folder per selected student inside the cohort folder. Each folder link is saved on that student as EE folder. Sharing does not send an email.</p>
           <div class="form-grid">
             <div class="field wide"><label for="drive-root-url">Cohort folder</label>
-              <div class="toolbar"><button type="button" class="button secondary" id="choose-drive-root">Choose in Google Drive</button><button type="button" class="button secondary" id="save-drive-root">Save folder link</button><strong id="drive-root-label">No folder selected</strong></div>
-              <input id="drive-root-url" placeholder="Or paste a Google Drive folder link">
+              <div class="toolbar"><button type="button" class="button secondary" id="save-drive-root">Save folder link</button><strong id="drive-root-label">No folder selected</strong></div>
+              <input id="drive-root-url" placeholder="Paste a Google Drive folder link">
               <p class="notice" id="drive-root-problem" hidden></p>
             </div>
             <div class="field"><label for="drive-prefix">Prefix</label><input id="drive-prefix" maxlength="80"></div>
@@ -3423,7 +3423,6 @@
           <label class="field check"><input type="checkbox" id="drive-share-parent"> Share with the parent as viewer</label>
           <div class="toolbar"><button type="button" class="button secondary" id="check-drive-folders" disabled>Check selected</button><button type="button" class="button" id="update-drive-folders" disabled>Create or update selected</button></div>
           <div id="drive-folder-results"></div>`;
-        document.getElementById('choose-drive-root').addEventListener('click', chooseDriveRoot);
         document.getElementById('save-drive-root').addEventListener('click', saveDriveRootFromForm);
         document.getElementById('check-drive-folders').addEventListener('click', function() { runDriveFolderJob(true); });
         document.getElementById('update-drive-folders').addEventListener('click', function() { runDriveFolderJob(false); });
@@ -3498,62 +3497,6 @@
           if (button) button.disabled = false;
           showError(error);
         });
-      }
-
-      function chooseDriveRoot() {
-        callServer('getDrivePickerConfig').then(function(config) {
-          if (!config || !config.developerKey || !config.token) {
-            const input = document.getElementById('drive-root-url');
-            if (input) input.focus();
-            showError(new Error('Google Drive Picker is not configured. Paste a folder link instead. Set the DRIVE_PICKER_DEVELOPER_KEY script property to enable the picker.'));
-            return;
-          }
-          loadGooglePicker().then(function() {
-            window.gapi.load('picker', function() { showGoogleFolderPicker(config); });
-          }).catch(showError);
-        }).catch(showError);
-      }
-
-      function loadGooglePicker() {
-        return new Promise(function(resolve, reject) {
-          if (window.gapi) { resolve(); return; }
-          const existing = document.getElementById('google-api-script');
-          if (existing) {
-            existing.addEventListener('load', function() { resolve(); });
-            existing.addEventListener('error', function() { reject(new Error('Google Drive Picker could not be loaded.')); });
-            return;
-          }
-          const script = document.createElement('script');
-          script.id = 'google-api-script';
-          script.src = 'https://apis.google.com/js/api.js';
-          script.onload = function() { resolve(); };
-          script.onerror = function() { reject(new Error('Google Drive Picker could not be loaded.')); };
-          document.head.appendChild(script);
-        });
-      }
-
-      function showGoogleFolderPicker(config) {
-        const view = new google.picker.DocsView(google.picker.ViewId.FOLDERS)
-          .setIncludeFolders(true)
-          .setSelectFolderEnabled(true)
-          .setMimeTypes('application/vnd.google-apps.folder');
-        let origin = window.location.protocol + '//' + window.location.host;
-        if (window.google && google.script && google.script.host && google.script.host.origin) origin = google.script.host.origin;
-        const builder = new google.picker.PickerBuilder()
-          .addView(view)
-          .setOAuthToken(config.token)
-          .setDeveloperKey(config.developerKey)
-          .setTitle('Choose the cohort folder')
-          .setOrigin(origin)
-          .setCallback(function(data) {
-            if (!data || data.action !== google.picker.Action.PICKED || !data.docs || !data.docs.length) return;
-            const picked = data.docs[0];
-            const url = document.getElementById('drive-root-url');
-            if (url) url.value = picked.url || picked.id;
-            saveDriveRootFromForm();
-          });
-        if (google.picker.Feature && google.picker.Feature.SUPPORT_DRIVES) builder.enableFeature(google.picker.Feature.SUPPORT_DRIVES);
-        builder.build().setVisible(true);
       }
 
       function runDriveFolderJob(dryRun) {
