@@ -523,6 +523,13 @@ function getCohorts() {
   });
 }
 
+function getPathwayPlan() {
+  return {
+    phases: getAdminRecords('phases'),
+    milestones: getAdminRecords('milestoneTemplates')
+  };
+}
+
 function getCohortStudents(cohortId) {
   requireStaff_('LIST_COHORT_STUDENTS');
   var sheet = getCohortSheet_(cohortId);
@@ -605,17 +612,53 @@ function migrateResourcesSheet_() {
   var spreadsheet = getSpreadsheet_();
   var sheetName = APP_TABLES.resources.sheet;
   var sheet = spreadsheet.getSheetByName(sheetName);
-  var created = false;
-  if (!sheet) {
-    sheet = spreadsheet.insertSheet(sheetName);
-    var headers = getTableHeaders_('resources');
-    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-    sheet.setFrozenRows(1);
-    created = true;
+  if (sheet && !resourceMigrationPending_(spreadsheet, sheet)) {
+    return { created: false, columnsAdded: [], pagesCopied: 0 };
   }
-  var columnsAdded = appendMissingResourceColumns_(sheet);
-  var pagesCopied = copyContentPagesIntoResources_(spreadsheet, sheet);
-  return { created: created, columnsAdded: columnsAdded, pagesCopied: pagesCopied };
+  return withSheetLock_(function() {
+    var lockedSpreadsheet = getSpreadsheet_();
+    var lockedSheet = lockedSpreadsheet.getSheetByName(sheetName);
+    var created = false;
+    if (!lockedSheet) {
+      lockedSheet = lockedSpreadsheet.insertSheet(sheetName);
+      var headers = getTableHeaders_('resources');
+      lockedSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+      lockedSheet.setFrozenRows(1);
+      created = true;
+    }
+    var columnsAdded = appendMissingResourceColumns_(lockedSheet);
+    var pagesCopied = copyContentPagesIntoResources_(lockedSpreadsheet, lockedSheet);
+    return { created: created, columnsAdded: columnsAdded, pagesCopied: pagesCopied };
+  });
+}
+
+function resourceMigrationPending_(spreadsheet, sheet) {
+  var expected = getTableHeaders_('resources');
+  var actual = getHeaders_(sheet);
+  if (!actual.length) return true;
+  var sameHeaders = actual.join('\u0000') === expected.join('\u0000');
+  var matchesPrefix = actual.every(function(header, index) { return header === expected[index]; });
+  var additions = matchesPrefix ? expected.slice(actual.length) : [];
+  var bodyColumns = { 'Slug': true, 'Body': true, 'Body Format': true };
+  var columnsPending = !sameHeaders && additions.length > 0 && additions.every(function(header) { return bodyColumns[header]; });
+  if (columnsPending) return true;
+  if (!sameHeaders || actual.indexOf('Resource ID') < 0 || actual.indexOf('Body') < 0) return false;
+  var pages = spreadsheet.getSheetByName('CONTENT_PAGES');
+  if (!pages || pages.getLastRow() < 2) return false;
+  var pageIdIndex = getHeaders_(pages).indexOf('Page ID');
+  var resourceIdIndex = actual.indexOf('Resource ID');
+  if (pageIdIndex < 0 || resourceIdIndex < 0) return false;
+  var existing = {};
+  if (sheet.getLastRow() > 1) {
+    sheet.getRange(2, resourceIdIndex + 1, sheet.getLastRow() - 1, 1).getValues().forEach(function(row) {
+      var id = text_(row[0]);
+      if (id) existing[id] = true;
+    });
+  }
+  return pages.getRange(2, pageIdIndex + 1, pages.getLastRow() - 1, 1).getValues().some(function(row) {
+    var id = text_(row[0]);
+    return id && !existing[id];
+  });
 }
 
 function appendMissingResourceColumns_(sheet) {
@@ -806,6 +849,7 @@ function saveAdminRecord(entity, record, originalKey) {
     if (rowNumber > 0) sheet.getRange(rowNumber, 1, 1, headers.length).setValues([row]);
     else sheet.getRange(sheet.getLastRow() + 1, 1, 1, headers.length).setValues([row]);
     if (entity === 'cohorts') ensureCohortSheet_(values.Cohort);
+    if (entity === 'phases' || entity === 'milestoneTemplates') invalidateJourneyCatalog_();
     return { key: text_(values[key]) };
   });
 }
@@ -864,7 +908,8 @@ function deleteAdminRecord(entity, keyValue) {
       var deletedStaff = findRecordByValue_(sheet, 'EMAIL', keyValue);
       if (deletedStaff && staffHasAdminAccess_(deletedStaff)) assertAnotherAdminExists_(sheet, keyValue);
     }
-    sheet.deleteRow(targetRow);
+    retireSheetRow_(sheet, targetRow);
+    if (entity === 'phases' || entity === 'milestoneTemplates') invalidateJourneyCatalog_();
     return { deleted: true };
   });
 }
@@ -907,6 +952,8 @@ function saveCohortMember(cohortId, record, originalStudentId) {
 
     if (rowNumber > 0) sheet.getRange(rowNumber, 1, 1, headers.length).setValues([row]);
     else sheet.getRange(sheet.getLastRow() + 1, 1, 1, headers.length).setValues([row]);
+    invalidatePlacementCache_(normalizeEmail_(values.StudentId));
+    if (originalStudentId) invalidatePlacementCache_(normalizeEmail_(originalStudentId));
     return { studentId: normalizeEmail_(values.StudentId) };
   });
 }
@@ -1033,7 +1080,8 @@ function deleteCohortMember(cohortId, studentId) {
     assertSheetSchema_(sheet, 'cohortMembers');
     var rowNumber = findRowNumber_(sheet, 'StudentId', normalizeEmail_(studentId));
     if (rowNumber < 0) throw new Error('Cohort student not found.');
-    sheet.deleteRow(rowNumber);
+    retireSheetRow_(sheet, rowNumber);
+    invalidatePlacementCache_(normalizeEmail_(studentId));
     return { deleted: true };
   });
 }
@@ -1105,10 +1153,15 @@ function getSpreadsheet_() {
 function ensureTicketSharedColumn_() {
   var sheet = getSpreadsheet_().getSheetByName(APP_TABLES.tickets.sheet);
   if (!sheet || sheet.getLastRow() < 1) return [];
-  var actual = getHeaders_(sheet);
-  if (actual.indexOf('Shared') >= 0) return [];
-  sheet.getRange(1, actual.length + 1).setValue('Shared');
-  return ['Shared'];
+  if (getHeaders_(sheet).indexOf('Shared') >= 0) return [];
+  return withSheetLock_(function() {
+    var lockedSheet = getSpreadsheet_().getSheetByName(APP_TABLES.tickets.sheet);
+    if (!lockedSheet || lockedSheet.getLastRow() < 1) return [];
+    var actual = getHeaders_(lockedSheet);
+    if (actual.indexOf('Shared') >= 0) return [];
+    lockedSheet.getRange(1, actual.length + 1).setValue('Shared');
+    return ['Shared'];
+  });
 }
 
 function ensureTicketsReady_() {
@@ -1121,14 +1174,20 @@ function ensureTicketsReady_() {
 }
 
 function ensureCohortDriveColumns_() {
+  var expected = ['DriveRootFolderId', 'FolderPrefix', 'FolderSuffix'];
   var sheet = getSpreadsheet_().getSheetByName(APP_TABLES.cohorts.sheet);
   if (!sheet || sheet.getLastRow() < 1) return [];
-  var expected = ['DriveRootFolderId', 'FolderPrefix', 'FolderSuffix'];
-  var actual = getHeaders_(sheet);
-  var missing = expected.filter(function(header) { return actual.indexOf(header) < 0; });
-  if (!missing.length) return [];
-  sheet.getRange(1, actual.length + 1, 1, missing.length).setValues([missing]);
-  return missing;
+  var current = getHeaders_(sheet);
+  if (!expected.some(function(header) { return current.indexOf(header) < 0; })) return [];
+  return withSheetLock_(function() {
+    var lockedSheet = getSpreadsheet_().getSheetByName(APP_TABLES.cohorts.sheet);
+    if (!lockedSheet || lockedSheet.getLastRow() < 1) return [];
+    var actual = getHeaders_(lockedSheet);
+    var missing = expected.filter(function(header) { return actual.indexOf(header) < 0; });
+    if (!missing.length) return [];
+    lockedSheet.getRange(1, actual.length + 1, 1, missing.length).setValues([missing]);
+    return missing;
+  });
 }
 
 function listCohorts_(includeInactive) {
@@ -1206,11 +1265,14 @@ function saveCohort_(user, values, originalKey) {
 }
 
 function ensureCohortSheet_(cohortId) {
-  var spreadsheet = getSpreadsheet_();
   var sheetName = cohortSheetName_(cohortId);
-  if (spreadsheet.getSheetByName(sheetName)) return;
-  var headers = getTableHeaders_('cohortMembers');
-  spreadsheet.insertSheet(sheetName).getRange(1, 1, 1, headers.length).setValues([headers]);
+  if (getSpreadsheet_().getSheetByName(sheetName)) return;
+  withSheetLock_(function() {
+    var spreadsheet = getSpreadsheet_();
+    if (spreadsheet.getSheetByName(sheetName)) return;
+    var headers = getTableHeaders_('cohortMembers');
+    spreadsheet.insertSheet(sheetName).getRange(1, 1, 1, headers.length).setValues([headers]);
+  });
 }
 
 function cohortSheetName_(cohortId) {
@@ -1229,13 +1291,18 @@ function getTableConfig_(entity) {
 
 function getOrCreateManagedSheet_(config) {
   var spreadsheet = getSpreadsheet_();
-  var sheet = spreadsheet.getSheetByName(config.sheet);
-  if (sheet) return sheet;
-  sheet = spreadsheet.insertSheet(config.sheet);
-  var headers = config.fields.map(function(field) { return field.name; });
-  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-  sheet.setFrozenRows(1);
-  return sheet;
+  var existing = spreadsheet.getSheetByName(config.sheet);
+  if (existing) return existing;
+  return withSheetLock_(function() {
+    var lockedSpreadsheet = getSpreadsheet_();
+    var sheet = lockedSpreadsheet.getSheetByName(config.sheet);
+    if (sheet) return sheet;
+    sheet = lockedSpreadsheet.insertSheet(config.sheet);
+    var headers = config.fields.map(function(field) { return field.name; });
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    sheet.setFrozenRows(1);
+    return sheet;
+  });
 }
 
 function readRecords_(sheet) {
@@ -1380,31 +1447,81 @@ function assertAnotherAdminExists_(sheet, excludedEmail) {
   if (!hasAnother) throw new Error('Keep at least one active admin or coordinator account.');
 }
 
-function runAuditedMutation_(user, action, detail, callback) {
+var SHEET_LOCK_DEPTH = 0;
+
+function withSheetLock_(work) {
+  if (SHEET_LOCK_DEPTH > 0) return work();
   var lock = LockService.getScriptLock();
   lock.waitLock(10000);
+  SHEET_LOCK_DEPTH += 1;
   try {
+    return work();
+  } finally {
+    SHEET_LOCK_DEPTH -= 1;
+    lock.releaseLock();
+  }
+}
+
+function retireSheetRow_(sheet, rowNumber) {
+  var row = Number(rowNumber);
+  if (!sheet || row < 2) throw new Error('Only a data row can be retired.');
+  var width = Math.max(sheet.getLastColumn(), 1);
+  sheet.getRange(row, 1, 1, width).clearContent();
+}
+
+function runAuditedMutation_(user, action, detail, callback) {
+  return withSheetLock_(function() {
+    return finishAuditedMutation_(user, action, detail, callback);
+  });
+}
+
+function runAuditedExternal_(user, action, detail, callback) {
+  withSheetLock_(function() {
     AuditLog.record(action + '_REQUESTED', detail, user.email, { lockHeld: true });
-    var result;
+  });
+  try {
+    var result = callback();
     try {
-      result = callback();
-    } catch (error) {
-      try {
-        AuditLog.record(action + '_FAILED', { detail: detail, reason: String(error.message || error) }, user.email, { lockHeld: true });
-      } catch (auditError) {
-        console.error('Unable to record failed mutation outcome', auditError);
-      }
-      throw error;
-    }
-    try {
-      AuditLog.record(action + '_SUCCEEDED', detail, user.email, { lockHeld: true });
+      withSheetLock_(function() {
+        AuditLog.record(action + '_SUCCEEDED', detail, user.email, { lockHeld: true });
+      });
     } catch (auditError) {
       console.error('Mutation succeeded but its completion audit row failed', auditError);
       result = result || {};
       result.auditWarning = true;
     }
     return result;
-  } finally {
-    lock.releaseLock();
+  } catch (error) {
+    try {
+      withSheetLock_(function() {
+        AuditLog.record(action + '_FAILED', { detail: detail, reason: String(error.message || error) }, user.email, { lockHeld: true });
+      });
+    } catch (auditError) {
+      console.error('Unable to record failed mutation outcome', auditError);
+    }
+    throw error;
   }
+}
+
+function finishAuditedMutation_(user, action, detail, callback) {
+  AuditLog.record(action + '_REQUESTED', detail, user.email, { lockHeld: true });
+  var result;
+  try {
+    result = callback();
+  } catch (error) {
+    try {
+      AuditLog.record(action + '_FAILED', { detail: detail, reason: String(error.message || error) }, user.email, { lockHeld: true });
+    } catch (auditError) {
+      console.error('Unable to record failed mutation outcome', auditError);
+    }
+    throw error;
+  }
+  try {
+    AuditLog.record(action + '_SUCCEEDED', detail, user.email, { lockHeld: true });
+  } catch (auditError) {
+    console.error('Mutation succeeded but its completion audit row failed', auditError);
+    result = result || {};
+    result.auditWarning = true;
+  }
+  return result;
 }

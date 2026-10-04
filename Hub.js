@@ -38,7 +38,18 @@ function invalidatePlacementCache_(studentEmail) {
   catch (error) { /* ignore */ }
 }
 
+var JOURNEY_CATALOG_KEY = 'EE_JOURNEY_CATALOG_V1';
+var JOURNEY_CATALOG_GEN_KEY = 'EE_JOURNEY_CATALOG_GEN';
+
 function readPhases_() {
+  return readJourneyCatalog_().phases;
+}
+
+function readTemplates_() {
+  return readJourneyCatalog_().templates;
+}
+
+function readPhasesFromSheet_() {
   var sheet = getSpreadsheet_().getSheetByName(APP_TABLES.phases.sheet);
   if (!sheet) return [];
   return readRecords_(sheet).filter(function(phase) { return toBoolean_(phase.active); }).map(function(phase) {
@@ -46,7 +57,7 @@ function readPhases_() {
   }).sort(function(left, right) { return left.sequence - right.sequence; });
 }
 
-function readTemplates_() {
+function readTemplatesFromSheet_() {
   var sheet = getSpreadsheet_().getSheetByName(APP_TABLES.milestoneTemplates.sheet);
   if (!sheet) return [];
   return readRecords_(sheet).map(function(template) {
@@ -60,6 +71,41 @@ function readTemplates_() {
       description: text_(template.milestoneDescription)
     };
   });
+}
+
+function readJourneyCatalog_() {
+  var cache = null;
+  var generation = '';
+  try {
+    cache = CacheService.getScriptCache();
+    generation = cache.get(JOURNEY_CATALOG_GEN_KEY) || '';
+    var cached = cache.get(JOURNEY_CATALOG_KEY);
+    if (cached) {
+      var parsed = JSON.parse(cached);
+      if (parsed && parsed.generation === generation && parsed.phases && parsed.templates) return parsed;
+    }
+  } catch (error) {
+    cache = null;
+  }
+  var catalog = { generation: generation, phases: readPhasesFromSheet_(), templates: readTemplatesFromSheet_() };
+  if (cache) {
+    try {
+      var currentGeneration = cache.get(JOURNEY_CATALOG_GEN_KEY) || '';
+      if (currentGeneration === generation) {
+        catalog.generation = currentGeneration;
+        cache.put(JOURNEY_CATALOG_KEY, JSON.stringify(catalog), 120);
+      }
+    } catch (writeError) { /* a fresh read is still returned */ }
+  }
+  return catalog;
+}
+
+function invalidateJourneyCatalog_() {
+  try {
+    var cache = CacheService.getScriptCache();
+    cache.remove(JOURNEY_CATALOG_KEY);
+    cache.put(JOURNEY_CATALOG_GEN_KEY, String(new Date().getTime()), 600);
+  } catch (error) { /* the next read falls back to the sheets */ }
 }
 
 function orderTemplates_(templates, phases) {
@@ -116,11 +162,13 @@ function latestReturnedByTask_(events) {
 }
 
 function appendMilestoneEvent_(event) {
-  var sheet = getOrCreateManagedSheet_(APP_TABLES.milestoneEvents);
-  assertSheetSchema_(sheet, 'milestoneEvents');
-  var headers = getHeaders_(sheet);
-  var row = headers.map(function(header) { return event[header] === undefined ? '' : event[header]; });
-  sheet.getRange(sheet.getLastRow() + 1, 1, 1, row.length).setValues([row]);
+  withSheetLock_(function() {
+    var sheet = getOrCreateManagedSheet_(APP_TABLES.milestoneEvents);
+    assertSheetSchema_(sheet, 'milestoneEvents');
+    var headers = getHeaders_(sheet);
+    var row = headers.map(function(header) { return event[header] === undefined ? '' : event[header]; });
+    sheet.getRange(sheet.getLastRow() + 1, 1, 1, row.length).setValues([row]);
+  });
 }
 
 function getStudentHome() {
