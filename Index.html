@@ -514,7 +514,7 @@
     </style>
   </head>
   <body>
-    <div id="app"><div class="load-stage" data-connect="1"><p class="load-status">Connecting to VSA EE Hub...</p></div></div>
+    <div id="app"><div class="load-stage" data-connect="1"><p class="load-status">Connecting to VSA EE Hub...</p><blockquote class="load-quote"><span class="load-quote-text">A clear question is the start of a strong essay.</span></blockquote></div></div>
     <script>
       const state = {
         user: null,
@@ -545,8 +545,8 @@
         staffSupervisor: '',
         staffPane: 'home',
         staffStudentHome: null,
-        quote: '',
-        quotes: [],
+        quote: 'A clear question is the start of a strong essay.',
+        quotes: ['A clear question is the start of a strong essay.'],
         notesOpen: false,
         notesPane: 'notes',
         notesHub: null,
@@ -583,7 +583,6 @@
       }
 
       function start() {
-        callServer('getLoadingQuote').then(rememberQuotes).catch(function() {});
         callServer('getAppBootstrap').then(function(result) {
           rememberQuotes(result);
           if (!result || !result.user) {
@@ -1305,9 +1304,7 @@
             const description = card.querySelector('[data-todo-description]').value;
             const date = card.querySelector('[data-todo-date]').value;
             button.disabled = true;
-            runMutation('updateStudentTodo', [button.dataset.saveTodo, title, description], { key: 'action-item:' + button.dataset.saveTodo }).then(function() {
-              return runMutation('setActionItemDueDate', [button.dataset.saveTodo, date], { key: 'action-item-date:' + button.dataset.saveTodo });
-            }).then(function() {
+            runMutation('saveStudentTodo', [button.dataset.saveTodo, title, description, date], { key: 'action-item:' + button.dataset.saveTodo }).then(function() {
               patchJourneyItem(button.dataset.saveTodo, { Title: title, Description: description, DueDate: date });
               state.editingTodo = '';
               paintStudentJourney(activeJourneyRecord() || home);
@@ -3665,12 +3662,9 @@
         }
         const token = ++plan.loadToken;
         target.innerHTML = loadingLine('Loading phases and milestones...');
-        Promise.all([
-          callServer('getAdminRecords', 'phases'),
-          callServer('getAdminRecords', 'milestoneTemplates')
-        ]).then(function(results) {
+        callServer('getPathwayPlan').then(function(result) {
           if (!state.pathwayPlan || token !== state.pathwayPlan.loadToken) return;
-          pathwayIngest(results[0].records || [], results[1].records || []);
+          pathwayIngest((result.phases && result.phases.records) || [], (result.milestones && result.milestones.records) || []);
           state.pathwayPlan.loaded = true;
           state.pathwayPlan.pendingScroll = 'anchor';
           paintPathway();
@@ -4522,12 +4516,8 @@
               const row = button.closest('tr');
               button.disabled = true;
               markSync(row, 'pending');
-              runMutation('setStudentAnchorDate', [cohortId, records[index].StudentId, dateInput.value], {
+              runMutation('saveStudentAnchorAndSync', [cohortId, records[index].StudentId, dateInput.value], {
                 key: 'anchor-date:' + records[index].StudentId
-              }).then(function() {
-                return runMutation('syncStudentActionItemDates', [records[index].StudentId, cohortId], {
-                  key: 'anchor-date:' + records[index].StudentId
-                });
               }).then(function(result) {
                 state.status = 'Updated ' + result.updated + ' system due dates.';
                 markSync(row, 'confirmed');

@@ -155,6 +155,7 @@ function writeFormDefinition_(user, definition, status, version) {
   var row = headers.map(function(header) { return values[header] === undefined ? '' : values[header]; });
   if (rowNumber > 0) sheet.getRange(rowNumber, 1, 1, row.length).setValues([row]);
   else sheet.getRange(sheet.getLastRow() + 1, 1, 1, row.length).setValues([row]);
+  invalidatePublishedFormCache_();
   return nextStatus;
 }
 
@@ -320,13 +321,31 @@ function resolveFieldOptions_(fields) {
   });
 }
 
+var PUBLISHED_FORM_CACHE_KEY = 'EE_PUBLISHED_FORMS_V1';
+
 function publishedFormIds_() {
+  try {
+    var cached = CacheService.getScriptCache().get(PUBLISHED_FORM_CACHE_KEY);
+    if (cached) return JSON.parse(cached);
+  } catch (error) { /* read the sheet */ }
+  var ids = publishedFormIdsFromSheet_();
+  try { CacheService.getScriptCache().put(PUBLISHED_FORM_CACHE_KEY, JSON.stringify(ids), 120); }
+  catch (writeError) { /* the fresh list is still returned */ }
+  return ids;
+}
+
+function publishedFormIdsFromSheet_() {
   var sheet = getSpreadsheet_().getSheetByName(APP_TABLES.formDefinitions.sheet);
   if (!sheet || sheet.getLastRow() < 2) return [];
   assertSheetSchema_(sheet, 'formDefinitions');
   return readRecords_(sheet).filter(function(record) {
     return text_(record.status) === 'Published';
   }).map(function(record) { return text_(record.milestoneId); });
+}
+
+function invalidatePublishedFormCache_() {
+  try { CacheService.getScriptCache().remove(PUBLISHED_FORM_CACHE_KEY); }
+  catch (error) { /* the next read falls back to the sheet */ }
 }
 
 function getStudentForm(milestoneId) {
@@ -512,16 +531,25 @@ function isLegacySubjectForm_(fields) {
 }
 
 function upgradeLegacySubjectPreferenceForm_(user) {
+  if (!legacySubjectFormNeedsUpgrade_()) return;
+  withSheetLock_(function() {
+    if (!legacySubjectFormNeedsUpgrade_()) return;
+    var record = readFormDefinitionRecord_('m1');
+    var starter = starterSubjectForm_();
+    writeFormDefinition_(user, starter, 'Draft', Number(record.version) || 0);
+    var responseSheet = getSpreadsheet_().getSheetByName(formSheetName_('m1'));
+    if (responseSheet) migrateFormSheet_(formSheetName_('m1'), fieldNames_(starter.fields));
+  });
+}
+
+function legacySubjectFormNeedsUpgrade_() {
   var record = readFormDefinitionRecord_('m1');
-  if (!record || text_(record.status) === 'Published') return;
+  if (!record || text_(record.status) === 'Published') return false;
   var definition;
-  try { definition = definitionFromRecord_(record); } catch (error) { return; }
-  if (!isLegacySubjectForm_(definition.fields)) return;
+  try { definition = definitionFromRecord_(record); } catch (error) { return false; }
+  if (!isLegacySubjectForm_(definition.fields)) return false;
   var responseSheet = getSpreadsheet_().getSheetByName(formSheetName_('m1'));
-  if (responseSheet && responseSheet.getLastRow() > 1) return;
-  var starter = starterSubjectForm_();
-  writeFormDefinition_(user, starter, 'Draft', Number(record.version) || 0);
-  if (responseSheet) migrateFormSheet_(formSheetName_('m1'), fieldNames_(starter.fields));
+  return !(responseSheet && responseSheet.getLastRow() > 1);
 }
 
 function seedPublishedSubjectForm_() {
@@ -530,15 +558,20 @@ function seedPublishedSubjectForm_() {
   if (!templateSheet) return;
   var template = findRecordByValue_(templateSheet, 'milestoneId', 'm1');
   if (!template || text_(template.type).toLowerCase() !== 'form') return;
-  var starter = starterSubjectForm_();
-  var user = { email: 'dev@vsa.local' };
-  writeFormDefinition_(user, starter, 'Draft');
-  migrateFormSheet_(formSheetName_('m1'), fieldNames_(starter.fields));
-  var sheet = getSpreadsheet_().getSheetByName(APP_TABLES.formDefinitions.sheet);
-  var headers = getHeaders_(sheet);
-  var rowNumber = findRowNumber_(sheet, 'milestoneId', 'm1');
-  var values = sheet.getRange(rowNumber, 1, 1, headers.length).getValues()[0];
-  values[headers.indexOf('status')] = 'Published';
-  values[headers.indexOf('version')] = 1;
-  sheet.getRange(rowNumber, 1, 1, values.length).setValues([values]);
+  withSheetLock_(function() {
+    if (readFormDefinitionRecord_('m1')) return;
+    var starter = starterSubjectForm_();
+    var user = { email: 'dev@vsa.local' };
+    writeFormDefinition_(user, starter, 'Draft');
+    migrateFormSheet_(formSheetName_('m1'), fieldNames_(starter.fields));
+    var sheet = getSpreadsheet_().getSheetByName(APP_TABLES.formDefinitions.sheet);
+    var headers = getHeaders_(sheet);
+    var rowNumber = findRowNumber_(sheet, 'milestoneId', 'm1');
+    if (rowNumber < 0) throw new Error('The subject form could not be seeded.');
+    var values = sheet.getRange(rowNumber, 1, 1, headers.length).getValues()[0];
+    values[headers.indexOf('status')] = 'Published';
+    values[headers.indexOf('version')] = 1;
+    sheet.getRange(rowNumber, 1, 1, values.length).setValues([values]);
+    invalidatePublishedFormCache_();
+  });
 }

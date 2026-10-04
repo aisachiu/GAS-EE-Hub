@@ -12,7 +12,7 @@ function getCohortDriveSettings(cohortId) {
 function saveCohortDriveSettings(cohortId, settings) {
   var user = requireAdmin_('SAVE_COHORT_DRIVE_SETTINGS');
   var driveOptions = normalizeDriveFolderOptions_(settings);
-  return runAuditedMutation_(user, 'SAVE_COHORT_DRIVE_SETTINGS', { cohort: text_(cohortId) }, function() {
+  return runAuditedExternal_(user, 'SAVE_COHORT_DRIVE_SETTINGS', { cohort: text_(cohortId) }, function() {
     resolveCohortRootFolder_(cohortId, driveOptions, true);
     return presentCohortDriveSettings_(cohortId);
   });
@@ -22,7 +22,7 @@ function checkCohortDriveFolders(cohortId, selectedStudentIds, options) {
   var user = requireAdmin_('CHECK_COHORT_DRIVE_FOLDERS');
   var driveOptions = normalizeDriveFolderOptions_(options);
   var studentIds = normalizeSelectedStudentIds_(selectedStudentIds);
-  return runAuditedMutation_(user, 'CHECK_COHORT_DRIVE_FOLDERS', {
+  return runAuditedExternal_(user, 'CHECK_COHORT_DRIVE_FOLDERS', {
     cohort: text_(cohortId),
     studentCount: studentIds.length
   }, function() {
@@ -38,7 +38,7 @@ function syncCohortDriveFolders(cohortId, selectedStudentIds, options) {
   var user = requireAdmin_('SYNC_COHORT_DRIVE_FOLDERS');
   var driveOptions = normalizeDriveFolderOptions_(options);
   var studentIds = normalizeSelectedStudentIds_(selectedStudentIds);
-  return runAuditedMutation_(user, 'SYNC_COHORT_DRIVE_FOLDERS', {
+  return runAuditedExternal_(user, 'SYNC_COHORT_DRIVE_FOLDERS', {
     cohort: text_(cohortId),
     studentCount: studentIds.length,
     shareStudent: driveOptions.shareStudent,
@@ -149,17 +149,19 @@ function resolveCohortRootFolder_(cohortId, driveOptions, persist) {
 }
 
 function writeCohortDriveFields_(cohortId, fields) {
-  ensureCohortDriveColumns_();
-  var sheet = getSpreadsheet_().getSheetByName(APP_TABLES.cohorts.sheet);
-  if (!sheet) throw new Error('COHORTS is missing.');
-  assertSheetSchema_(sheet, 'cohorts');
-  var rowNumber = findRowNumber_(sheet, 'Cohort', cohortId);
-  if (rowNumber < 0) throw new Error('Save this cohort in the Cohorts section before creating Drive folders.');
-  var headers = getHeaders_(sheet);
-  Object.keys(fields).forEach(function(header) {
-    var index = headers.indexOf(header);
-    if (index < 0) throw new Error(header + ' column is missing on COHORTS.');
-    sheet.getRange(rowNumber, index + 1).setValue(preservedDriveText_(fields[header]));
+  withSheetLock_(function() {
+    ensureCohortDriveColumns_();
+    var sheet = getSpreadsheet_().getSheetByName(APP_TABLES.cohorts.sheet);
+    if (!sheet) throw new Error('COHORTS is missing.');
+    assertSheetSchema_(sheet, 'cohorts');
+    var rowNumber = findRowNumber_(sheet, 'Cohort', cohortId);
+    if (rowNumber < 0) throw new Error('Save this cohort in the Cohorts section before creating Drive folders.');
+    var headers = getHeaders_(sheet);
+    Object.keys(fields).forEach(function(header) {
+      var index = headers.indexOf(header);
+      if (index < 0) throw new Error(header + ' column is missing on COHORTS.');
+      sheet.getRange(rowNumber, index + 1).setValue(preservedDriveText_(fields[header]));
+    });
   });
 }
 
@@ -475,10 +477,13 @@ function folderIsInside_(folder, root) {
 }
 
 function writeMemberEeFolder_(sheet, studentId, url) {
-  var headers = getHeaders_(sheet);
-  var rowNumber = findRowNumber_(sheet, 'StudentId', studentId);
-  if (rowNumber < 0) throw new Error('Student is not in this cohort: ' + studentId);
-  var folderIndex = headers.indexOf('EEFolder');
-  if (folderIndex < 0) throw new Error('EEFolder column is missing.');
-  sheet.getRange(rowNumber, folderIndex + 1).setValue(url);
+  withSheetLock_(function() {
+    var headers = getHeaders_(sheet);
+    var rowNumber = findRowNumber_(sheet, 'StudentId', studentId);
+    if (rowNumber < 0) throw new Error('Student is not in this cohort: ' + studentId);
+    var folderIndex = headers.indexOf('EEFolder');
+    if (folderIndex < 0) throw new Error('EEFolder column is missing.');
+    sheet.getRange(rowNumber, folderIndex + 1).setValue(url);
+    invalidatePlacementCache_(studentId);
+  });
 }
