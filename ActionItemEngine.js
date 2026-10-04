@@ -548,11 +548,19 @@ function createActionItemId_() {
 }
 
 function parseActionDate_(value) {
-  if (value instanceof Date && !isNaN(value.getTime())) return new Date(Date.UTC(value.getFullYear(), value.getMonth(), value.getDate()));
-  var match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text_(value));
-  if (match) return new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
-  var parsed = new Date(value);
-  return isNaN(parsed.getTime()) ? null : new Date(Date.UTC(parsed.getFullYear(), parsed.getMonth(), parsed.getDate()));
+  var date = null;
+  if (value instanceof Date && !isNaN(value.getTime())) {
+    date = new Date(Date.UTC(value.getFullYear(), value.getMonth(), value.getDate()));
+  } else {
+    var match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text_(value));
+    if (match) date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+    else {
+      var parsed = new Date(value);
+      if (!isNaN(parsed.getTime())) date = new Date(Date.UTC(parsed.getFullYear(), parsed.getMonth(), parsed.getDate()));
+    }
+  }
+  if (!date || date.getUTCFullYear() < 2000 || date.getUTCFullYear() > 2100) return null;
+  return date;
 }
 
 function serializeDateOnly_(value) {
