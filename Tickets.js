@@ -24,24 +24,28 @@ function ticketChip_(name) {
 }
 
 function seedDefaultTicketCategories_() {
-  var sheet = getOrCreateManagedSheet_(APP_TABLES.ticketCategories);
-  assertSheetSchema_(sheet, 'ticketCategories');
-  if (sheet.getLastRow() > 1) return;
-  var headers = getHeaders_(sheet);
-  var rows = TICKET_CATEGORY_DEFAULTS.map(function(category) {
-    var record = {
-      CategoryId: Utilities.getUuid(),
-      Name: category.name,
-      Route: category.route,
-      SortOrder: category.sort,
-      Active: true
-    };
-    return headers.map(function(header) {
-      var value = record[header];
-      return typeof value === 'string' ? safeCell_(value) : value;
+  var existing = getSpreadsheet_().getSheetByName(APP_TABLES.ticketCategories.sheet);
+  if (existing && existing.getLastRow() > 1) return;
+  withSheetLock_(function() {
+    var sheet = getOrCreateManagedSheet_(APP_TABLES.ticketCategories);
+    assertSheetSchema_(sheet, 'ticketCategories');
+    if (sheet.getLastRow() > 1) return;
+    var headers = getHeaders_(sheet);
+    var rows = TICKET_CATEGORY_DEFAULTS.map(function(category) {
+      var record = {
+        CategoryId: Utilities.getUuid(),
+        Name: category.name,
+        Route: category.route,
+        SortOrder: category.sort,
+        Active: true
+      };
+      return headers.map(function(header) {
+        var value = record[header];
+        return typeof value === 'string' ? safeCell_(value) : value;
+      });
     });
+    sheet.getRange(2, 1, rows.length, headers.length).setValues(rows);
   });
-  sheet.getRange(2, 1, rows.length, headers.length).setValues(rows);
 }
 
 function readTicketCategories_() {
@@ -98,12 +102,49 @@ function ticketStamp_(value) {
   return String(serializable_(value));
 }
 
+var TICKET_CACHE_KEY = 'EE_TICKETS_V1';
+var TICKET_CACHE_GEN_KEY = 'EE_TICKETS_GEN';
+
 function readAllTickets_() {
+  var cache = null;
+  var generation = '';
+  try {
+    cache = CacheService.getScriptCache();
+    generation = cache.get(TICKET_CACHE_GEN_KEY) || '';
+    var cached = cache.get(TICKET_CACHE_KEY);
+    if (cached) {
+      var parsed = JSON.parse(cached);
+      if (parsed && parsed.generation === generation && Array.isArray(parsed.tickets)) return parsed.tickets;
+    }
+  } catch (error) {
+    cache = null;
+  }
+  var tickets = readAllTicketsFromSheet_();
+  if (cache) {
+    try {
+      var currentGeneration = cache.get(TICKET_CACHE_GEN_KEY) || '';
+      if (currentGeneration === generation) {
+        cache.put(TICKET_CACHE_KEY, JSON.stringify({ generation: currentGeneration, tickets: tickets }), 30);
+      }
+    } catch (writeError) { /* the fresh list is still returned */ }
+  }
+  return tickets;
+}
+
+function readAllTicketsFromSheet_() {
   ensureTicketsReady_();
   var sheet = getSpreadsheet_().getSheetByName(APP_TABLES.tickets.sheet);
   if (!sheet || sheet.getLastRow() < 2) return [];
   assertSheetSchema_(sheet, 'tickets');
   return readRecords_(sheet).map(ticketFromRecord_);
+}
+
+function invalidateTicketCache_() {
+  try {
+    var cache = CacheService.getScriptCache();
+    cache.remove(TICKET_CACHE_KEY);
+    cache.put(TICKET_CACHE_GEN_KEY, String(new Date().getTime()), 600);
+  } catch (error) { /* the next read falls back to the sheet */ }
 }
 
 function ticketIsShared_(record) {
@@ -326,18 +367,21 @@ function assertTicketActor_(user, ticket, viewAs) {
 }
 
 function writeManagedRow_(entity, values, keyName) {
-  if (entity === 'tickets') ensureTicketsReady_();
-  var sheet = getOrCreateManagedSheet_(APP_TABLES[entity]);
-  assertSheetSchema_(sheet, entity);
-  var headers = getHeaders_(sheet);
-  var rowNumber = keyName ? findRowNumber_(sheet, keyName, values[keyName]) : -1;
-  var row = headers.map(function(header) {
-    var value = values[header];
-    if (value === undefined || value === null) return '';
-    return typeof value === 'string' ? safeCell_(value) : value;
+  withSheetLock_(function() {
+    if (entity === 'tickets') ensureTicketsReady_();
+    var sheet = getOrCreateManagedSheet_(APP_TABLES[entity]);
+    assertSheetSchema_(sheet, entity);
+    var headers = getHeaders_(sheet);
+    var rowNumber = keyName ? findRowNumber_(sheet, keyName, values[keyName]) : -1;
+    var row = headers.map(function(header) {
+      var value = values[header];
+      if (value === undefined || value === null) return '';
+      return typeof value === 'string' ? safeCell_(value) : value;
+    });
+    if (rowNumber > 0) sheet.getRange(rowNumber, 1, 1, row.length).setValues([row]);
+    else sheet.getRange(sheet.getLastRow() + 1, 1, 1, row.length).setValues([row]);
+    if (entity === 'tickets') invalidateTicketCache_();
   });
-  if (rowNumber > 0) sheet.getRange(rowNumber, 1, 1, row.length).setValues([row]);
-  else sheet.getRange(sheet.getLastRow() + 1, 1, 1, row.length).setValues([row]);
 }
 
 function ticketAudit_(ticket, extra) {
@@ -548,6 +592,14 @@ function getStaffTicketBadge(viewAs) {
 }
 
 function seedDefaultFaqs_() {
+  var existing = getSpreadsheet_().getSheetByName(APP_TABLES.faqs.sheet);
+  if (existing && existing.getLastRow() > 1) return;
+  withSheetLock_(function() {
+    seedDefaultFaqsLocked_();
+  });
+}
+
+function seedDefaultFaqsLocked_() {
   var sheet = getOrCreateManagedSheet_(APP_TABLES.faqs);
   assertSheetSchema_(sheet, 'faqs');
   if (sheet.getLastRow() > 1) return;

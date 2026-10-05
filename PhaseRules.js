@@ -1,24 +1,20 @@
 function canCompleteMilestone_(user, studentEmail, owner, templateType, knownPlacement) {
-  var type = text_(templateType).toLowerCase();
+  var milestoneOwner = text_(owner).toLowerCase();
+  if (!user) return false;
+  // Coordinators and admins can check or uncheck every milestone.
+  if (user.role === 'staff' && user.permissions && user.permissions.canAdmin) return true;
+  if (milestoneOwner === 'student') return user.role === 'student' && user.email === normalizeEmail_(studentEmail);
+  if (user.role !== 'staff') return false;
   var placement = knownPlacement || null;
-  if (!placement && user && user.role === 'staff' && (type === 'meeting' || owner === 'supervisor')) {
-    placement = findStudentPlacement_(studentEmail);
-  }
-  if (type === 'meeting') {
-    if (!user || user.role !== 'staff' || !placement) return false;
-    if (normalizeEmail_(placement.supervisorId) === user.email) return true;
-    return !text_(placement.supervisorId) && !!(user.permissions && user.permissions.canAdmin);
-  }
-  if (owner === 'student') return !!user && user.role === 'student' && user.email === normalizeEmail_(studentEmail);
-  if (!user || user.role !== 'staff') return false;
-  if (owner === 'supervisor') {
+  if (!placement && milestoneOwner === 'supervisor') placement = findStudentPlacement_(studentEmail);
+  if (milestoneOwner === 'supervisor') {
     if (!placement) return false;
     if (normalizeEmail_(placement.supervisorId) === user.email) return true;
     return !text_(placement.supervisorId) && !!(user.permissions && user.permissions.canAdmin);
   }
-  var permissionName = 'is' + owner.charAt(0).toUpperCase() + owner.slice(1);
+  var permissionName = 'is' + milestoneOwner.charAt(0).toUpperCase() + milestoneOwner.slice(1);
   var ownerField = getFieldConfig_('milestoneTemplates', 'mOwner');
-  return !!ownerField && ownerField.options.indexOf(owner) >= 0 && !!user.permissions[permissionName];
+  return !!ownerField && ownerField.options.indexOf(milestoneOwner) >= 0 && !!user.permissions[permissionName];
 }
 
 function validatePhasePrerequisites_(values, originalKey) {

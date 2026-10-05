@@ -34,6 +34,7 @@ function getStudentActionItems_(studentEmail, user) {
     item.mOwner = templateOwners[text_(item.TemplateId)] || '';
     item.canEdit = item.CreatorType === 'Student' && user && user.role === 'student' && normalizeEmail_(item.StudentId) === user.email;
     item.canUpdate = item.canEdit || (item.CreatorType === 'System' && !!user && canCompleteMilestone_(user, item.StudentId, item.mOwner, item.templateType));
+    item.formOpen = item.templateType !== 'form' || !formWritesClosed_(item.DueDate, new Date());
     return item;
   }).sort(function(left, right) {
     var leftDate = left.DueDate ? Date.parse(left.DueDate) : Number.MAX_SAFE_INTEGER;
@@ -151,6 +152,7 @@ function reorderMilestoneTemplate(templateId, targetPhaseId, beforeTemplateId) {
     }
     rows.splice(insertIndex, 0, movingRow);
     sheet.getRange(1, 1, rows.length, headers.length).setValues(rows);
+    invalidateJourneyCatalog_();
     return {
       moved: true,
       templateId: text_(templateId),
@@ -183,6 +185,29 @@ function updateStudentTodo(taskId, title, description) {
     writeActionItem_(item);
     invalidateActionItemCache_(user.email);
     return { saved: true };
+  });
+}
+
+function saveStudentTodo(taskId, title, description, dueDate) {
+  var user = requireUser_('UPDATE_STUDENT_TODO');
+  if (user.role !== 'student') denyAccess_(user, 'UPDATE_STUDENT_TODO', 'Student access required.');
+  var nextTitle = text_(title);
+  if (!nextTitle) throw new Error('To-Do title is required.');
+  if (nextTitle.length > 240) throw new Error('To-Do title must be 240 characters or fewer.');
+  var parsedDate = dueDate ? parseActionDate_(dueDate) : '';
+  if (dueDate && !parsedDate) throw new Error('Due date must be a valid date.');
+
+  return runAuditedMutation_(user, 'UPDATE_STUDENT_TODO', { taskId: text_(taskId), studentId: user.email }, function() {
+    var item = findActionItem_(taskId);
+    requireOwnedStudentTodo_(item, user);
+    item.record.Title = nextTitle;
+    item.record.Description = text_(description);
+    item.record.DueDate = parsedDate;
+    item.record.LastUpdated = new Date();
+    stampActionItemActors_(item.record, user.email, false);
+    writeActionItem_(item);
+    invalidateActionItemCache_(user.email);
+    return { saved: true, dueDate: parsedDate ? serializable_(parsedDate) : '' };
   });
 }
 
@@ -258,10 +283,17 @@ function setActionItemStatus(taskId, status, studentEmail, cohortId, viewAs) {
   return runAuditedMutation_(user, 'UPDATE_ACTION_ITEM_STATUS', {
     taskId: text_(taskId), studentId: targetStudentId, status: status
   }, function() {
-    item.record.Status = status;
-    item.record.LastUpdated = new Date();
-    stampActionItemActors_(item.record, user.email, false);
-    writeActionItem_(item);
+    var current = findActionItem_(taskId);
+    if (normalizeEmail_(current.record.StudentId) !== targetStudentId) {
+      throw new Error('Task belongs to another student.');
+    }
+    if (text_(current.record.CreatorType) !== text_(item.record.CreatorType)) {
+      throw new Error('This task changed. Refresh and try again.');
+    }
+    current.record.Status = status;
+    current.record.LastUpdated = new Date();
+    stampActionItemActors_(current.record, user.email, false);
+    writeActionItem_(current);
     invalidateActionItemCache_(targetStudentId);
     return { status: status };
   });
@@ -348,23 +380,45 @@ function assignMilestonesToStudents(cohortId, selectedStudentIds, baselineAnchor
 
 function setStudentAnchorDate(cohortId, studentId, anchorDateValue) {
   var user = requireAdmin_('SET_STUDENT_ANCHOR_DATE');
+  var prepared = prepareAnchorDate_(studentId, anchorDateValue);
+  return runAuditedMutation_(user, 'SET_STUDENT_ANCHOR_DATE', {
+    cohort: text_(cohortId), studentId: prepared.studentId
+  }, function() {
+    applyStudentAnchorDate_(cohortId, prepared.studentId, prepared.anchorDate);
+    return { saved: true };
+  });
+}
+
+function saveStudentAnchorAndSync(cohortId, studentId, anchorDateValue) {
+  var user = requireAdmin_('SET_STUDENT_ANCHOR_DATE');
+  var prepared = prepareAnchorDate_(studentId, anchorDateValue);
+  return runAuditedMutation_(user, 'SET_STUDENT_ANCHOR_DATE', {
+    cohort: text_(cohortId), studentId: prepared.studentId, sync: true
+  }, function() {
+    applyStudentAnchorDate_(cohortId, prepared.studentId, prepared.anchorDate);
+    var synced = applyStudentActionDateSync_(user, cohortId, prepared.studentId);
+    return { saved: true, updated: synced.updated };
+  });
+}
+
+function prepareAnchorDate_(studentId, anchorDateValue) {
   var normalizedStudentId = normalizeEmail_(studentId);
   validateEmail_(normalizedStudentId, 'StudentId');
   var anchorDate = anchorDateValue ? parseActionDate_(anchorDateValue) : '';
   if (anchorDateValue && !anchorDate) throw new Error('Anchor_Date must be a valid date.');
-  return runAuditedMutation_(user, 'SET_STUDENT_ANCHOR_DATE', {
-    cohort: text_(cohortId), studentId: normalizedStudentId
-  }, function() {
-    var sheet = getCohortSheet_(cohortId);
-    assertSheetSchema_(sheet, 'cohortMembers');
-    var headers = getHeaders_(sheet);
-    var studentColumn = requireColumn_(headers, 'StudentId', sheet.getName());
-    var anchorColumn = requireColumn_(headers, 'Anchor_Date', sheet.getName());
-    var rowNumber = findRowNumber_(sheet, 'StudentId', normalizedStudentId);
-    if (rowNumber < 0) throw new Error('Student is not in the selected cohort.');
-    sheet.getRange(rowNumber, anchorColumn + 1).setValue(anchorDate || '');
-    return { saved: true };
-  });
+  return { studentId: normalizedStudentId, anchorDate: anchorDate };
+}
+
+function applyStudentAnchorDate_(cohortId, studentId, anchorDate) {
+  var sheet = getCohortSheet_(cohortId);
+  assertSheetSchema_(sheet, 'cohortMembers');
+  var headers = getHeaders_(sheet);
+  requireColumn_(headers, 'StudentId', sheet.getName());
+  var anchorColumn = requireColumn_(headers, 'Anchor_Date', sheet.getName());
+  var rowNumber = findRowNumber_(sheet, 'StudentId', studentId);
+  if (rowNumber < 0) throw new Error('Student is not in the selected cohort.');
+  sheet.getRange(rowNumber, anchorColumn + 1).setValue(anchorDate || '');
+  invalidatePlacementCache_(studentId);
 }
 
 function syncStudentActionItemDates(studentId, cohortId) {
@@ -372,45 +426,49 @@ function syncStudentActionItemDates(studentId, cohortId) {
   var targetStudentId = normalizeEmail_(studentId);
   validateEmail_(targetStudentId, 'StudentId');
   return runAuditedMutation_(user, 'SYNC_STUDENT_ACTION_DATES', { cohort: text_(cohortId), studentId: targetStudentId }, function() {
-    var roster = getCohortSheet_(cohortId);
-    assertSheetSchema_(roster, 'cohortMembers');
-    var rosterData = roster.getDataRange().getValues();
-    var rosterHeaders = rosterData[0].map(headerName_);
-    var studentColumn = requireColumn_(rosterHeaders, 'StudentId', roster.getName());
-    var anchorColumn = requireColumn_(rosterHeaders, 'Anchor_Date', roster.getName());
-    var studentRow = -1;
-    for (var index = 1; index < rosterData.length; index++) {
-      if (normalizeEmail_(rosterData[index][studentColumn]) === targetStudentId) { studentRow = index; break; }
-    }
-    if (studentRow < 0) throw new Error('Student is not in the selected cohort.');
-    var anchorDate = parseActionDate_(rosterData[studentRow][anchorColumn]);
-    if (!anchorDate) throw new Error('Set the student Anchor_Date before syncing.');
-
-    var actionSheet = getRequiredActionSheet_('studentActionItems');
-    assertSheetSchema_(actionSheet, 'studentActionItems');
-    var templateSheet = getRequiredActionSheet_('milestoneTemplates');
-    assertSheetSchema_(templateSheet, 'milestoneTemplates');
-    var templatesById = {};
-    readRecords_(templateSheet).forEach(function(template) { templatesById[text_(template.milestoneId)] = template; });
-    var actionHeaders = getHeaders_(actionSheet);
-    var actionMap = indexHeaders_(actionHeaders);
-    var actionData = actionSheet.getDataRange().getValues();
-    var now = new Date();
-    var updated = 0;
-    for (var taskRow = 1; taskRow < actionData.length; taskRow++) {
-      var row = actionData[taskRow];
-      if (normalizeEmail_(row[actionMap.StudentId]) !== targetStudentId || text_(row[actionMap.CreatorType]) !== 'System') continue;
-      var template = templatesById[text_(row[actionMap.TemplateId])];
-      if (!template) continue;
-      row[actionMap.DueDate] = addDays_(anchorDate, -Number(template.offsetDays || 0));
-      row[actionMap.LastUpdated] = now;
-      if (typeof actionMap.UpdatedBy === 'number') row[actionMap.UpdatedBy] = user.email;
-      updated++;
-    }
-    if (updated) actionSheet.getRange(1, 1, actionData.length, actionHeaders.length).setValues(actionData);
-    invalidateActionItemCache_(targetStudentId);
-    return { updated: updated };
+    return applyStudentActionDateSync_(user, cohortId, targetStudentId);
   });
+}
+
+function applyStudentActionDateSync_(user, cohortId, targetStudentId) {
+  var roster = getCohortSheet_(cohortId);
+  assertSheetSchema_(roster, 'cohortMembers');
+  var rosterData = roster.getDataRange().getValues();
+  var rosterHeaders = rosterData[0].map(headerName_);
+  var studentColumn = requireColumn_(rosterHeaders, 'StudentId', roster.getName());
+  var anchorColumn = requireColumn_(rosterHeaders, 'Anchor_Date', roster.getName());
+  var studentRow = -1;
+  for (var index = 1; index < rosterData.length; index++) {
+    if (normalizeEmail_(rosterData[index][studentColumn]) === targetStudentId) { studentRow = index; break; }
+  }
+  if (studentRow < 0) throw new Error('Student is not in the selected cohort.');
+  var anchorDate = parseActionDate_(rosterData[studentRow][anchorColumn]);
+  if (!anchorDate) throw new Error('Set the student Anchor_Date before syncing.');
+
+  var actionSheet = getRequiredActionSheet_('studentActionItems');
+  assertSheetSchema_(actionSheet, 'studentActionItems');
+  var templateSheet = getRequiredActionSheet_('milestoneTemplates');
+  assertSheetSchema_(templateSheet, 'milestoneTemplates');
+  var templatesById = {};
+  readRecords_(templateSheet).forEach(function(template) { templatesById[text_(template.milestoneId)] = template; });
+  var actionHeaders = getHeaders_(actionSheet);
+  var actionMap = indexHeaders_(actionHeaders);
+  var actionData = actionSheet.getDataRange().getValues();
+  var now = new Date();
+  var updated = 0;
+  for (var taskRow = 1; taskRow < actionData.length; taskRow++) {
+    var row = actionData[taskRow];
+    if (normalizeEmail_(row[actionMap.StudentId]) !== targetStudentId || text_(row[actionMap.CreatorType]) !== 'System') continue;
+    var template = templatesById[text_(row[actionMap.TemplateId])];
+    if (!template) continue;
+    row[actionMap.DueDate] = addDays_(anchorDate, -Number(template.offsetDays || 0));
+    row[actionMap.LastUpdated] = now;
+    if (typeof actionMap.UpdatedBy === 'number') row[actionMap.UpdatedBy] = user.email;
+    updated++;
+  }
+  if (updated) actionSheet.getRange(1, 1, actionData.length, actionHeaders.length).setValues(actionData);
+  invalidateActionItemCache_(targetStudentId);
+  return { updated: updated };
 }
 
 function getRequiredActionSheet_(entity) {
@@ -433,6 +491,15 @@ function findActionItem_(taskId) {
 }
 
 function writeActionItem_(item) {
+  var idColumn = item.headers.indexOf('TaskId');
+  if (idColumn < 0) throw new Error('TaskId column is missing.');
+  var onSheet = text_(item.sheet.getRange(item.rowNumber, idColumn + 1).getValues()[0][0]);
+  if (onSheet !== text_(item.record.TaskId)) {
+    var located = findActionItem_(item.record.TaskId);
+    item.sheet = located.sheet;
+    item.headers = located.headers;
+    item.rowNumber = located.rowNumber;
+  }
   var row = item.headers.map(function(header) { return item.record[header] === undefined ? '' : item.record[header]; });
   item.sheet.getRange(item.rowNumber, 1, 1, item.headers.length).setValues([row]);
 }
@@ -482,11 +549,19 @@ function createActionItemId_() {
 }
 
 function parseActionDate_(value) {
-  if (value instanceof Date && !isNaN(value.getTime())) return new Date(Date.UTC(value.getFullYear(), value.getMonth(), value.getDate()));
-  var match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text_(value));
-  if (match) return new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
-  var parsed = new Date(value);
-  return isNaN(parsed.getTime()) ? null : new Date(Date.UTC(parsed.getFullYear(), parsed.getMonth(), parsed.getDate()));
+  var date = null;
+  if (value instanceof Date && !isNaN(value.getTime())) {
+    date = new Date(Date.UTC(value.getFullYear(), value.getMonth(), value.getDate()));
+  } else {
+    var match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text_(value));
+    if (match) date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+    else {
+      var parsed = new Date(value);
+      if (!isNaN(parsed.getTime())) date = new Date(Date.UTC(parsed.getFullYear(), parsed.getMonth(), parsed.getDate()));
+    }
+  }
+  if (!date || date.getUTCFullYear() < 2000 || date.getUTCFullYear() > 2100) return null;
+  return date;
 }
 
 function serializeDateOnly_(value) {
@@ -520,10 +595,12 @@ function getRequiredActionItemsSheet_() {
 
 function appendActionItems_(sheet, records) {
   if (!records.length) return;
-  var headers = getHeaders_(sheet);
-  assertSheetSchema_(sheet, 'studentActionItems');
-  var rows = records.map(function(record) { return actionItemRow_(headers, record); });
-  sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, headers.length).setValues(rows);
+  withSheetLock_(function() {
+    var headers = getHeaders_(sheet);
+    assertSheetSchema_(sheet, 'studentActionItems');
+    var rows = records.map(function(record) { return actionItemRow_(headers, record); });
+    sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, headers.length).setValues(rows);
+  });
 }
 
 function actionKey_(studentId, templateId) {
