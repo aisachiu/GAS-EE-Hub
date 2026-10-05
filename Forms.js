@@ -155,6 +155,7 @@ function writeFormDefinition_(user, definition, status, version) {
   var row = headers.map(function(header) { return values[header] === undefined ? '' : values[header]; });
   if (rowNumber > 0) sheet.getRange(rowNumber, 1, 1, row.length).setValues([row]);
   else sheet.getRange(sheet.getLastRow() + 1, 1, 1, row.length).setValues([row]);
+  invalidatePublishedFormCache_();
   return nextStatus;
 }
 
@@ -320,13 +321,31 @@ function resolveFieldOptions_(fields) {
   });
 }
 
+var PUBLISHED_FORM_CACHE_KEY = 'EE_PUBLISHED_FORMS_V1';
+
 function publishedFormIds_() {
+  try {
+    var cached = CacheService.getScriptCache().get(PUBLISHED_FORM_CACHE_KEY);
+    if (cached) return JSON.parse(cached);
+  } catch (error) { /* read the sheet */ }
+  var ids = publishedFormIdsFromSheet_();
+  try { CacheService.getScriptCache().put(PUBLISHED_FORM_CACHE_KEY, JSON.stringify(ids), 120); }
+  catch (writeError) { /* the fresh list is still returned */ }
+  return ids;
+}
+
+function publishedFormIdsFromSheet_() {
   var sheet = getSpreadsheet_().getSheetByName(APP_TABLES.formDefinitions.sheet);
   if (!sheet || sheet.getLastRow() < 2) return [];
   assertSheetSchema_(sheet, 'formDefinitions');
   return readRecords_(sheet).filter(function(record) {
     return text_(record.status) === 'Published';
   }).map(function(record) { return text_(record.milestoneId); });
+}
+
+function invalidatePublishedFormCache_() {
+  try { CacheService.getScriptCache().remove(PUBLISHED_FORM_CACHE_KEY); }
+  catch (error) { /* the next read falls back to the sheet */ }
 }
 
 function getStudentForm(milestoneId) {
@@ -344,6 +363,8 @@ function getStudentForm(milestoneId) {
     var rowNumber = findRowNumber_(sheet, 'StudentId', user.email);
     if (rowNumber > 0) response = readFormRow_(sheet, rowNumber, definition.fields);
   }
+  var due = studentFormDueDate_(user.email, definition.milestoneId);
+  var formOpen = !formWritesClosed_(due, new Date());
   return {
     milestoneId: definition.milestoneId,
     title: text_(template.milestoneTitle),
@@ -352,8 +373,100 @@ function getStudentForm(milestoneId) {
     js: definition.js,
     fields: resolveFieldOptions_(definition.fields),
     response: response,
+    formOpen: formOpen,
+    closedMessage: formOpen ? '' : formClosedMessage_(due),
     student: { displayName: placement.displayName || user.displayName, subject: placement.subject || '' }
   };
+}
+
+function scriptTimeZone_() {
+  var zone = '';
+  try { zone = Session.getScriptTimeZone(); } catch (error) { zone = ''; }
+  if (!zone) {
+    try { zone = getSpreadsheet_().getSpreadsheetTimeZone(); } catch (sheetError) { zone = ''; }
+  }
+  return zone || 'UTC';
+}
+
+function scriptClockParts_(value) {
+  if (value === '' || value === null || value === undefined) return null;
+  var date = value instanceof Date ? value : new Date(value);
+  if (isNaN(date.getTime())) return null;
+  var timeZone = scriptTimeZone_();
+  var formatted = Utilities.formatDate(date, timeZone, 'yyyy-MM-dd HH:mm:ss');
+  var match = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/.exec(formatted);
+  if (!match) return null;
+  return {
+    date: date,
+    timeZone: timeZone,
+    year: Number(match[1]),
+    month: Number(match[2]),
+    day: Number(match[3]),
+    hour: Number(match[4]),
+    minute: Number(match[5]),
+    second: Number(match[6])
+  };
+}
+
+function dueDateFacts_(dueValue) {
+  if (dueValue === '' || dueValue === null || dueValue === undefined) return { missing: true };
+  var date = dueValue instanceof Date ? dueValue : new Date(dueValue);
+  if (isNaN(date.getTime())) return { invalid: true };
+  var parts = scriptClockParts_(date);
+  if (!parts) return { invalid: true };
+  var utcMidnight = date.getUTCHours() === 0 && date.getUTCMinutes() === 0 && date.getUTCSeconds() === 0;
+  var localMidnight = parts.hour === 0 && parts.minute === 0 && parts.second === 0;
+  if (!utcMidnight && !localMidnight) return { date: date, parts: parts, timed: true };
+  var year = localMidnight ? parts.year : date.getUTCFullYear();
+  var month = localMidnight ? parts.month : date.getUTCMonth() + 1;
+  var day = localMidnight ? parts.day : date.getUTCDate();
+  return { date: date, parts: parts, timed: false, year: year, month: month, day: day };
+}
+
+function startOfScriptDay_(year, month, day) {
+  var timeZone = scriptTimeZone_();
+  var utcGuess = Date.UTC(year, month - 1, day, 0, 0, 0);
+  var corrected = new Date(utcGuess);
+  for (var pass = 0; pass < 2; pass++) {
+    var formatted = Utilities.formatDate(corrected, timeZone, 'yyyy-MM-dd HH:mm:ss');
+    var match = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/.exec(formatted);
+    if (!match) return corrected;
+    var shown = Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(match[4]), Number(match[5]), Number(match[6]));
+    var target = Date.UTC(year, month - 1, day, 0, 0, 0);
+    if (shown === target) return corrected;
+    corrected = new Date(corrected.getTime() + (target - shown));
+  }
+  return corrected;
+}
+
+function formWritesClosed_(dueValue, now) {
+  var facts = dueDateFacts_(dueValue);
+  if (facts.missing) return false;
+  if (facts.invalid) return true;
+  var current = now instanceof Date ? now : new Date(now || Date.now());
+  if (isNaN(current.getTime())) return true;
+  if (facts.timed) return current.getTime() > facts.date.getTime();
+  var deadline = startOfScriptDay_(facts.year, facts.month, facts.day + 1);
+  return current.getTime() >= deadline.getTime();
+}
+
+function formClosedMessage_(dueValue) {
+  var facts = dueDateFacts_(dueValue);
+  if (facts.missing || facts.invalid || !facts.parts) return 'This form is closed because its due date could not be read. Answers can no longer be changed.';
+  var when = facts.timed
+    ? Utilities.formatDate(facts.date, facts.parts.timeZone, 'd MMM yyyy, HH:mm')
+    : Utilities.formatDate(startOfScriptDay_(facts.year, facts.month, facts.day), facts.parts.timeZone, 'd MMM yyyy');
+  return 'This form\'s due date has passed (' + when + '). Answers can no longer be changed.';
+}
+
+function studentFormDueDate_(studentEmail, milestoneId) {
+  var item = findSystemActionItem_(studentEmail, milestoneId);
+  return item && item.record ? item.record.DueDate : '';
+}
+
+function assertStudentFormWritable_(studentEmail, milestoneId) {
+  var due = studentFormDueDate_(studentEmail, milestoneId);
+  if (formWritesClosed_(due, new Date())) throw new Error(formClosedMessage_(due));
 }
 
 function readFormRow_(sheet, rowNumber, fields) {
@@ -396,6 +509,7 @@ function saveStudentForm(milestoneId, payload) {
     var sheet = getSpreadsheet_().getSheetByName(formSheetName_(milestoneId));
     if (!sheet) throw new Error('The form response sheet is missing.');
     assertFormResponseSchema_(sheet, definition.fields);
+    assertStudentFormWritable_(user.email, definition.milestoneId);
     var headers = getHeaders_(sheet);
     var rowNumber = findRowNumber_(sheet, 'StudentId', user.email);
     if (rowNumber > 0) {
@@ -512,16 +626,25 @@ function isLegacySubjectForm_(fields) {
 }
 
 function upgradeLegacySubjectPreferenceForm_(user) {
+  if (!legacySubjectFormNeedsUpgrade_()) return;
+  withSheetLock_(function() {
+    if (!legacySubjectFormNeedsUpgrade_()) return;
+    var record = readFormDefinitionRecord_('m1');
+    var starter = starterSubjectForm_();
+    writeFormDefinition_(user, starter, 'Draft', Number(record.version) || 0);
+    var responseSheet = getSpreadsheet_().getSheetByName(formSheetName_('m1'));
+    if (responseSheet) migrateFormSheet_(formSheetName_('m1'), fieldNames_(starter.fields));
+  });
+}
+
+function legacySubjectFormNeedsUpgrade_() {
   var record = readFormDefinitionRecord_('m1');
-  if (!record || text_(record.status) === 'Published') return;
+  if (!record || text_(record.status) === 'Published') return false;
   var definition;
-  try { definition = definitionFromRecord_(record); } catch (error) { return; }
-  if (!isLegacySubjectForm_(definition.fields)) return;
+  try { definition = definitionFromRecord_(record); } catch (error) { return false; }
+  if (!isLegacySubjectForm_(definition.fields)) return false;
   var responseSheet = getSpreadsheet_().getSheetByName(formSheetName_('m1'));
-  if (responseSheet && responseSheet.getLastRow() > 1) return;
-  var starter = starterSubjectForm_();
-  writeFormDefinition_(user, starter, 'Draft', Number(record.version) || 0);
-  if (responseSheet) migrateFormSheet_(formSheetName_('m1'), fieldNames_(starter.fields));
+  return !(responseSheet && responseSheet.getLastRow() > 1);
 }
 
 function seedPublishedSubjectForm_() {
@@ -530,15 +653,20 @@ function seedPublishedSubjectForm_() {
   if (!templateSheet) return;
   var template = findRecordByValue_(templateSheet, 'milestoneId', 'm1');
   if (!template || text_(template.type).toLowerCase() !== 'form') return;
-  var starter = starterSubjectForm_();
-  var user = { email: 'dev@vsa.local' };
-  writeFormDefinition_(user, starter, 'Draft');
-  migrateFormSheet_(formSheetName_('m1'), fieldNames_(starter.fields));
-  var sheet = getSpreadsheet_().getSheetByName(APP_TABLES.formDefinitions.sheet);
-  var headers = getHeaders_(sheet);
-  var rowNumber = findRowNumber_(sheet, 'milestoneId', 'm1');
-  var values = sheet.getRange(rowNumber, 1, 1, headers.length).getValues()[0];
-  values[headers.indexOf('status')] = 'Published';
-  values[headers.indexOf('version')] = 1;
-  sheet.getRange(rowNumber, 1, 1, values.length).setValues([values]);
+  withSheetLock_(function() {
+    if (readFormDefinitionRecord_('m1')) return;
+    var starter = starterSubjectForm_();
+    var user = { email: 'dev@vsa.local' };
+    writeFormDefinition_(user, starter, 'Draft');
+    migrateFormSheet_(formSheetName_('m1'), fieldNames_(starter.fields));
+    var sheet = getSpreadsheet_().getSheetByName(APP_TABLES.formDefinitions.sheet);
+    var headers = getHeaders_(sheet);
+    var rowNumber = findRowNumber_(sheet, 'milestoneId', 'm1');
+    if (rowNumber < 0) throw new Error('The subject form could not be seeded.');
+    var values = sheet.getRange(rowNumber, 1, 1, headers.length).getValues()[0];
+    values[headers.indexOf('status')] = 'Published';
+    values[headers.indexOf('version')] = 1;
+    sheet.getRange(rowNumber, 1, 1, values.length).setValues([values]);
+    invalidatePublishedFormCache_();
+  });
 }

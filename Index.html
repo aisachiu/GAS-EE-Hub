@@ -514,7 +514,7 @@
     </style>
   </head>
   <body>
-    <div id="app"><div class="load-stage" data-connect="1"><p class="load-status">Connecting to VSA EE Hub...</p></div></div>
+    <div id="app"><div class="load-stage" data-connect="1"><p class="load-status">Connecting to VSA EE Hub...</p><blockquote class="load-quote"><span class="load-quote-text">A clear question is the start of a strong essay.</span></blockquote></div></div>
     <script>
       const state = {
         user: null,
@@ -545,8 +545,8 @@
         staffSupervisor: '',
         staffPane: 'home',
         staffStudentHome: null,
-        quote: '',
-        quotes: [],
+        quote: 'A clear question is the start of a strong essay.',
+        quotes: ['A clear question is the start of a strong essay.'],
         notesOpen: false,
         notesPane: 'notes',
         notesHub: null,
@@ -583,7 +583,6 @@
       }
 
       function start() {
-        callServer('getLoadingQuote').then(rememberQuotes).catch(function() {});
         callServer('getAppBootstrap').then(function(result) {
           rememberQuotes(result);
           if (!result || !result.user) {
@@ -1056,7 +1055,10 @@
         }
         if (!next || !next.item || next.template.mOwner !== 'student') return next && next.template ? '<p>Waiting on ' + escapeHtml(next.template.mOwner) + '.</p>' : '';
         if (next.template.type === 'form') {
-          if (home.publishedForms && home.publishedForms[next.template.milestoneId]) return `<button type="button" class="button" data-open-form="${escapeHtml(next.template.milestoneId)}">Open form</button>`;
+          if (home.publishedForms && home.publishedForms[next.template.milestoneId]) {
+            const closed = next.item && next.item.formOpen === false;
+            return `<button type="button" class="button" data-open-form="${escapeHtml(next.template.milestoneId)}">${closed ? 'View form' : 'Open form'}</button>`;
+          }
           return '<p>Your coordinator has not published this form yet.</p>';
         }
         return '<button type="button" class="button secondary" data-go-journey>Open journey</button>';
@@ -1139,9 +1141,10 @@
       function renderJourneyMilestone(template, item, detailed, current, zoom) {
         const status = item ? item.Status : 'Pending';
         const isHere = current && current.template.milestoneId === template.milestoneId && status !== 'Completed';
-        const showActions = item && item.canUpdate && zoom !== 'all';
+        const showActions = item && item.canUpdate && (zoom !== 'all' || status === 'Completed' || template.type === 'form');
         const due = item && item.DueDate ? shortDate(item.DueDate) : '';
-        return `<li class="step ${status === 'Completed' ? 'done' : ''} ${isHere ? 'here' : ''}" data-task-id="${item ? escapeHtml(item.TaskId) : ''}" data-creator-type="System"><span class="rail"></span><div><div class="step-top"><h3>${escapeHtml(template.title)}</h3><span class="muted">${escapeHtml(milestoneKind(template))}${due ? ' · ' + escapeHtml(due) : ''}</span></div>${detailed ? `<p class="muted">${escapeHtml(template.description || '')}</p>` : ''}${item && item.returnedComment ? `<p class="notice">Returned: ${escapeHtml(item.returnedComment)}</p>` : ''}<div class="step-actions"><span class="muted">${escapeHtml(milestoneProgressLabel(item, template))}</span>${showActions ? journeyActions(item, template, false) : ''}</div></div></li>`;
+        const closed = template.type === 'form' && item && item.formOpen === false ? ' · Form closed' : '';
+        return `<li class="step ${status === 'Completed' ? 'done' : ''} ${isHere ? 'here' : ''}" data-task-id="${item ? escapeHtml(item.TaskId) : ''}" data-creator-type="System"><span class="rail"></span><div><div class="step-top"><h3>${escapeHtml(template.title)}</h3><span class="muted">${escapeHtml(milestoneKind(template))}${due ? ' · ' + escapeHtml(due) : ''}${closed}</span></div>${detailed ? `<p class="muted">${escapeHtml(template.description || '')}</p>` : ''}${item && item.returnedComment ? `<p class="notice">Returned: ${escapeHtml(item.returnedComment)}</p>` : ''}<div class="step-actions"><span class="muted">${escapeHtml(milestoneProgressLabel(item, template))}</span>${showActions ? journeyActions(item, template, false) : ''}</div></div></li>`;
       }
 
       function renderJourneyTodo(item) {
@@ -1155,26 +1158,35 @@
       }
 
       function journeyActions(item, template, prominent) {
-        if (!item || !item.canUpdate || item.Status === 'Completed') return '';
+        if (!item || !item.canUpdate) return '';
+        const completed = item.Status === 'Completed';
         let html = '';
+        if (item.staffUpdate && template && template.type === 'form') {
+          html += `<button type="button" class="button secondary" data-view-response="${escapeHtml(template.milestoneId)}">View form</button>`;
+        } else if (template && template.type === 'form') {
+          html += formJourneyButton(template, item);
+        }
+        if (completed) {
+          html += '<button type="button" class="button secondary" data-set-status="Pending">Not done yet</button>';
+          return html;
+        }
         if (item.staffUpdate && template && template.type === 'approval') {
-          return '<button type="button" class="button" data-decide="approve">Approve</button><button type="button" class="button secondary" data-decide="return">Return</button>';
+          return html + '<button type="button" class="button" data-decide="approve">Approve</button><button type="button" class="button secondary" data-decide="return">Return</button>';
         }
         if (item.staffUpdate && template && template.type === 'meeting') {
-          return '<button type="button" class="button" data-decide="session">Log session</button>';
+          return html + '<button type="button" class="button" data-decide="session">Log session</button>';
         }
-        if (item.staffUpdate && template && template.type === 'form') {
-          return `<button type="button" class="button secondary" data-view-response="${escapeHtml(template.milestoneId)}">View form</button><button type="button" class="button" data-set-status="Completed">Done</button>`;
-        }
-        if (template && template.type === 'form') html += formJourneyButton(template);
         if (template && template.type !== 'form' && item.Status === 'Pending') html += '<button type="button" class="button secondary" data-set-status="In Progress">Start</button>';
-        if (!template || template.type !== 'form') html += `<button type="button" class="button${prominent ? '' : ''}" data-set-status="Completed">Done</button>`;
+        html += `<button type="button" class="button${prominent ? '' : ''}" data-set-status="Completed">Done</button>`;
         return html;
       }
 
-      function formJourneyButton(template) {
-        if (state.studentHome && state.studentHome.publishedForms && state.studentHome.publishedForms[template.milestoneId]) return `<button type="button" class="button" data-open-form="${escapeHtml(template.milestoneId)}">Open form</button>`;
-        return '<span class="muted">Form not published yet</span>';
+      function formJourneyButton(template, item) {
+        const home = state.studentHome;
+        if (!(home && home.publishedForms && home.publishedForms[template.milestoneId])) return '<span class="muted">Form not published yet</span>';
+        const closed = item && item.formOpen === false;
+        const label = closed ? 'View form' : (item && item.Status === 'Completed' ? 'Edit form' : 'Open form');
+        return `<button type="button" class="button" data-open-form="${escapeHtml(template.milestoneId)}">${label}</button>`;
       }
 
       function milestoneKind(template) {
@@ -1233,7 +1245,7 @@
             runMutation('setActionItemStatus', [taskId, button.dataset.setStatus, studentEmail, home.cohort || '', viewAs], { key: 'action-item:' + taskId }).then(function() {
               patchJourneyItem(taskId, { Status: button.dataset.setStatus });
               paintStudentJourney(activeJourneyRecord() || home);
-              showSuccess(button.dataset.setStatus === 'Completed' ? 'Marked done.' : 'Progress saved.');
+              showSuccess(button.dataset.setStatus === 'Completed' ? 'Marked done.' : (button.dataset.setStatus === 'Pending' ? 'Marked not done.' : 'Progress saved.'));
             }).catch(function(error) { button.disabled = false; showError(error); });
           });
         });
@@ -1305,9 +1317,7 @@
             const description = card.querySelector('[data-todo-description]').value;
             const date = card.querySelector('[data-todo-date]').value;
             button.disabled = true;
-            runMutation('updateStudentTodo', [button.dataset.saveTodo, title, description], { key: 'action-item:' + button.dataset.saveTodo }).then(function() {
-              return runMutation('setActionItemDueDate', [button.dataset.saveTodo, date], { key: 'action-item-date:' + button.dataset.saveTodo });
-            }).then(function() {
+            runMutation('saveStudentTodo', [button.dataset.saveTodo, title, description, date], { key: 'action-item:' + button.dataset.saveTodo }).then(function() {
               patchJourneyItem(button.dataset.saveTodo, { Title: title, Description: description, DueDate: date });
               state.editingTodo = '';
               paintStudentJourney(activeJourneyRecord() || home);
@@ -1843,11 +1853,14 @@
 
       function paintLiveForm(form) {
         const values = form.response ? form.response.values : {};
+        const open = form.formOpen !== false;
         openFormShell(form.title, form.html, form.js, {
           fields: form.fields,
           values: values,
           student: form.student,
-          onSubmit: function(collected, submit) {
+          readOnly: !open,
+          notice: open ? '' : (form.closedMessage || 'This form is closed. Answers can no longer be changed.'),
+          onSubmit: open ? function(collected, submit) {
             return runMutation('saveStudentForm', [form.milestoneId, {
               values: collected,
               lastUpdated: form.response ? form.response.lastUpdated : '',
@@ -1859,14 +1872,16 @@
               renderStudentSection();
               mountJourneyPanel();
             });
-          }
+          } : null
         });
       }
 
       function openFormShell(title, html, js, binding) {
         const dialog = document.getElementById('form-dialog');
+        const readOnly = !!(binding && binding.readOnly);
+        const notice = binding && binding.notice ? `<p class="notice">${escapeHtml(binding.notice)}</p>` : '';
         dialog.hidden = false;
-        dialog.innerHTML = `<div class="form-panel" role="dialog" aria-modal="true" aria-label="${escapeHtml(title)}"><div class="toolbar"><h2>${escapeHtml(title)}</h2><button type="button" class="button secondary" id="close-form">Close</button></div><div id="ee-form-root">${html || ''}</div><p class="notice error" id="form-error" hidden></p><div class="toolbar"><button type="button" class="button secondary" id="save-form-draft">Save draft</button><button type="button" class="button" id="submit-form">Submit</button></div></div>`;
+        dialog.innerHTML = `<div class="form-panel" role="dialog" aria-modal="true" aria-label="${escapeHtml(title)}"><div class="toolbar"><h2>${escapeHtml(title)}</h2><button type="button" class="button secondary" id="close-form">Close</button></div>${notice}<div id="ee-form-root">${html || ''}</div><p class="notice error" id="form-error" hidden></p><div class="toolbar"><button type="button" class="button secondary" id="save-form-draft">Save draft</button><button type="button" class="button" id="submit-form">Submit</button></div></div>`;
         document.getElementById('close-form').addEventListener('click', closeForm);
         const root = document.getElementById('ee-form-root');
         if (binding && binding.fields) fillFormControls(root, binding.fields, binding.values || {});
@@ -1878,6 +1893,7 @@
             formError.textContent = error.message || String(error);
           }
         }
+        if (readOnly) lockFormControls(root);
         const submit = function(isSubmit) {
           if (!binding || !binding.onSubmit) { closeForm(); return; }
           const error = document.getElementById('form-error');
@@ -1894,6 +1910,12 @@
           document.getElementById('save-form-draft').addEventListener('click', function() { submit(false); });
           document.getElementById('submit-form').addEventListener('click', function() { submit(true); });
         }
+      }
+
+      function lockFormControls(root) {
+        root.querySelectorAll('input, textarea, select').forEach(function(control) {
+          control.disabled = true;
+        });
       }
 
       function closeForm() {
@@ -3665,12 +3687,9 @@
         }
         const token = ++plan.loadToken;
         target.innerHTML = loadingLine('Loading phases and milestones...');
-        Promise.all([
-          callServer('getAdminRecords', 'phases'),
-          callServer('getAdminRecords', 'milestoneTemplates')
-        ]).then(function(results) {
+        callServer('getPathwayPlan').then(function(result) {
           if (!state.pathwayPlan || token !== state.pathwayPlan.loadToken) return;
-          pathwayIngest(results[0].records || [], results[1].records || []);
+          pathwayIngest((result.phases && result.phases.records) || [], (result.milestones && result.milestones.records) || []);
           state.pathwayPlan.loaded = true;
           state.pathwayPlan.pendingScroll = 'anchor';
           paintPathway();
@@ -4522,12 +4541,8 @@
               const row = button.closest('tr');
               button.disabled = true;
               markSync(row, 'pending');
-              runMutation('setStudentAnchorDate', [cohortId, records[index].StudentId, dateInput.value], {
+              runMutation('saveStudentAnchorAndSync', [cohortId, records[index].StudentId, dateInput.value], {
                 key: 'anchor-date:' + records[index].StudentId
-              }).then(function() {
-                return runMutation('syncStudentActionItemDates', [records[index].StudentId, cohortId], {
-                  key: 'anchor-date:' + records[index].StudentId
-                });
               }).then(function(result) {
                 state.status = 'Updated ' + result.updated + ' system due dates.';
                 markSync(row, 'confirmed');
