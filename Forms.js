@@ -156,6 +156,7 @@ function writeFormDefinition_(user, definition, status, version) {
   if (rowNumber > 0) sheet.getRange(rowNumber, 1, 1, row.length).setValues([row]);
   else sheet.getRange(sheet.getLastRow() + 1, 1, 1, row.length).setValues([row]);
   invalidatePublishedFormCache_();
+  invalidateFormDefinitionCache_(definition.milestoneId);
   return nextStatus;
 }
 
@@ -348,13 +349,68 @@ function invalidatePublishedFormCache_() {
   catch (error) { /* the next read falls back to the sheet */ }
 }
 
+var FORM_DEFINITION_CACHE_PREFIX = 'EE_FORM_DEF_';
+
+function formDefinitionCacheKey_(milestoneId) {
+  return FORM_DEFINITION_CACHE_PREFIX + text_(milestoneId).replace(/[^a-z0-9_-]/gi, '_');
+}
+
+function readCachedFormDefinition_(milestoneId) {
+  try {
+    var cached = CacheService.getScriptCache().get(formDefinitionCacheKey_(milestoneId));
+    if (!cached) return null;
+    var parsed = JSON.parse(cached);
+    if (!parsed || text_(parsed.status) !== 'Published' || !parsed.fields) return null;
+    return parsed;
+  } catch (error) { return null; }
+}
+
+function cacheFormDefinition_(definition) {
+  try {
+    CacheService.getScriptCache().put(formDefinitionCacheKey_(definition.milestoneId), JSON.stringify({
+      milestoneId: definition.milestoneId,
+      status: definition.status,
+      version: definition.version,
+      fields: definition.fields,
+      html: definition.html,
+      js: definition.js,
+      submitCompletes: definition.submitCompletes
+    }), 180);
+  } catch (error) { /* a large form still loads from the sheet */ }
+}
+
+function invalidateFormDefinitionCache_(milestoneId) {
+  try { CacheService.getScriptCache().remove(formDefinitionCacheKey_(milestoneId)); }
+  catch (error) { /* the next read falls back to the sheet */ }
+}
+
+function publishedFormDefinition_(milestoneId) {
+  var cached = readCachedFormDefinition_(milestoneId);
+  if (cached) return cached;
+  var record = readFormDefinitionRecord_(milestoneId);
+  if (!record || text_(record.status) !== 'Published') return null;
+  var definition = definitionFromRecord_(record);
+  cacheFormDefinition_(definition);
+  return definition;
+}
+
+function formTemplateSummary_(milestoneId) {
+  var id = text_(milestoneId);
+  var templates = readTemplates_();
+  for (var index = 0; index < templates.length; index++) {
+    if (templates[index].milestoneId === id && templates[index].type === 'form') return templates[index];
+  }
+  var template = requireFormTemplate_(milestoneId);
+  return { milestoneId: id, title: text_(template.milestoneTitle), type: 'form' };
+}
+
 function getStudentForm(milestoneId) {
   var user = requireUser_('VIEW_FORM');
   if (user.role !== 'student') denyAccess_(user, 'VIEW_FORM', 'Student access required.');
-  var record = readFormDefinitionRecord_(milestoneId);
-  if (!record || text_(record.status) !== 'Published') throw new Error('This form is not published yet.');
-  var definition = definitionFromRecord_(record);
-  var template = requireFormTemplate_(milestoneId);
+  var definition = publishedFormDefinition_(milestoneId);
+  if (!definition) throw new Error('This form is not published yet.');
+  var template = formTemplateSummary_(milestoneId);
+  if (!template) throw new Error('Choose a form milestone.');
   var placement = findStudentPlacement_(user.email) || { displayName: user.displayName, subject: '' };
   var sheet = getSpreadsheet_().getSheetByName(formSheetName_(milestoneId));
   var response = null;
@@ -363,17 +419,18 @@ function getStudentForm(milestoneId) {
     var rowNumber = findRowNumber_(sheet, 'StudentId', user.email);
     if (rowNumber > 0) response = readFormRow_(sheet, rowNumber, definition.fields);
   }
-  var due = studentFormDueDate_(user.email, definition.milestoneId);
+  var due = studentFormDueDate_(user.email, definition.milestoneId, false);
   var formOpen = !formWritesClosed_(due, new Date());
   return {
     milestoneId: definition.milestoneId,
-    title: text_(template.milestoneTitle),
+    title: template.title,
     version: definition.version,
     html: definition.html,
     js: definition.js,
     fields: resolveFieldOptions_(definition.fields),
     response: response,
     formOpen: formOpen,
+    submitCompletes: definition.submitCompletes !== false,
     closedMessage: formOpen ? '' : formClosedMessage_(due),
     student: { displayName: placement.displayName || user.displayName, subject: placement.subject || '' }
   };
@@ -459,13 +516,25 @@ function formClosedMessage_(dueValue) {
   return 'This form\'s due date has passed (' + when + '). Answers can no longer be changed.';
 }
 
-function studentFormDueDate_(studentEmail, milestoneId) {
-  var item = findSystemActionItem_(studentEmail, milestoneId);
+function studentFormDueDate_(studentEmail, milestoneId, fresh) {
+  var email = normalizeEmail_(studentEmail);
+  var templateId = text_(milestoneId);
+  if (!fresh) {
+    var cached = readActionItemCache_(email);
+    if (cached) {
+      for (var index = 0; index < cached.length; index++) {
+        if (text_(cached[index].CreatorType) === 'System' && text_(cached[index].TemplateId) === templateId) {
+          return cached[index].DueDate || '';
+        }
+      }
+    }
+  }
+  var item = findSystemActionItem_(email, templateId);
   return item && item.record ? item.record.DueDate : '';
 }
 
 function assertStudentFormWritable_(studentEmail, milestoneId) {
-  var due = studentFormDueDate_(studentEmail, milestoneId);
+  var due = studentFormDueDate_(studentEmail, milestoneId, true);
   if (formWritesClosed_(due, new Date())) throw new Error(formClosedMessage_(due));
 }
 

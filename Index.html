@@ -172,12 +172,19 @@
       .journey-phase header { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; padding: 10px 12px 0; }
       .journey-phase h2 { margin: 0; font-size: 18px; }
       .steps-rail { list-style: none; margin: 0; padding: 8px 12px 12px; }
-      .journey .step { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 10px; padding: 8px 0; text-align: left; font-size: 14px; font-weight: 400; color: inherit; }
+      .journey .step { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; padding: 8px 0; text-align: left; font-size: 14px; font-weight: 400; color: inherit; }
       .journey .step + .step { border-top: 1px solid var(--line); }
-      .rail { width: 12px; height: 12px; margin-top: 4px; border: 2px solid #c5d3de; border-radius: 50%; background: white; }
-      .journey .step.done .rail { border-color: var(--green); background: var(--green); }
-      .journey .step.here .rail { border-color: var(--ink); background: var(--ink); }
-      .journey .step.todo .rail { border-color: var(--gold); }
+      .rail-check { width: 18px; height: 18px; margin-top: 1px; accent-color: var(--green); }
+      .rail-check:disabled { cursor: not-allowed; opacity: .55; }
+      .here-card .rail-check { margin-top: 0; }
+      .here-card .step-top { justify-content: flex-start; align-items: center; }
+      .here-card .step-top h2 { margin: 0; }
+      .journey .step.sync-pending,
+      .here-card.sync-pending,
+      .form-panel.sync-pending { outline: 2px solid var(--coral); outline-offset: 2px; }
+      .journey .step.sync-confirmed,
+      .here-card.sync-confirmed,
+      .form-panel.sync-confirmed { animation: plan-saved-outline .85s ease both; }
       .journey .step.done h3 { color: var(--muted); font-weight: 600; }
       .step-top { display: flex; justify-content: space-between; gap: 6px 10px; align-items: baseline; flex-wrap: wrap; }
       .step-top h3 { margin: 0; font-size: 15px; }
@@ -533,6 +540,9 @@
         journeyOpen: false,
         journeyFilters: { phaseId: 'all', showSystem: true, showStudent: true },
         editingTodo: '',
+        journeySync: {},
+        formViews: {},
+        activityFeed: null,
         section: '',
         actingAs: '',
         studentHome: null,
@@ -763,7 +773,7 @@
         const showJourney = student || staffJourney;
         const showNotes = staffJourney && !!state.staffStudentHome.canWriteTodos;
         const tabs = student
-          ? [['home', 'Home'], ['mywork', 'My Work'], ['resources', 'Resources'], ['help', 'Help']]
+          ? [['home', 'My EE'], ['resources', 'Resources'], ['help', 'Help']]
           : [['students', 'My Students'], ['resources', 'Resources']];
         if (!student && (state.actingAs === 'supervisor' || state.actingAs === 'coordinator') && (permissions.isSupervisor || permissions.canAdmin)) {
           tabs.splice(1, 0, ['tickets', 'Messages']);
@@ -938,8 +948,7 @@
         const scene = state.scene;
         loadStudentHome().then(function(home) {
           if (!sameScene(scene)) return;
-          if (state.section === 'mywork') paintStudentWork(home);
-          else paintStudentHome(home);
+          paintStudentPage(home);
         }).catch(showError);
       }
 
@@ -960,51 +969,79 @@
         return null;
       }
 
-      function paintStudentHome(home) {
+      function paintStudentPage(home) {
         const main = document.getElementById('main');
         const next = nextIncomplete(home);
         const returned = (home.actionItems || []).filter(function(item) { return item.returnedComment && item.Status !== 'Completed'; })[0];
-        const meetings = home.templates.filter(function(template) { return template.type === 'meeting'; });
+        const templates = home.templates || [];
+        const meetings = templates.filter(function(template) { return template.type === 'meeting'; });
         const meetingDone = meetings.filter(function(template) {
           return (home.actionItems || []).some(function(item) { return item.TemplateId === template.milestoneId && item.Status === 'Completed'; });
         }).length;
         const done = (home.actionItems || []).filter(function(item) { return item.CreatorType === 'System' && item.Status === 'Completed'; }).length;
-        const currentPhase = next ? (home.phases.filter(function(phase) { return phase.phaseId === next.template.phase; })[0] || {}).phaseTitle : 'Complete';
+        const pageName = home.displayName || 'Student';
         const hero = next ? `<section class="hero"><div><p class="eyebrow">${home.staffView ? 'Next step' : 'Your next step'}</p><h2>${escapeHtml(next.template.title)}</h2><p>${escapeHtml(next.template.description || 'Complete this milestone before the due date.')}</p></div><div>${next.item && next.item.DueDate ? `<div class="chip">${escapeHtml(String(next.item.DueDate).slice(0, 10))}</div>` : ''}${formButton(home, next)}</div></section>` : '<section class="hero"><div><p class="eyebrow">All caught up</p><h2>No action needed right now</h2><p>Open Journey to see what is coming.</p></div></section>';
-        main.innerHTML = `${staffStudentBar(home)}${hero}
+        const links = [
+          ['Drive folder', home.links && home.links.folder],
+          ['Extended Essay', home.links && home.links.doc],
+          ['RPPF', home.links && home.links.rppf],
+          ['Poster', home.links && home.links.poster]
+        ];
+        main.innerHTML = `${staffStudentBar(home)}
+          <div class="page-head"><div><h1>${escapeHtml(pageName)}'s EE</h1>${home.cohort ? `<p class="muted">Cohort ${escapeHtml(home.cohort)}</p>` : ''}</div></div>
+          ${hero}
           ${renderUnreadNotices(home.unreadTickets)}
           ${returned ? `<div class="notice">Returned: ${escapeHtml(returned.Title)}. ${escapeHtml(returned.returnedComment)}</div>` : ''}
-          <section class="strip"><h2>Your EE journey</h2><p class="muted">${escapeHtml(currentPhase || '')}${home.cohort ? ' · Cohort ' + escapeHtml(home.cohort) : ''}</p>
-            <ol class="steps">${home.phases.map(function(phase) {
-              const phaseItems = home.templates.filter(function(template) { return template.phase === phase.phaseId; });
-              const phaseDone = phaseItems.every(function(template) {
-                return (home.actionItems || []).some(function(item) { return item.TemplateId === template.milestoneId && item.Status === 'Completed'; });
-              });
-              const current = next && next.template.phase === phase.phaseId;
-              return `<li class="step ${phaseDone ? 'done' : ''} ${current ? 'current' : ''}">${escapeHtml(phase.phaseTitle)}</li>`;
-            }).join('')}</ol></section>
           <div class="tiles">
-            <div class="tile"><div class="muted">Milestones</div><div class="val">${done} <small>/ ${home.templates.length}</small></div></div>
+            <div class="tile"><div class="muted">Milestones</div><div class="val">${done} <small>/ ${templates.length}</small></div></div>
             <div class="tile"><div class="muted">Sessions</div><div class="val">${meetingDone} <small>/ ${meetings.length}</small></div></div>
             <div class="tile"><div class="muted">Subject</div><div class="val" style="font-size:16px">${escapeHtml(home.subject || 'Not chosen')}</div></div>
             <div class="tile"><div class="muted">Anchor</div><div class="val" style="font-size:16px">${escapeHtml(home.anchor || '—')}</div></div>
-          </div>`;
+          </div>
+          <h2 class="section-gap">${home.staffView ? 'Documents' : 'My documents'}</h2>
+          <div class="doc-grid">${links.map(function(link) {
+            const url = safeUrl(link[1]);
+            return `<article class="doc-card"><h3>${escapeHtml(link[0])}</h3><p class="muted">${url ? 'Shared with your supervisor.' : 'Not created yet.'}</p>${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">Open</a>` : ''}</article>`;
+          }).join('')}</div>
+          <section class="section-gap" id="my-activity" aria-label="${home.staffView ? 'Student activity' : 'Your activity'}"></section>`;
         bindFormButtons(main);
         bindStaffStudentChrome();
         bindUnreadNotices(main, false);
         paintTabDot('help', home.unreadTicketCount, 'Help');
+        paintStudentActivity(home);
+      }
+
+      function paintStudentActivity(home) {
+        const host = document.getElementById('my-activity');
+        const copy = home.staffView ? {
+          heading: 'Activity',
+          lede: 'Actions ' + (home.displayName || 'this student') + ' took in the EE Hub.',
+          empty: 'Nothing here yet. Actions this student takes will show up in this list.'
+        } : {
+          heading: 'Your activity',
+          lede: 'Actions you took in the EE Hub.',
+          empty: 'Nothing here yet. Signing in, forms, to-dos, and messages you send will show up in this list.'
+        };
+        const cached = state.activityFeed;
+        if (cached && cached.email === home.email) {
+          if (!host) return;
+          host.innerHTML = renderActivityDashboard(cached.feed || {}, copy);
+          bindActivityDashboard(host);
+          return;
+        }
+        const request = home.staffView
+          ? callServer('getStudentActivity', home.email, home.cohort || '')
+          : callServer('getMyActivity');
+        loadActivityDashboard(host, request.then(function(feed) {
+          state.activityFeed = { email: home.email, feed: feed || {} };
+          return feed;
+        }), copy);
       }
 
       function staffStudentBar(home) {
         if (!home || !home.staffView) return '';
-        const pane = state.staffPane === 'mywork' ? 'mywork' : 'home';
         return `<button type="button" class="link-button back" id="staff-back">← My Students</button>
-          <div class="page-head"><div><p class="eyebrow">Viewing student</p><h1>${escapeHtml(home.displayName)}</h1>
-          <p class="muted">${escapeHtml(home.hrm || '')}${home.studentNumber ? ' · ' + escapeHtml(home.studentNumber) : ''}${home.viewLabel ? ' · ' + escapeHtml(home.viewLabel) : ''}</p></div>
-          <nav class="staff-panes" aria-label="Student sections">
-            <button type="button" data-staff-pane="home" aria-current="${pane === 'home' ? 'page' : 'false'}">Home</button>
-            <button type="button" data-staff-pane="mywork" aria-current="${pane === 'mywork' ? 'page' : 'false'}">My Work</button>
-          </nav></div>`;
+          <p class="muted">${escapeHtml(home.hrm || '')}${home.studentNumber ? ' · ' + escapeHtml(home.studentNumber) : ''}${home.viewLabel ? ' · ' + escapeHtml(home.viewLabel) : ''}</p>`;
       }
 
       function bindStaffStudentChrome() {
@@ -1015,12 +1052,6 @@
           state.journeyOpen = false;
           state.notesOpen = false;
           renderShell();
-        });
-        document.querySelectorAll('[data-staff-pane]').forEach(function(button) {
-          button.addEventListener('click', function() {
-            state.staffPane = button.dataset.staffPane;
-            if (state.staffStudentHome) paintStaffAsStudent(state.staffStudentHome);
-          });
         });
       }
 
@@ -1103,6 +1134,9 @@
         </section>`;
         bindJourney(main, home, currentPhaseId);
         bindFormButtons(main);
+        Object.keys(state.journeySync || {}).forEach(function(taskId) {
+          flashJourneyRows(taskId, 'pending');
+        });
       }
 
       function journeyHereCard(home, current, phaseTitle, zoom, currentPhaseId) {
@@ -1111,8 +1145,9 @@
         const item = current.item;
         const title = phaseTitle[current.template.phase] || current.template.phase;
         const due = item && item.DueDate ? shortDate(item.DueDate) : '';
-        const actions = journeyActions(item, current.template, true);
-        return `<section class="here-card" data-task-id="${item ? escapeHtml(item.TaskId) : ''}"><p class="eyebrow">You are here · ${escapeHtml(title)}</p><h2>${escapeHtml(current.template.title)}</h2><p>${escapeHtml(current.template.description || 'This is your next step.')}</p><div class="step-actions">${due ? `<span class="chip">${escapeHtml(due)}</span>` : ''}${actions || `<span class="chip">${escapeHtml(milestoneProgressLabel(item, current.template))}</span>`}</div></section>`;
+        const actions = journeyActions(item, current.template);
+        const check = journeyCheck(item, 'Mark ' + current.template.title + ' done', !!(item && item.canUpdate));
+        return `<section class="here-card" data-task-id="${item ? escapeHtml(item.TaskId) : ''}"><p class="eyebrow">You are here · ${escapeHtml(title)}</p><div class="step-top">${check}<h2>${escapeHtml(current.template.title)}</h2></div><p>${escapeHtml(current.template.description || 'This is your next step.')}</p><div class="step-actions">${due ? `<span class="chip">${escapeHtml(due)}</span>` : ''}${actions || `<span class="chip">${escapeHtml(milestoneProgressLabel(item, current.template))}</span>`}</div></section>`;
       }
 
       function renderJourneyPhase(home, phase, phaseTitle, current, zoom, currentPhaseId) {
@@ -1120,22 +1155,42 @@
         const milestones = (home.templates || []).filter(function(template) { return template.phase === phase.phaseId; });
         const todos = (home.actionItems || []).filter(function(item) {
           return item.CreatorType === 'Student' && (item.PhaseId === phase.phaseId || (!item.PhaseId && phase.phaseId === currentPhaseId));
-        }).sort(function(left, right) {
-          return (left.Status === 'Completed') - (right.Status === 'Completed') || textCompare(left.Title, right.Title);
         });
         const showMilestones = state.journeyFilters.showSystem;
         const showTodos = state.journeyFilters.showStudent;
         const rows = [];
         if (showMilestones) milestones.forEach(function(template) {
           const item = (home.actionItems || []).filter(function(entry) { return entry.CreatorType === 'System' && entry.TemplateId === template.milestoneId; })[0] || null;
-          rows.push(renderJourneyMilestone(template, item, detailed, current, zoom));
+          rows.push({
+            due: item && item.DueDate,
+            title: template.title,
+            html: renderJourneyMilestone(template, item, detailed, current, zoom)
+          });
         });
-        if (showTodos) todos.forEach(function(item) { rows.push(renderJourneyTodo(item)); });
+        if (showTodos) todos.forEach(function(item) {
+          rows.push({ due: item.DueDate, title: item.Title, html: renderJourneyTodo(item) });
+        });
+        rows.sort(function(left, right) {
+          const due = dueSortKey(left.due).localeCompare(dueSortKey(right.due));
+          if (due) return due;
+          return textCompare(left.title, right.title);
+        });
         const composer = showTodos && home.canWriteTodos !== false ? `<div class="add-todo" data-phase="${escapeHtml(phase.phaseId)}"><button type="button" class="add-todo-open" aria-expanded="false">+ Add To Do</button><form class="add-todo-form"><input maxlength="240" placeholder="To-do" aria-label="New to-do"><button class="button" type="submit">Add</button></form></div>` : '';
         const done = milestones.filter(function(template) {
           return (home.actionItems || []).some(function(item) { return item.TemplateId === template.milestoneId && item.Status === 'Completed'; });
         }).length;
-        return `<section class="journey-phase ${phase.phaseId === currentPhaseId ? 'here' : ''}"><header><h2>${escapeHtml(phase.phaseTitle || phase.phaseId)}</h2><span class="muted">${done} of ${milestones.length}</span></header>${composer}<ol class="steps-rail">${rows.join('') || '<li class="muted">Nothing in this view.</li>'}</ol></section>`;
+        return `<section class="journey-phase ${phase.phaseId === currentPhaseId ? 'here' : ''}"><header><h2>${escapeHtml(phase.phaseTitle || phase.phaseId)}</h2><span class="muted">${done} of ${milestones.length}</span></header>${composer}<ol class="steps-rail">${rows.length ? rows.map(function(row) { return row.html; }).join('') : '<li class="muted">Nothing in this view.</li>'}</ol></section>`;
+      }
+
+      function dueSortKey(value) {
+        const text = String(value || '').slice(0, 10);
+        return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : '9999-99-99';
+      }
+
+      function journeyCheck(item, label, enabled) {
+        const checked = item && item.Status === 'Completed';
+        const interactive = !!(enabled && item && item.TaskId);
+        return `<input type="checkbox" class="rail-check" data-milestone-check ${checked ? 'checked' : ''} ${interactive ? '' : 'disabled'} aria-label="${escapeHtml(label)}">`;
       }
 
       function renderJourneyMilestone(template, item, detailed, current, zoom) {
@@ -1144,7 +1199,8 @@
         const showActions = item && item.canUpdate && (zoom !== 'all' || status === 'Completed' || template.type === 'form');
         const due = item && item.DueDate ? shortDate(item.DueDate) : '';
         const closed = template.type === 'form' && item && item.formOpen === false ? ' · Form closed' : '';
-        return `<li class="step ${status === 'Completed' ? 'done' : ''} ${isHere ? 'here' : ''}" data-task-id="${item ? escapeHtml(item.TaskId) : ''}" data-creator-type="System"><span class="rail"></span><div><div class="step-top"><h3>${escapeHtml(template.title)}</h3><span class="muted">${escapeHtml(milestoneKind(template))}${due ? ' · ' + escapeHtml(due) : ''}${closed}</span></div>${detailed ? `<p class="muted">${escapeHtml(template.description || '')}</p>` : ''}${item && item.returnedComment ? `<p class="notice">Returned: ${escapeHtml(item.returnedComment)}</p>` : ''}<div class="step-actions"><span class="muted">${escapeHtml(milestoneProgressLabel(item, template))}</span>${showActions ? journeyActions(item, template, false) : ''}</div></div></li>`;
+        const check = journeyCheck(item, 'Mark ' + template.title + ' done', !!(item && item.canUpdate));
+        return `<li class="step ${status === 'Completed' ? 'done' : ''} ${isHere ? 'here' : ''}" data-task-id="${item ? escapeHtml(item.TaskId) : ''}" data-creator-type="System">${check}<div><div class="step-top"><h3>${escapeHtml(template.title)}</h3><span class="muted">${escapeHtml(milestoneKind(template))}${due ? ' · ' + escapeHtml(due) : ''}${closed}</span></div>${detailed ? `<p class="muted">${escapeHtml(template.description || '')}</p>` : ''}${item && item.returnedComment ? `<p class="notice">Returned: ${escapeHtml(item.returnedComment)}</p>` : ''}<div class="step-actions"><span class="muted">${escapeHtml(milestoneProgressLabel(item, template))}</span>${showActions ? journeyActions(item, template) : ''}</div></div></li>`;
       }
 
       function renderJourneyTodo(item) {
@@ -1152,12 +1208,13 @@
         const editing = writable && state.editingTodo === item.TaskId;
         const due = item.DueDate ? String(item.DueDate).slice(0, 10) : '';
         const actions = writable
-          ? `<div class="step-actions"><button type="button" class="button ${item.Status === 'Completed' ? 'secondary' : ''}" data-set-status="${item.Status === 'Completed' ? 'Pending' : 'Completed'}">${item.Status === 'Completed' ? 'Not done yet' : 'Done'}</button><button type="button" class="link-button" data-edit-todo="${escapeHtml(item.TaskId)}">Edit</button></div>`
+          ? `<div class="step-actions"><button type="button" class="link-button" data-edit-todo="${escapeHtml(item.TaskId)}">Edit</button></div>`
           : '';
-        return `<li class="step todo ${item.Status === 'Completed' ? 'done' : ''}" data-task-id="${escapeHtml(item.TaskId)}" data-creator-type="Student"><span class="rail"></span><div><div class="step-top"><h3>${escapeHtml(item.Title)}</h3><span class="muted">To-do${due ? ' · ' + escapeHtml(shortDate(due)) : ''}</span></div>${item.Description && !editing ? `<p class="muted">${escapeHtml(item.Description)}</p>` : ''}${editing ? `<div class="todo-edit"><input data-todo-title value="${escapeHtml(item.Title)}" maxlength="240" aria-label="To-do title"><textarea data-todo-description aria-label="To-do note">${escapeHtml(item.Description || '')}</textarea><input type="date" data-todo-date value="${escapeHtml(due)}" aria-label="To-do date"><div class="step-actions"><button type="button" class="button" data-save-todo="${escapeHtml(item.TaskId)}">Save</button><button type="button" class="button secondary" data-close-todo>Close</button></div></div>` : actions}</div></li>`;
+        const check = journeyCheck(item, 'Mark ' + (item.Title || 'to-do') + ' done', writable);
+        return `<li class="step todo ${item.Status === 'Completed' ? 'done' : ''}" data-task-id="${escapeHtml(item.TaskId)}" data-creator-type="Student">${check}<div><div class="step-top"><h3>${escapeHtml(item.Title)}</h3><span class="muted">To-do${due ? ' · ' + escapeHtml(shortDate(due)) : ''}</span></div>${item.Description && !editing ? `<p class="muted">${escapeHtml(item.Description)}</p>` : ''}${editing ? `<div class="todo-edit"><input data-todo-title value="${escapeHtml(item.Title)}" maxlength="240" aria-label="To-do title"><textarea data-todo-description aria-label="To-do note">${escapeHtml(item.Description || '')}</textarea><input type="date" data-todo-date value="${escapeHtml(due)}" aria-label="To-do date"><div class="step-actions"><button type="button" class="button" data-save-todo="${escapeHtml(item.TaskId)}">Save</button><button type="button" class="button secondary" data-close-todo>Close</button></div></div>` : actions}</div></li>`;
       }
 
-      function journeyActions(item, template, prominent) {
+      function journeyActions(item, template) {
         if (!item || !item.canUpdate) return '';
         const completed = item.Status === 'Completed';
         let html = '';
@@ -1166,18 +1223,13 @@
         } else if (template && template.type === 'form') {
           html += formJourneyButton(template, item);
         }
-        if (completed) {
-          html += '<button type="button" class="button secondary" data-set-status="Pending">Not done yet</button>';
-          return html;
-        }
+        if (completed) return html;
         if (item.staffUpdate && template && template.type === 'approval') {
           return html + '<button type="button" class="button" data-decide="approve">Approve</button><button type="button" class="button secondary" data-decide="return">Return</button>';
         }
         if (item.staffUpdate && template && template.type === 'meeting') {
           return html + '<button type="button" class="button" data-decide="session">Log session</button>';
         }
-        if (template && template.type !== 'form' && item.Status === 'Pending') html += '<button type="button" class="button secondary" data-set-status="In Progress">Start</button>';
-        html += `<button type="button" class="button${prominent ? '' : ''}" data-set-status="Completed">Done</button>`;
         return html;
       }
 
@@ -1234,19 +1286,43 @@
             paintStudentJourney(home);
           });
         });
-        main.querySelectorAll('[data-set-status]').forEach(function(button) {
-          button.addEventListener('click', function() {
-            const card = button.closest('[data-task-id]');
+        main.querySelectorAll('[data-milestone-check]').forEach(function(box) {
+          box.addEventListener('change', function() {
+            const card = box.closest('[data-task-id]');
             const taskId = card && card.dataset.taskId;
-            if (!taskId) return;
-            button.disabled = true;
+            if (box.disabled) return;
+            if (!taskId) {
+              box.checked = !box.checked;
+              return;
+            }
+            if (state.journeySync[taskId]) {
+              box.checked = !box.checked;
+              return;
+            }
+            const record = activeJourneyRecord() || home;
+            const item = (record.actionItems || []).filter(function(entry) { return entry.TaskId === taskId; })[0];
+            if (!item) {
+              box.checked = !box.checked;
+              return;
+            }
+            const previous = item.Status;
+            const nextStatus = box.checked ? 'Completed' : 'Pending';
+            item.Status = nextStatus;
+            state.journeySync[taskId] = 'pending';
+            paintStudentJourney(record);
             const studentEmail = home.staffView ? home.email : '';
             const viewAs = home.staffView ? state.actingAs : '';
-            runMutation('setActionItemStatus', [taskId, button.dataset.setStatus, studentEmail, home.cohort || '', viewAs], { key: 'action-item:' + taskId }).then(function() {
-              patchJourneyItem(taskId, { Status: button.dataset.setStatus });
+            runMutation('setActionItemStatus', [taskId, nextStatus, studentEmail, home.cohort || '', viewAs], { key: 'action-item:' + taskId }).then(function() {
+              delete state.journeySync[taskId];
+              flashJourneyRows(taskId, 'confirmed');
+              if (document.getElementById('my-activity')) repaintStudentPage(record);
+              showSuccess(nextStatus === 'Completed' ? 'Marked done.' : 'Marked not done.');
+            }).catch(function(error) {
+              delete state.journeySync[taskId];
+              item.Status = previous;
               paintStudentJourney(activeJourneyRecord() || home);
-              showSuccess(button.dataset.setStatus === 'Completed' ? 'Marked done.' : (button.dataset.setStatus === 'Pending' ? 'Marked not done.' : 'Progress saved.'));
-            }).catch(function(error) { button.disabled = false; showError(error); });
+              showError(error);
+            });
           });
         });
         main.querySelectorAll('[data-decide]').forEach(function(button) {
@@ -1258,16 +1334,25 @@
             const comment = action === 'approve' ? '' : window.prompt(action === 'return' ? 'Comments for the student' : 'Session summary');
             if (action !== 'approve' && !comment) return;
             button.disabled = true;
+            state.journeySync[taskId] = 'pending';
+            flashJourneyRows(taskId, 'pending');
             runMutation('recordMilestoneDecision', [taskId, action, comment || '', home.email, home.cohort || '', state.actingAs], {
               key: 'milestone:' + taskId
             }).then(function() {
               return callServer('getStaffStudentHome', home.email, home.cohort || '', state.actingAs);
             }).then(function(fresh) {
+              delete state.journeySync[taskId];
               state.staffStudentHome = fresh;
               paintStudentJourney(fresh);
-              if (state.section === 'students') paintStaffAsStudent(fresh);
+              flashJourneyRows(taskId, 'confirmed');
+              if (state.section === 'students') repaintStudentPage(fresh);
               showSuccess(action === 'return' ? 'Returned to the student.' : 'Milestone updated.');
-            }).catch(function(error) { button.disabled = false; showError(error); });
+            }).catch(function(error) {
+              delete state.journeySync[taskId];
+              button.disabled = false;
+              flashJourneyRows(taskId, 'rejected');
+              showError(error);
+            });
           });
         });
         main.querySelectorAll('.add-todo').forEach(function(box) {
@@ -1284,22 +1369,30 @@
             const title = input.value.trim();
             if (!title) return;
             const phaseId = box.dataset.phase || currentPhaseId || '';
-            const submit = form.querySelector('button');
-            submit.disabled = true;
             const addingAsStaff = !!home.staffView;
+            const record = activeJourneyRecord() || home;
+            const tempId = 'pending-' + Date.now();
+            const created = { TaskId: tempId, StudentId: addingAsStaff ? home.email : state.user.email, CreatorType: 'Student', TemplateId: '', PhaseId: phaseId, Title: title, Description: '', DueDate: '', Status: 'Pending', canEdit: !addingAsStaff, canUpdate: !addingAsStaff };
+            record.actionItems = (record.actionItems || []).concat([created]);
+            state.journeyFilters.showStudent = true;
+            state.journeySync[tempId] = 'pending';
+            input.value = '';
+            paintStudentJourney(record);
             const call = addingAsStaff
               ? runMutation('addStaffStudentTodo', [title, phaseId, home.email, home.cohort || '', state.actingAs], { key: 'student-todo:new' })
               : runMutation('addStudentTodo', [title, phaseId], { key: 'student-todo:new' });
             call.then(function(result) {
-              const created = { TaskId: result.TaskId, StudentId: addingAsStaff ? home.email : state.user.email, CreatorType: 'Student', TemplateId: '', PhaseId: phaseId, Title: title, Description: '', DueDate: '', Status: 'Pending', canEdit: !addingAsStaff, canUpdate: !addingAsStaff };
-              const record = activeJourneyRecord() || home;
-              record.actionItems = (record.actionItems || []).concat([created]);
-              if (state.studentHome && record === state.studentHome) state.studentHome.actionItems = record.actionItems;
-              if (state.staffStudentHome && record === state.staffStudentHome) state.staffStudentHome.actionItems = record.actionItems;
-              state.journeyFilters.showStudent = true;
+              created.TaskId = result.TaskId;
+              delete state.journeySync[tempId];
               paintStudentJourney(activeJourneyRecord() || home);
+              flashJourneyRows(result.TaskId, 'confirmed');
               showSuccess('To-do added.');
-            }).catch(function(error) { submit.disabled = false; showError(error, box); });
+            }).catch(function(error) {
+              delete state.journeySync[tempId];
+              record.actionItems = (record.actionItems || []).filter(function(item) { return item !== created; });
+              paintStudentJourney(activeJourneyRecord() || home);
+              showError(error);
+            });
           });
         });
         main.querySelectorAll('[data-edit-todo]').forEach(function(button) {
@@ -1316,13 +1409,33 @@
             const title = card.querySelector('[data-todo-title]').value;
             const description = card.querySelector('[data-todo-description]').value;
             const date = card.querySelector('[data-todo-date]').value;
-            button.disabled = true;
-            runMutation('saveStudentTodo', [button.dataset.saveTodo, title, description, date], { key: 'action-item:' + button.dataset.saveTodo }).then(function() {
-              patchJourneyItem(button.dataset.saveTodo, { Title: title, Description: description, DueDate: date });
-              state.editingTodo = '';
-              paintStudentJourney(activeJourneyRecord() || home);
+            const taskId = button.dataset.saveTodo;
+            const record = activeJourneyRecord() || home;
+            const item = (record.actionItems || []).filter(function(entry) { return entry.TaskId === taskId; })[0];
+            const previous = item ? { Title: item.Title, Description: item.Description, DueDate: item.DueDate } : null;
+            if (item) {
+              item.Title = title;
+              item.Description = description;
+              item.DueDate = date;
+            }
+            state.editingTodo = '';
+            state.journeySync[taskId] = 'pending';
+            paintStudentJourney(record);
+            runMutation('saveStudentTodo', [taskId, title, description, date], { key: 'action-item:' + taskId }).then(function() {
+              delete state.journeySync[taskId];
+              flashJourneyRows(taskId, 'confirmed');
               showSuccess('To-do saved.');
-            }).catch(function(error) { button.disabled = false; showError(error, card); });
+            }).catch(function(error) {
+              delete state.journeySync[taskId];
+              if (item && previous) {
+                item.Title = previous.Title;
+                item.Description = previous.Description;
+                item.DueDate = previous.DueDate;
+              }
+              state.editingTodo = taskId;
+              paintStudentJourney(activeJourneyRecord() || home);
+              showError(error);
+            });
           });
         });
       }
@@ -1332,39 +1445,24 @@
         return state.studentHome;
       }
 
+      function repaintStudentPage(home) {
+        const top = window.scrollY;
+        paintStudentPage(home);
+        window.scrollTo(0, top);
+      }
+
+      function flashJourneyRows(taskId, status) {
+        Array.prototype.forEach.call(document.querySelectorAll('#journey-body [data-task-id]'), function(node) {
+          if (node.dataset.taskId === taskId) markSync(node, status);
+        });
+      }
+
       function patchJourneyItem(taskId, changes) {
         const home = activeJourneyRecord();
         if (!home || !home.actionItems) return;
         const item = home.actionItems.filter(function(entry) { return entry.TaskId === taskId; })[0];
         if (!item) return;
         Object.keys(changes).forEach(function(key) { item[key] = changes[key]; });
-      }
-
-      function paintStudentWork(home) {
-        const links = [
-          ['Drive folder', home.links.folder],
-          ['Extended Essay', home.links.doc],
-          ['RPPF', home.links.rppf],
-          ['Poster', home.links.poster]
-        ];
-        const main = document.getElementById('main');
-        main.innerHTML = `${staffStudentBar(home)}<h2>My documents</h2><div class="doc-grid">${links.map(function(link) {
-          const url = safeUrl(link[1]);
-          return `<article class="doc-card"><h3>${escapeHtml(link[0])}</h3><p class="muted">${url ? 'Shared with your supervisor.' : 'Not created yet.'}</p>${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">Open</a>` : ''}</article>`;
-        }).join('')}</div><section class="section-gap" id="my-activity" aria-label="${home.staffView ? 'Student activity' : 'Your activity'}"></section>`;
-        bindStaffStudentChrome();
-        const activity = home.staffView
-          ? callServer('getStudentActivity', home.email, home.cohort || '')
-          : callServer('getMyActivity');
-        loadActivityDashboard(document.getElementById('my-activity'), activity, home.staffView ? {
-          heading: 'Activity',
-          lede: 'Actions ' + (home.displayName || 'this student') + ' took in the EE Hub.',
-          empty: 'Nothing here yet. Actions this student takes will show up in this list.'
-        } : {
-          heading: 'Your activity',
-          lede: 'Actions you took in the EE Hub.',
-          empty: 'Nothing here yet. Signing in, forms, to-dos, and messages you send will show up in this list.'
-        });
       }
 
       var ACTIVITY_PAGE_SIZE = 16;
@@ -1694,8 +1792,7 @@
       }
 
       function paintStaffAsStudent(home) {
-        if (state.staffPane === 'mywork') paintStudentWork(home);
-        else paintStudentHome(home);
+        paintStudentPage(home);
       }
 
       function staffSortValue(student, sort) {
@@ -1848,10 +1945,27 @@
       }
 
       function openStudentForm(milestoneId) {
-        callServer('getStudentForm', milestoneId).then(function(form) { paintLiveForm(form); }).catch(showError);
+        const cached = state.formViews[milestoneId];
+        if (cached) paintLiveForm(cached, true);
+        else openFormShell('Form', '<p class="muted">Loading form…</p>', '', { loading: true });
+        const panel = document.querySelector('#form-dialog .form-panel');
+        markSync(panel, 'pending');
+        callServer('getStudentForm', milestoneId).then(function(form) {
+          state.formViews[milestoneId] = form;
+          paintLiveForm(form, false);
+          markSync(document.querySelector('#form-dialog .form-panel'), 'confirmed');
+        }).catch(function(error) {
+          const current = document.querySelector('#form-dialog .form-panel');
+          markSync(current, 'rejected');
+          const formError = document.getElementById('form-error');
+          if (formError) {
+            formError.hidden = false;
+            formError.textContent = error && error.message ? error.message : String(error);
+          } else showError(error);
+        });
       }
 
-      function paintLiveForm(form) {
+      function paintLiveForm(form, refreshing) {
         const values = form.response ? form.response.values : {};
         const open = form.formOpen !== false;
         openFormShell(form.title, form.html, form.js, {
@@ -1861,19 +1975,47 @@
           readOnly: !open,
           notice: open ? '' : (form.closedMessage || 'This form is closed. Answers can no longer be changed.'),
           onSubmit: open ? function(collected, submit) {
+            const panel = document.querySelector('#form-dialog .form-panel');
+            markSync(panel, 'pending');
+            const draft = document.getElementById('save-form-draft');
+            const submitButton = document.getElementById('submit-form');
+            if (draft) draft.disabled = true;
+            if (submitButton) submitButton.disabled = true;
             return runMutation('saveStudentForm', [form.milestoneId, {
               values: collected,
               lastUpdated: form.response ? form.response.lastUpdated : '',
               submit: submit
-            }], { key: 'form:' + form.milestoneId }).then(function() {
-              state.studentHome = null;
-              closeForm();
-              showSuccess(submit ? 'Form submitted.' : 'Draft saved.');
-              renderStudentSection();
-              mountJourneyPanel();
+            }], { key: 'form:' + form.milestoneId }).then(function(result) {
+              const saved = Object.assign({}, form, {
+                response: {
+                  values: collected,
+                  status: result && result.status ? result.status : (submit ? 'Submitted' : 'Draft'),
+                  lastUpdated: result && result.lastUpdated ? result.lastUpdated : '',
+                  version: form.version
+                }
+              });
+              state.formViews[form.milestoneId] = saved;
+              if (submit && form.submitCompletes !== false && state.studentHome) {
+                (state.studentHome.actionItems || []).forEach(function(item) {
+                  if (item.CreatorType === 'System' && item.TemplateId === form.milestoneId) item.Status = 'Completed';
+                });
+              }
+              markSync(document.querySelector('#form-dialog .form-panel'), 'confirmed');
+              window.setTimeout(function() {
+                closeForm();
+                showSuccess(submit ? 'Form submitted.' : 'Draft saved.');
+                if (state.studentHome && document.getElementById('my-activity')) repaintStudentPage(state.studentHome);
+                if (document.getElementById('journey-body')) paintStudentJourney(state.studentHome);
+              }, 350);
+            }).catch(function(error) {
+              if (draft) draft.disabled = false;
+              if (submitButton) submitButton.disabled = false;
+              markSync(document.querySelector('#form-dialog .form-panel'), 'rejected');
+              throw error;
             });
           } : null
         });
+        if (refreshing) markSync(document.querySelector('#form-dialog .form-panel'), 'pending');
       }
 
       function openFormShell(title, html, js, binding) {
