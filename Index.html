@@ -518,6 +518,104 @@
         .plan-layout { grid-template-columns: 1fr; }
         .plan-side { position: static; max-height: none; overflow: visible; }
       }
+      .student-home .activity-panel { max-width: none; }
+      .journey-hero { margin: 0 0 14px; background: white; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+      .journey-hero [hidden] { display: none !important; }
+      .journey-hero-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; background: #f8fafb; border-bottom: 1px solid var(--line); }
+      .journey-hero-bar h2 { margin: 0; font-size: 14px; }
+      .journey-hero-toggle { border: 1px solid var(--line); border-radius: 4px; padding: 5px 10px; background: white; color: var(--ink); font-size: 12px; font-weight: 700; }
+      .journey-hero-toggle:hover, .journey-hero-toggle:focus-visible { background: #f4f7f8; }
+      .journey-hero-full { display: flex; gap: 6px; padding: 10px; overflow-x: auto; }
+      .phase-card { --phase-bg: #eef3f6; --phase-fg: var(--ink); position: relative; flex: var(--span, 1) 1 0; min-width: max(132px, calc(var(--span, 1) * 68px)); padding: 8px 6px 12px; border-radius: 8px; background: var(--phase-bg); color: var(--phase-fg); }
+      .phase-card.tone-0 { --phase-bg: #e6f4ea; --phase-fg: #1e7e34; }
+      .phase-card.tone-1 { --phase-bg: #e1f5fe; --phase-fg: #0277bd; }
+      .phase-card.tone-2 { --phase-bg: #f3e5f5; --phase-fg: #6a1b9a; }
+      .phase-card.tone-3 { --phase-bg: #fff3e0; --phase-fg: #e65100; }
+      .phase-card.tone-4 { --phase-bg: #ffebee; --phase-fg: #c62828; }
+      .phase-card.here { box-shadow: inset 0 0 0 2px var(--phase-fg); }
+      .phase-title { display: block; width: 100%; border: 0; padding: 0; background: transparent; color: var(--phase-fg); font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; text-align: center; }
+      .phase-title:hover, .phase-title:focus-visible { text-decoration: underline; }
+      .phase-range { min-height: 16px; margin: 3px 0 0; color: #4b5563; font-size: 11px; text-align: center; }
+      .phase-body { position: relative; margin-top: 8px; }
+      .phase-line { position: absolute; z-index: 0; top: 39px; left: 0; right: -6px; height: 4px; border-radius: 2px; background: #90a4ae; }
+      .phase-card:last-child .phase-line { right: 12px; }
+      .phase-card:first-child .phase-line { left: 12px; }
+      .ms-row { display: flex; justify-content: space-around; gap: 2px; margin: 0; padding: 0; list-style: none; position: relative; z-index: 1; }
+      .ms-row li { flex: 1 1 0; min-width: 0; }
+      .ms-hit { display: flex; flex-direction: column; align-items: center; width: 100%; border: 0; padding: 0; background: transparent; color: inherit; text-align: center; }
+      .ms-hit:hover .ms-label, .ms-hit:focus-visible .ms-label { text-decoration: underline; }
+      .ms-date { display: flex; align-items: flex-end; justify-content: center; height: 30px; font-size: 11px; font-weight: 700; line-height: 1.15; }
+      .ms-mark-wrap { display: grid; place-items: center; height: 22px; }
+      .ms-dot, .ms-star { box-shadow: 0 0 0 3px var(--phase-bg); }
+      .ms-dot { width: 16px; height: 16px; border: 3px solid currentColor; border-radius: 50%; background: white; }
+      .ms-dot.done { background: currentColor; }
+      .ms-dot.here, .ms-star.here { box-shadow: 0 0 0 3px var(--phase-bg), 0 0 0 6px var(--phase-fg); }
+      .ms-star { width: 20px; height: 20px; fill: white; stroke: currentColor; stroke-width: 1.6px; }
+      .ms-star.done { fill: currentColor; }
+      .ms-label { margin-top: 8px; color: #333; font-size: 10px; line-height: 1.3; }
+      .journey-hero-compact { padding: 14px 12px 12px; }
+      .compact-path { display: flex; position: relative; overflow-x: auto; margin: 0; padding: 0; list-style: none; }
+      .compact-path::before { content: ''; position: absolute; left: 8%; right: 8%; top: 5px; height: 2px; background: #d5e0e8; }
+      .compact-phase { position: relative; z-index: 1; flex: 1 0 auto; min-width: 88px; }
+      .compact-phase button { display: grid; justify-items: center; gap: 6px; width: 100%; border: 0; padding: 0 6px; background: transparent; color: inherit; font-weight: inherit; }
+      .compact-phase.done { color: #0d7a5f; }
+      .compact-phase.here { color: var(--ink); font-weight: 700; }
+      .compact-marks { display: flex; gap: 4px; align-items: center; min-height: 16px; }
+      .cmark { width: 12px; height: 12px; border: 2px solid #c5d3de; border-radius: 50%; background: white; }
+      .cmark.done { border-color: var(--green); background: var(--green); }
+      .cmark.here { border-color: var(--ink); background: var(--ink); box-shadow: 0 0 0 3px rgba(0, 76, 128, .16); }
+      .compact-label { font-size: 12px; line-height: 1.15; text-align: center; }
+      .student-home .hero { margin-bottom: 14px; }
+      .docs-layout { display: flex; align-items: stretch; gap: 12px; }
+      .folder-card { flex: 0 0 168px; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 14px; background: white; border: 1px solid var(--line); border-radius: 8px; }
+      .folder-card svg { width: 36px; height: 36px; fill: #fbbc04; }
+      .folder-card h3, .doc-head h3 { margin: 0; font-size: 15px; }
+      .folder-card p { margin: 0; }
+      .folder-card a, .doc-head a { color: var(--green); font-weight: 700; }
+      .folder-links { list-style: none; margin: 8px 0 0; padding: 8px 0 0; border-top: 1px solid var(--line); display: grid; gap: 4px; width: 100%; font-size: 13px; }
+      .doc-dashboard { flex: 1; min-width: 0; padding: 14px 16px 16px; background: white; border: 1px solid var(--line); border-radius: 8px; }
+      .doc-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
+      .doc-head h3 { display: flex; align-items: center; gap: 8px; min-width: 0; color: var(--ink); }
+      .doc-head h3 span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .doc-head svg { flex: none; width: 18px; height: 18px; fill: #1a73e8; }
+      .doc-stats { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin: 0 0 8px; }
+      .doc-stat { padding: 10px 6px; text-align: center; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; }
+      .doc-stat b { display: block; color: var(--ink); font-size: 18px; line-height: 1.2; }
+      .doc-stat b.compact { font-size: 14px; }
+      .doc-stat span { display: block; margin-top: 4px; color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+      .doc-stat.streak { background: #fff8e1; border-color: #ffe0b2; }
+      .doc-stat.streak b, .doc-stat.streak span { color: #e65100; }
+      .doc-hint { margin: 0 0 12px; font-size: 12px; }
+      .heatmap-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 8px 0; }
+      .heatmap-head strong { font-size: 12px; }
+      .heatmap-legend { display: flex; align-items: center; gap: 3px; color: var(--muted); font-size: 10px; }
+      .heatmap-legend i { width: 10px; height: 10px; border-radius: 2px; }
+      .heatmap-months { display: grid; grid-template-columns: repeat(var(--weeks), minmax(0, 1fr)); column-gap: 3px; height: 14px; margin: 0 0 4px 20px; color: var(--muted); font-size: 10px; }
+      .heatmap-months span { white-space: nowrap; }
+      .heatmap-plot { display: grid; grid-template-columns: 14px minmax(0, 1fr); column-gap: 6px; align-items: stretch; }
+      .heatmap-days { position: relative; color: var(--muted); font-size: 9px; line-height: 1; }
+      .heatmap-days span { position: absolute; right: 0; transform: translateY(-40%); }
+      .heatmap-days span:nth-child(1) { top: calc(100% * .5 / 7); }
+      .heatmap-days span:nth-child(2) { top: calc(100% * 2.5 / 7); }
+      .heatmap-days span:nth-child(3) { top: calc(100% * 4.5 / 7); }
+      .heatmap-grid { display: grid; grid-template-rows: repeat(7, auto); grid-template-columns: repeat(var(--weeks), minmax(0, 1fr)); grid-auto-flow: column; gap: 3px; }
+      .heatmap-grid .heat-cell { width: 100%; aspect-ratio: 1; }
+      .heat-cell { display: block; border-radius: 2px; background: #ebedf0; }
+      .heat-cell.lvl-1 { background: #c6e48b; }
+      .heat-cell.lvl-2 { background: #7bc96f; }
+      .heat-cell.lvl-3 { background: #239a3b; }
+      .heat-cell.lvl-4 { background: #196127; }
+      .heat-cell.is-future { background: transparent; }
+      .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; }
+      @container (max-width: 860px) {
+        .docs-layout { flex-direction: column; }
+        .folder-card { flex-basis: auto; }
+        .doc-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      }
+      @container (max-width: 520px) {
+        .doc-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .doc-head { align-items: flex-start; flex-direction: column; }
+      }
     </style>
   </head>
   <body>
@@ -538,6 +636,8 @@
         assignmentStudentIds: [],
         importRecords: null,
         journeyOpen: false,
+        journeyHeroExpanded: true,
+        essayAnalytics: null,
         journeyFilters: { phaseId: 'all', showSystem: true, showStudent: true },
         editingTodo: '',
         journeySync: {},
@@ -971,44 +1071,269 @@
 
       function paintStudentPage(home) {
         const main = document.getElementById('main');
+        main.classList.add('student-home');
         const next = nextIncomplete(home);
         const returned = (home.actionItems || []).filter(function(item) { return item.returnedComment && item.Status !== 'Completed'; })[0];
-        const templates = home.templates || [];
-        const meetings = templates.filter(function(template) { return template.type === 'meeting'; });
-        const meetingDone = meetings.filter(function(template) {
-          return (home.actionItems || []).some(function(item) { return item.TemplateId === template.milestoneId && item.Status === 'Completed'; });
-        }).length;
-        const done = (home.actionItems || []).filter(function(item) { return item.CreatorType === 'System' && item.Status === 'Completed'; }).length;
         const pageName = home.displayName || 'Student';
-        const hero = next ? `<section class="hero"><div><p class="eyebrow">${home.staffView ? 'Next step' : 'Your next step'}</p><h2>${escapeHtml(next.template.title)}</h2><p>${escapeHtml(next.template.description || 'Complete this milestone before the due date.')}</p></div><div>${next.item && next.item.DueDate ? `<div class="chip">${escapeHtml(String(next.item.DueDate).slice(0, 10))}</div>` : ''}${formButton(home, next)}</div></section>` : '<section class="hero"><div><p class="eyebrow">All caught up</p><h2>No action needed right now</h2><p>Open Journey to see what is coming.</p></div></section>';
-        const links = [
-          ['Drive folder', home.links && home.links.folder],
-          ['Extended Essay', home.links && home.links.doc],
-          ['RPPF', home.links && home.links.rppf],
-          ['Poster', home.links && home.links.poster]
-        ];
+        const subtitle = [
+          home.cohort ? 'Cohort ' + home.cohort : '',
+          home.subject || '',
+          home.anchor ? 'Anchor ' + (shortDate(home.anchor) || home.anchor) : ''
+        ].filter(Boolean).join(' · ');
+        const hero = next
+          ? `<section class="hero"><div><p class="eyebrow">${home.staffView ? 'Next step' : 'Your next step'}</p><h2>${escapeHtml(next.template.title)}</h2><p>${escapeHtml(next.template.description || 'Complete this milestone before the due date.')}</p></div><div>${next.item && next.item.DueDate ? `<div class="chip">${escapeHtml(shortDate(next.item.DueDate) || String(next.item.DueDate).slice(0, 10))}</div>` : ''}${formButton(home, next)}</div></section>`
+          : '<section class="hero"><div><p class="eyebrow">All caught up</p><h2>No action needed right now</h2><p>Every official milestone is done.</p></div></section>';
         main.innerHTML = `${staffStudentBar(home)}
-          <div class="page-head"><div><h1>${escapeHtml(pageName)}'s EE</h1>${home.cohort ? `<p class="muted">Cohort ${escapeHtml(home.cohort)}</p>` : ''}</div></div>
+          <div class="page-head"><div><h1>${escapeHtml(pageName)}'s EE</h1>${subtitle ? `<p class="muted">${escapeHtml(subtitle)}</p>` : ''}</div></div>
+          ${renderJourneyHero(journeyOverview(home))}
           ${hero}
           ${renderUnreadNotices(home.unreadTickets)}
           ${returned ? `<div class="notice">Returned: ${escapeHtml(returned.Title)}. ${escapeHtml(returned.returnedComment)}</div>` : ''}
-          <div class="tiles">
-            <div class="tile"><div class="muted">Milestones</div><div class="val">${done} <small>/ ${templates.length}</small></div></div>
-            <div class="tile"><div class="muted">Sessions</div><div class="val">${meetingDone} <small>/ ${meetings.length}</small></div></div>
-            <div class="tile"><div class="muted">Subject</div><div class="val" style="font-size:16px">${escapeHtml(home.subject || 'Not chosen')}</div></div>
-            <div class="tile"><div class="muted">Anchor</div><div class="val" style="font-size:16px">${escapeHtml(home.anchor || '—')}</div></div>
-          </div>
           <h2 class="section-gap">${home.staffView ? 'Documents' : 'My documents'}</h2>
-          <div class="doc-grid">${links.map(function(link) {
-            const url = safeUrl(link[1]);
-            return `<article class="doc-card"><h3>${escapeHtml(link[0])}</h3><p class="muted">${url ? 'Shared with your supervisor.' : 'Not created yet.'}</p>${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">Open</a>` : ''}</article>`;
-          }).join('')}</div>
+          <div class="docs-layout">${renderFolderCard(home)}${renderEssayCard(home)}</div>
           <section class="section-gap" id="my-activity" aria-label="${home.staffView ? 'Student activity' : 'Your activity'}"></section>`;
+        applyJourneyHero(main);
+        bindJourneyHero(main);
         bindFormButtons(main);
         bindStaffStudentChrome();
         bindUnreadNotices(main, false);
         paintTabDot('help', home.unreadTicketCount, 'Help');
+        paintEssayAnalytics(home);
         paintStudentActivity(home);
+      }
+
+      function journeyOverview(home) {
+        const current = nextIncomplete(home);
+        const currentId = current && current.template ? current.template.milestoneId : '';
+        const items = home.actionItems || [];
+        return (home.phases || []).map(function(phase, index) {
+          const milestones = (home.templates || []).filter(function(template) {
+            return template.phase === phase.phaseId;
+          }).map(function(template) {
+            const item = items.filter(function(entry) {
+              return entry.CreatorType === 'System' && entry.TemplateId === template.milestoneId;
+            })[0] || null;
+            const done = !!(item && item.Status === 'Completed');
+            return {
+              id: template.milestoneId,
+              title: template.title || template.milestoneId,
+              type: template.type || '',
+              due: item && item.DueDate ? String(item.DueDate).slice(0, 10) : '',
+              done: done,
+              here: template.milestoneId === currentId && !done
+            };
+          }).sort(function(left, right) {
+            const due = dueSortKey(left.due).localeCompare(dueSortKey(right.due));
+            if (due) return due;
+            return textCompare(left.title, right.title);
+          });
+          const doneCount = milestones.filter(function(milestone) { return milestone.done; }).length;
+          return {
+            id: phase.phaseId,
+            title: phase.phaseTitle || phase.phaseId,
+            index: index,
+            milestones: milestones,
+            doneCount: doneCount,
+            here: milestones.some(function(milestone) { return milestone.here; }),
+            complete: milestones.length > 0 && doneCount === milestones.length
+          };
+        });
+      }
+
+      function phaseRangeLabel(dates) {
+        const keys = (dates || []).filter(function(value) { return /^\d{4}-\d{2}-\d{2}$/.test(value); }).sort();
+        if (!keys.length) return '';
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        function part(key) {
+          const bits = key.split('-');
+          return { year: bits[0], month: months[Number(bits[1]) - 1] };
+        }
+        const start = part(keys[0]);
+        const end = part(keys[keys.length - 1]);
+        if (start.year === end.year && start.month === end.month) return start.month + ' ' + start.year;
+        if (start.year === end.year) return start.month + ' – ' + end.month + ' ' + start.year;
+        return start.month + ' ' + start.year + ' – ' + end.month + ' ' + end.year;
+      }
+
+      function journeyDayLabel(value) {
+        const full = shortDate(value);
+        return full ? full.replace(/\s+\d{4}$/, '') : '';
+      }
+
+      function milestoneMark(milestone) {
+        const stateClass = milestone.done ? 'done' : (milestone.here ? 'here' : '');
+        const star = milestone.type === 'form' || milestone.type === 'upload';
+        if (star) {
+          return `<svg class="ms-star ${stateClass}" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>`;
+        }
+        return `<span class="ms-dot ${stateClass}" aria-hidden="true"></span>`;
+      }
+
+      function renderJourneyHero(phases) {
+        const full = phases.length ? phases.map(function(phase) {
+          const range = phaseRangeLabel(phase.milestones.map(function(milestone) { return milestone.due; }));
+          const marks = phase.milestones.length ? phase.milestones.map(function(milestone) {
+            const status = milestone.done ? 'Done' : (milestone.here ? 'Current step' : 'Not done yet');
+            const when = milestone.due ? shortDate(milestone.due) : '';
+            const label = milestone.title + (when ? ', ' + when : '') + ', ' + status + '. Open this phase in the journey panel.';
+            return `<li><button type="button" class="ms-hit" data-open-phase="${escapeHtml(phase.id)}" aria-label="${escapeHtml(label)}"><span class="ms-date">${escapeHtml(journeyDayLabel(milestone.due))}</span><span class="ms-mark-wrap">${milestoneMark(milestone)}</span><span class="ms-label">${escapeHtml(milestone.title)}</span></button></li>`;
+          }).join('') : '<li class="muted">No milestones</li>';
+          const tone = phase.index % 5;
+          return `<section class="phase-card tone-${tone}${phase.here ? ' here' : ''}${phase.complete ? ' done' : ''}" style="--span:${Math.max(phase.milestones.length, 1)}"><button type="button" class="phase-title" data-open-phase="${escapeHtml(phase.id)}">${escapeHtml((phase.index + 1) + ' · ' + phase.title)}</button><p class="phase-range">${escapeHtml(range)}</p><div class="phase-body"><div class="phase-line" aria-hidden="true"></div><ol class="ms-row">${marks}</ol></div></section>`;
+        }).join('') : '<p class="muted">Official milestones appear after a cohort is assigned.</p>';
+        const compact = phases.length ? `<ol class="compact-path">${phases.map(function(phase) {
+          const dots = phase.milestones.map(function(milestone) {
+            const stateClass = milestone.done ? 'done' : (milestone.here ? 'here' : '');
+            return `<i class="cmark ${stateClass}" title="${escapeHtml(milestone.title + (milestone.done ? ' · Done' : (milestone.here ? ' · Current' : '')))}"></i>`;
+          }).join('');
+          const summary = phase.title + ', ' + phase.doneCount + ' of ' + phase.milestones.length + ' done. Open this phase in the journey panel.';
+          return `<li class="compact-phase${phase.complete ? ' done' : ''}${phase.here ? ' here' : ''}"><button type="button" data-open-phase="${escapeHtml(phase.id)}" aria-label="${escapeHtml(summary)}"><span class="compact-marks">${dots}</span><span class="compact-label">${escapeHtml(phase.title)}</span></button></li>`;
+        }).join('')}</ol>` : '';
+        return `<section class="journey-hero" aria-label="Journey overview"><div class="journey-hero-bar"><h2>Journey</h2><button type="button" class="journey-hero-toggle" data-journey-hero-toggle aria-expanded="true">Collapse</button></div><div class="journey-hero-full" data-journey-full>${full}</div><div class="journey-hero-compact" data-journey-compact hidden>${compact}</div></section>`;
+      }
+
+      function applyJourneyHero(main) {
+        const expanded = state.journeyHeroExpanded !== false;
+        const full = main.querySelector('[data-journey-full]');
+        const compact = main.querySelector('[data-journey-compact]');
+        const toggle = main.querySelector('[data-journey-hero-toggle]');
+        if (full) full.hidden = !expanded;
+        if (compact) compact.hidden = expanded;
+        if (toggle) {
+          toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+          toggle.textContent = expanded ? 'Collapse' : 'Expand';
+        }
+      }
+
+      function bindJourneyHero(main) {
+        const toggle = main.querySelector('[data-journey-hero-toggle]');
+        if (toggle) toggle.addEventListener('click', function() {
+          state.journeyHeroExpanded = state.journeyHeroExpanded === false;
+          applyJourneyHero(main);
+        });
+        main.querySelectorAll('[data-open-phase]').forEach(function(button) {
+          button.addEventListener('click', function() {
+            const phaseId = button.dataset.openPhase;
+            state.journeyFilters.phaseId = state.journeyFilters.phaseId === phaseId ? 'all' : phaseId;
+            setJourneyOpen(true);
+            const home = activeJourneyRecord();
+            if (home && document.getElementById('journey-body')) paintStudentJourney(home);
+          });
+        });
+      }
+
+      function renderFolderCard(home) {
+        const links = home.links || {};
+        const folder = safeUrl(links.folder);
+        const extras = [['RPPF', links.rppf], ['Poster', links.poster]].map(function(entry) {
+          const url = safeUrl(entry[1]);
+          return `<li>${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(entry[0])}</a>` : `<span class="muted">${escapeHtml(entry[0])} not created yet</span>`}</li>`;
+        }).join('');
+        return `<article class="folder-card"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg><h3>Drive folder</h3><p class="muted">${folder ? 'Shared with your supervisor.' : 'Not created yet.'}</p>${folder ? `<a href="${escapeHtml(folder)}" target="_blank" rel="noopener noreferrer">Open folder</a>` : ''}<ul class="folder-links">${extras}</ul></article>`;
+      }
+
+      function renderEssayCard(home) {
+        const url = safeUrl(home.links && home.links.doc);
+        return `<article class="doc-dashboard"><div class="doc-head"><h3><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg><span id="essay-doc-title">Extended Essay</span></h3>${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">Open in Google Docs</a>` : ''}</div><div id="essay-stats">${url ? '<p class="muted">Reading the Google Doc…</p>' : '<p class="muted">Not created yet.</p>'}</div></article>`;
+      }
+
+      function essayAnalyticsKey(home) {
+        return (home.email || '') + '|' + ((home.links && home.links.doc) || '');
+      }
+
+      function paintEssayAnalytics(home) {
+        const host = document.getElementById('essay-stats');
+        if (!host) return;
+        const url = safeUrl(home.links && home.links.doc);
+        if (!url) return;
+        const key = essayAnalyticsKey(home);
+        const cached = state.essayAnalytics;
+        if (cached && cached.key === key && Date.now() - cached.at < 600000) {
+          host.innerHTML = renderEssayStats(cached.stats || {});
+          const title = document.getElementById('essay-doc-title');
+          if (title && cached.stats && cached.stats.title) title.textContent = cached.stats.title;
+          return;
+        }
+        const request = home.staffView
+          ? callServer('getStudentEssayAnalytics', home.email, home.cohort || '', state.actingAs)
+          : callServer('getMyEssayAnalytics');
+        request.then(function(stats) {
+          if (!host.isConnected) return;
+          state.essayAnalytics = { key: key, at: Date.now(), stats: stats || {} };
+          host.innerHTML = renderEssayStats(stats || {});
+          const title = document.getElementById('essay-doc-title');
+          if (title && stats && stats.title) title.textContent = stats.title;
+        }).catch(function(error) {
+          if (!host.isConnected || isStale(error)) return;
+          host.innerHTML = '<p class="notice error">' + escapeHtml(error && error.message ? error.message : error) + '</p>';
+        });
+      }
+
+      function formatCount(value) {
+        if (value === null || value === undefined || value === '') return '—';
+        const number = Number(value);
+        if (!isFinite(number)) return '—';
+        return Math.round(number).toLocaleString('en-US');
+      }
+
+      function formatWordDelta(value) {
+        if (value === null || value === undefined || value === '') return '—';
+        const number = Math.round(Number(value));
+        if (!isFinite(number)) return '—';
+        if (number > 0) return '+' + number.toLocaleString('en-US');
+        return number.toLocaleString('en-US');
+      }
+
+      function formatLastEdit(value) {
+        const date = new Date(value || '');
+        if (isNaN(date.getTime())) return '—';
+        const minutes = Math.round((Date.now() - date.getTime()) / 60000);
+        if (minutes < 2) return 'Just now';
+        if (minutes < 60) return minutes + ' min ago';
+        const hours = Math.round(minutes / 60);
+        if (hours < 24) return hours === 1 ? '1 hour ago' : hours + ' hours ago';
+        const days = Math.round(hours / 24);
+        if (days === 1) return 'Yesterday';
+        if (days < 14) return days + ' days ago';
+        return shortDate(value) || '—';
+      }
+
+      function renderEssayStats(stats) {
+        if (!stats || !stats.ok) {
+          if (stats && stats.reason === 'missing') return '<p class="muted">Not created yet.</p>';
+          return '<p class="notice error">' + escapeHtml((stats && stats.message) || 'The EE Hub could not read this document.') + '</p>';
+        }
+        const lastEdit = formatLastEdit(stats.lastEdit);
+        const streak = stats.streak === null || stats.streak === undefined
+          ? '—'
+          : (Number(stats.streak) === 1 ? '1 day' : formatCount(stats.streak) + (Number(stats.streak) ? ' days' : ''));
+        const streakClass = Number(stats.streak) > 0 ? ' streak' : '';
+        const hint = stats.wordsHint ? `<p class="muted doc-hint">${escapeHtml(stats.wordsHint)}</p>` : '';
+        const days = stats.days || [];
+        const weeks = days.length ? Math.ceil(days.length / 7) : 0;
+        const months = (stats.months || []).map(function(month) {
+          return `<span style="grid-column:${Number(month.column) + 1}">${escapeHtml(month.label || '')}</span>`;
+        }).join('');
+        const cells = days.map(function(day) {
+          const level = day.future ? '' : ' lvl-' + (Number(day.level) || 0);
+          const title = day.future ? '' : (day.date + ': ' + (Number(day.count) ? Number(day.count) + (Number(day.count) === 1 ? ' edit' : ' edits') : 'No edits'));
+          return `<i class="heat-cell${day.future ? ' is-future' : ''}${level}"${title ? ` title="${escapeHtml(title)}"` : ''}></i>`;
+        }).join('');
+        const range = (stats.months || []).map(function(month) { return month.label; }).filter(Boolean);
+        const heatmapLabel = 'Edit activity' + (range.length ? ' from ' + range[0] + (range.length > 1 ? ' to ' + range[range.length - 1] : '') : '') + '. Darker green means more edits.';
+        const historyNote = stats.revisionsLoaded ? '' : '<p class="muted doc-hint">Edit history is not available for this document yet.</p>';
+        return `<div class="doc-stats">
+            <div class="doc-stat"><b>${formatCount(stats.wordCount)}</b><span>Current words</span></div>
+            <div class="doc-stat" title="Change since about one day ago"><b>${formatWordDelta(stats.wordsDay)}</b><span>Words, last day</span></div>
+            <div class="doc-stat" title="Change since about one week ago"><b>${formatWordDelta(stats.wordsWeek)}</b><span>Words, last week</span></div>
+            <div class="doc-stat${streakClass}" title="Days in a row with at least one edit"><b>${streak === '0 days' ? '0' : escapeHtml(streak)}</b><span>Edit streak</span></div>
+            <div class="doc-stat" title="Google Drive does not report how often a document was opened."><b>${formatCount(stats.opens)}</b><span>Times opened</span></div>
+            <div class="doc-stat" title="${escapeHtml(stats.lastEdit ? formatActivityWhen(stats.lastEdit) : '')}"><b class="${lastEdit.length > 12 ? 'compact' : ''}">${escapeHtml(lastEdit)}</b><span>Last edit</span></div>
+          </div>
+          ${hint}
+          <div class="heatmap-head"><strong>Edit activity</strong><div class="heatmap-legend" aria-hidden="true"><span>Less</span><i class="heat-cell"></i><i class="heat-cell lvl-1"></i><i class="heat-cell lvl-2"></i><i class="heat-cell lvl-3"></i><i class="heat-cell lvl-4"></i><span>More</span></div></div>
+          ${weeks ? `<div class="heatmap" style="--weeks:${weeks}" role="img" aria-label="${escapeHtml(heatmapLabel)}"><div class="heatmap-months">${months}</div><div class="heatmap-plot"><div class="heatmap-days" aria-hidden="true"><span>M</span><span>W</span><span>F</span></div><div class="heatmap-grid">${cells}</div></div></div>` : ''}
+          ${historyNote}`;
       }
 
       function paintStudentActivity(home) {
@@ -1112,16 +1437,8 @@
         const visiblePhases = zoom === 'all' ? phases : phases.filter(function(phase) { return phase.phaseId === zoom; });
         const percent = total ? Math.round((doneCount / total) * 100) : 0;
         main.innerHTML = `<section class="journey">
-          <div class="journey-head"><div><p class="eyebrow">Extended Essay</p><h1>${home.staffView ? escapeHtml(home.displayName) : 'Your journey'}</h1></div><p class="journey-score"><strong>${doneCount}</strong> of ${total} done</p></div>
+          <div class="journey-head"><div><p class="eyebrow">Manage</p><h1>Milestones</h1></div><p class="journey-score"><strong>${doneCount}</strong> of ${total} done</p></div>
           <div class="journey-bar" role="img" aria-label="${doneCount} of ${total} milestones done"><span style="width:${percent}%"></span></div>
-          <ol class="journey-path">${phases.map(function(phase) {
-            const phaseTemplates = templates.filter(function(template) { return template.phase === phase.phaseId; });
-            const phaseDone = phaseTemplates.filter(function(template) {
-              return systemItems.some(function(item) { return item.TemplateId === template.milestoneId && item.Status === 'Completed'; });
-            }).length;
-            const stateClass = phase.phaseId === currentPhaseId ? 'here' : (phaseTemplates.length && phaseDone === phaseTemplates.length ? 'done' : '');
-            return `<li><button type="button" class="phase-stop ${stateClass}" data-zoom="${escapeHtml(phase.phaseId)}" aria-pressed="${zoom === phase.phaseId ? 'true' : 'false'}"><span class="phase-mark"></span><span class="phase-name">${escapeHtml(phase.phaseTitle || phase.phaseId)}</span><span class="phase-count">${phaseDone}/${phaseTemplates.length || 0}</span></button></li>`;
-          }).join('')}</ol>
           <div class="journey-filters">
             <button type="button" data-zoom="all" aria-pressed="${zoom === 'all' ? 'true' : 'false'}">Whole journey</button>
             <button type="button" data-layer="milestones" aria-pressed="${state.journeyFilters.showSystem ? 'true' : 'false'}">Milestones</button>
